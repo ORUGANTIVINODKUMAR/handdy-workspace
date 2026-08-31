@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: handdy-workspace
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --prefix backend && npm ci --prefix dashboard && npm run build --prefix dashboard
+    startCommand: npm start --prefix backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        value: /api
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: APP_TIMEZONE
+        value: Asia/Kolkata
+      - key: CORS_ORIGINS
+        sync: false

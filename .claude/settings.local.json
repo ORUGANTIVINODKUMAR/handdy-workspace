@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test *)",
+      "Bash(npm run *)",
+      "Bash(node -c src/utils/taskProjectResolution.js)",
+      "Bash(node -c src/controllers/taskController.js)",
+      "Bash(node -c src/routes/taskRoutes.js)",
+      "Bash(node -c src/controllers/taskTimeLogController.js)"
+    ]
+  }
+}

@@ -1,0 +1,547 @@
+/* =========================================
+   EMPLOYEE DETAILED TIMESHEET
+========================================= */
+
+.employee-detail-page {
+  width: 100%;
+  min-width: 0;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   TITLE + FILTER
+========================================= */
+
+.employee-detail-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-bottom: 28px;
+}
+
+
+.employee-detail-heading-row h1 {
+  margin: 0;
+
+  color: #6b7280;
+
+  font-size: 30px;
+  font-weight: 500;
+}
+
+
+.employee-detail-filter {
+  width: 160px;
+  height: 40px;
+
+  padding: 0 14px;
+
+  border: 1px solid #b8c5d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   HELP
+========================================= */
+
+.employee-detail-help {
+  margin: 0 0 18px;
+
+  color: #ef1b1b;
+
+  font-size: 13px;
+}
+
+
+/* =========================================
+   CONTROLS
+========================================= */
+
+.employee-detail-controls {
+  display: flex;
+  align-items: flex-end;
+
+  gap: 16px;
+
+  margin-bottom: 40px;
+}
+
+
+.employee-detail-date {
+  width: 245px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 6px;
+}
+
+
+.employee-detail-date label {
+  color: #111827;
+
+  font-size: 14px;
+}
+
+
+.employee-detail-date input,
+.employee-detail-timezone {
+  height: 44px;
+
+  padding: 0 14px;
+
+  border: 1px solid #b8c5d8;
+  border-radius: 5px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  box-sizing: border-box;
+}
+
+
+.employee-detail-timezone {
+  width: 220px;
+}
+
+
+.employee-detail-go {
+  width: 55px;
+  height: 44px;
+
+  border: none;
+  border-radius: 5px;
+
+  background: #ff7800;
+
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.employee-detail-go:hover {
+  background: #e96d00;
+}
+
+
+/* =========================================
+   REPORT
+========================================= */
+
+.employee-detail-report {
+  width: 100%;
+
+  overflow: hidden;
+
+  border-radius: 11px 11px 0 0;
+
+  background: #ffffff;
+}
+
+
+/* =========================================
+   REPORT HEADER
+========================================= */
+
+.employee-detail-report-header {
+  width: 100%;
+
+  padding: 12px 32px;
+
+  background: #287ee5;
+
+  color: #ffffff;
+
+  font-size: 20px;
+  font-weight: 700;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   EXPORT
+========================================= */
+
+.employee-detail-export-row {
+  display: flex;
+  justify-content: flex-end;
+
+  padding: 28px 30px 20px;
+}
+
+
+.employee-detail-export {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #253c88;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  text-decoration: underline;
+
+  cursor: pointer;
+}
+
+
+/* =========================================
+   EMPLOYEE ACCORDION
+========================================= */
+
+.employee-detail-employee-row {
+  width: calc(100% - 64px);
+  min-height: 54px;
+
+  margin: 0 32px;
+
+  display: grid;
+
+  grid-template-columns:
+    22px
+    1fr
+    24px;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 0 18px;
+
+  border: 1px solid #d6dcea;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  box-sizing: border-box;
+}
+
+
+.employee-detail-minus {
+  font-size: 23px;
+}
+
+
+.employee-detail-chevron {
+  transition: transform 0.2s ease;
+}
+
+
+.employee-detail-chevron:not(.open) {
+  transform: rotate(180deg);
+}
+
+
+/* =========================================
+   TABLE
+========================================= */
+
+.employee-detail-table-wrapper {
+  width: calc(100% - 64px);
+
+  margin: 0 32px;
+
+  overflow-x: auto;
+}
+
+
+.employee-detail-table {
+  width: 100%;
+
+  min-width: 1150px;
+
+  border-collapse: collapse;
+
+  color: #0d266d;
+
+  font-size: 14px;
+}
+
+
+.employee-detail-table thead {
+  background: #eef0ff;
+}
+
+
+.employee-detail-table th {
+  padding: 14px 10px;
+
+  color: #0a246c;
+
+  font-weight: 700;
+
+  text-align: left;
+
+  white-space: nowrap;
+}
+
+
+.employee-detail-table th small {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 10px;
+}
+
+
+.employee-detail-table td {
+  padding: 10px;
+
+  border-bottom: 1px solid #d7deee;
+
+  white-space: nowrap;
+
+  vertical-align: middle;
+}
+
+
+/* =========================================
+   AVATAR
+========================================= */
+
+.employee-detail-avatar {
+  width: 28px;
+  height: 28px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #172c88;
+
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   TYPE COLORS
+========================================= */
+
+.employee-detail-type-work {
+  color: #008000;
+
+  font-weight: 500;
+}
+
+
+.employee-detail-type-break {
+  color: #e00000;
+
+  font-weight: 500;
+}
+
+
+.employee-detail-type-idle {
+  color: #ff1900;
+
+  font-weight: 500;
+}
+
+
+/* =========================================
+   TOTALS
+========================================= */
+
+.employee-detail-totals {
+  width: calc(100% - 64px);
+
+  margin: 0 32px 36px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+
+.employee-detail-total {
+  min-height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  padding: 0 12px;
+
+  border-bottom: 1px solid #d7deee;
+
+  font-size: 14px;
+
+  box-sizing: border-box;
+}
+
+
+.employee-detail-total strong {
+  min-width: 70px;
+
+  text-align: right;
+}
+
+
+.employee-detail-total-idle {
+  color: #ff0000;
+}
+
+
+.employee-detail-total-work {
+  color: #008000;
+}
+
+
+.employee-detail-total-break {
+  color: #e00000;
+}
+
+
+/* LIGHT BLUE TOTAL */
+
+.employee-detail-total-blue-light {
+  min-height: 46px;
+
+  border: none;
+
+  background: #86b5eb;
+
+  color: #ffffff;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+
+/* DARK BLUE TOTAL */
+
+.employee-detail-total-blue {
+  min-height: 46px;
+
+  border: none;
+
+  background: #287ee5;
+
+  color: #ffffff;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   SAFETY
+========================================= */
+
+.employee-detail-page,
+.employee-detail-page *,
+.employee-detail-page *::before,
+.employee-detail-page *::after {
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1000px) {
+
+  .employee-detail-controls {
+    flex-wrap: wrap;
+  }
+
+
+  .employee-detail-date {
+    flex: 1 1 220px;
+  }
+
+}
+
+
+@media (max-width: 650px) {
+
+  .employee-detail-heading-row {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+
+  .employee-detail-filter {
+    width: 100%;
+  }
+
+
+  .employee-detail-controls {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+
+  .employee-detail-date,
+  .employee-detail-timezone,
+  .employee-detail-go {
+    width: 100%;
+  }
+
+
+  .employee-detail-report-header {
+    padding: 12px 16px;
+
+    font-size: 17px;
+  }
+
+
+  .employee-detail-employee-row,
+  .employee-detail-table-wrapper,
+  .employee-detail-totals {
+    width: calc(100% - 24px);
+
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+}

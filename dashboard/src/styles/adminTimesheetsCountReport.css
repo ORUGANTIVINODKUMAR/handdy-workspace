@@ -1,0 +1,208 @@
+.admin-count-report-page {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-count-report-help {
+  margin: 0 0 18px;
+
+  color: #ef1b1b;
+
+  font-size: 13px;
+}
+
+.admin-count-report-controls {
+  display: grid;
+
+  grid-template-columns:
+    210px
+    210px
+    minmax(240px, 1fr)
+    minmax(240px, 1fr)
+    220px
+    56px;
+
+  gap: 14px;
+
+  align-items: center;
+
+  margin-bottom: 34px;
+}
+
+.admin-count-report-controls > select {
+  width: 100%;
+  height: 43px;
+
+  padding: 0 14px;
+
+  border: 1px solid #b8c5d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  box-sizing: border-box;
+}
+
+.admin-count-report-date {
+  display: grid;
+
+  grid-template-columns: auto minmax(0, 1fr);
+
+  gap: 8px;
+
+  align-items: center;
+
+  min-width: 0;
+}
+
+.admin-count-report-date label {
+  color: #111827;
+
+  font-size: 14px;
+
+  white-space: nowrap;
+}
+
+.admin-count-report-date input {
+  width: 100%;
+  min-width: 0;
+
+  height: 43px;
+
+  padding: 0 12px;
+
+  border: 1px solid #b8c5d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  box-sizing: border-box;
+}
+
+.admin-count-report-timezone {
+  min-width: 0;
+}
+
+.admin-count-report-go {
+  width: 56px;
+  height: 43px;
+
+  border: none;
+  border-radius: 4px;
+
+  background: #ff7800 !important;
+
+  color: #ffffff !important;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.admin-count-report-go:hover {
+  background: #e96d00 !important;
+}
+
+.admin-count-report-result {
+  width: 100%;
+
+  padding: 32px;
+
+  background: #ffffff;
+
+  border-radius: 10px;
+
+  box-sizing: border-box;
+}
+
+.admin-count-report-table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  font-size: 13px;
+}
+
+.admin-count-report-table th {
+  height: 42px;
+
+  padding: 8px;
+
+  border: 1px solid #d7dceb;
+
+  background: #eef0ff;
+
+  color: #0a246c;
+
+  font-weight: 700;
+
+  text-align: left;
+}
+
+.admin-count-report-table th:first-child {
+  width: 50%;
+}
+
+.admin-count-report-table th:last-child {
+  width: 50%;
+}
+
+.admin-count-report-table td {
+  height: 40px;
+
+  padding: 8px;
+
+  border: 1px solid #d7dceb;
+
+  background: #ffffff;
+}
+
+.admin-count-report-empty {
+  text-align: center;
+
+  color: #111827;
+}
+
+@media (max-width: 1450px) {
+  .admin-count-report-controls {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-count-report-controls {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .admin-count-report-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-count-report-date {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-count-report-go {
+    width: 100%;
+  }
+
+  .admin-count-report-result {
+    padding: 18px;
+  }
+}

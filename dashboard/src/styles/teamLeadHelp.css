@@ -1,0 +1,715 @@
+/* =========================================
+   TEAM LEAD HELP PAGE
+========================================= */
+
+.tl-help-page {
+  min-height: 100vh;
+  background: #eeeeee;
+  color: #081b61;
+}
+
+
+/* =========================================
+   HEADER
+========================================= */
+
+.tl-help-header {
+  width: 100%;
+  height: 120px;
+  background: #ffffff;
+}
+
+
+.tl-help-header-inner {
+  width: calc(100% - 80px);
+  max-width: 1345px;
+  height: 100%;
+
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+/* =========================================
+   LOGO
+========================================= */
+
+.tl-help-logo {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+.tl-help-logo-circle {
+  width: 58px;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 5px solid #ff9700;
+  border-radius: 50%;
+
+  color: #ff9700;
+
+  font-size: 27px;
+}
+
+
+.tl-help-logo span {
+  color: #ff7900;
+
+  font-size: 44px;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   TOP NAV
+========================================= */
+
+.tl-help-nav {
+  display: flex;
+  align-items: center;
+
+  gap: 30px;
+}
+
+
+.tl-help-nav > button,
+.tl-help-menu-button {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 8px 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #071658;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+
+  cursor: pointer;
+}
+
+
+.tl-help-nav > button:hover,
+.tl-help-menu-button:hover {
+  color: #ff7800;
+}
+
+
+/* =========================================
+   DROPDOWNS
+========================================= */
+
+.tl-help-menu-wrapper {
+  position: relative;
+}
+
+
+.tl-help-dropdown {
+  position: absolute;
+
+  top: 48px;
+
+  z-index: 100;
+
+  min-width: 250px;
+
+  padding: 14px 0;
+
+  border-radius: 4px;
+
+  background: #000000;
+
+  box-shadow:
+    0 10px 30px
+    rgba(0, 0, 0, 0.15);
+}
+
+
+.tl-help-dropdown::before {
+  content: "";
+
+  position: absolute;
+
+  top: -11px;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-bottom: 11px solid #000000;
+}
+
+
+.tl-help-dropdown button {
+  width: 100%;
+
+  padding: 14px 24px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  font-size: 17px;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.tl-help-dropdown button:hover {
+  background: #171717;
+}
+
+
+.tl-help-features-dropdown {
+  left: -35px;
+}
+
+
+.tl-help-contact-dropdown {
+  left: -45px;
+}
+
+
+/* =========================================
+   SEARCH HERO
+========================================= */
+
+.tl-help-search-section {
+  min-height: 330px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #263673;
+}
+
+
+.tl-help-search-box {
+  width: 805px;
+  max-width: calc(100% - 40px);
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 34px 44px;
+
+  border-radius: 6px;
+
+  background: #f8f8f8;
+
+  box-sizing: border-box;
+}
+
+
+.tl-help-search-input-wrapper {
+  position: relative;
+
+  flex: 1;
+}
+
+
+.tl-help-search-input-wrapper input {
+  width: 100%;
+  height: 42px;
+
+  padding: 0 28px;
+
+  border: 1px solid #c5c5c5;
+  border-radius: 3px;
+
+  outline: none;
+
+  color: #575757;
+
+  font-size: 16px;
+
+  box-sizing: border-box;
+}
+
+
+.tl-help-search-input-wrapper input:focus {
+  border-color: #ff7800;
+}
+
+
+/* SUGGESTIONS */
+
+.tl-help-suggestions {
+  position: absolute;
+
+  top: 46px;
+  left: 0;
+  right: 0;
+
+  z-index: 120;
+
+  border:
+    1px solid
+    #d5d5d5;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 8px 22px
+    rgba(0, 0, 0, 0.12);
+}
+
+
+.tl-help-suggestions button {
+  width: 100%;
+
+  display: block;
+
+  padding: 11px 14px;
+
+  border: none;
+  border-bottom:
+    1px solid
+    #eeeeee;
+
+  background: #ffffff;
+
+  color: #102568;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.tl-help-suggestions button:hover {
+  background: #f5f5f5;
+}
+
+
+/* SEARCH BUTTON */
+
+.tl-help-search-button {
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 0 28px;
+
+  border: none;
+  border-radius: 3px;
+
+  background: #ff7200;
+
+  color: #ffffff;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.tl-help-search-button:hover {
+  background: #e96700;
+}
+
+
+/* =========================================
+   MAIN CONTENT
+========================================= */
+
+.tl-help-main {
+  width: calc(100% - 80px);
+  max-width: 1345px;
+
+  margin: 0 auto;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    400px;
+
+  background: #ffffff;
+}
+
+
+.tl-help-left {
+  padding:
+    48px
+    24px
+    70px;
+}
+
+
+.tl-help-section h1 {
+  margin: 0;
+
+  color: #172d74;
+
+  font-size: 36px;
+  font-weight: 700;
+}
+
+
+.tl-help-divider {
+  height: 1px;
+
+  margin-top: 10px;
+
+  background: #d9d9d9;
+}
+
+
+/* =========================================
+   CATEGORY GRID
+========================================= */
+
+.tl-help-categories {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  column-gap: 45px;
+  row-gap: 40px;
+
+  padding-top: 34px;
+}
+
+
+.tl-help-category button {
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #142968;
+
+  font-size: 20px;
+  font-weight: 700;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.tl-help-category button:hover {
+  color: #ff7800;
+}
+
+
+.tl-help-category p {
+  margin: 8px 0 0;
+
+  color: #111111;
+
+  font-size: 16px;
+
+  line-height: 1.45;
+}
+
+
+/* =========================================
+   COMMON QUESTIONS
+========================================= */
+
+.tl-help-common-section {
+  margin-top: 125px;
+}
+
+
+.tl-help-common-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap:
+    55px
+    70px;
+
+  padding-top: 34px;
+}
+
+
+.tl-help-question {
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #1a306f;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.tl-help-question:hover {
+  color: #ff7800;
+}
+
+
+/* =========================================
+   RIGHT SIDE
+========================================= */
+
+.tl-help-right {
+  padding:
+    56px
+    35px;
+
+  background: #dddddd;
+}
+
+
+.tl-help-side-card {
+  margin-bottom: 38px;
+
+  padding:
+    35px
+    25px;
+
+  background: #ffffff;
+}
+
+
+.tl-help-side-card h2 {
+  margin: 0 0 22px;
+
+  color: #172d74;
+
+  font-size: 34px;
+  font-weight: 700;
+}
+
+
+.tl-help-side-list {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.tl-help-side-list button {
+  padding:
+    14px
+    0;
+
+  border: none;
+  border-bottom:
+    1px solid
+    #dddddd;
+
+  background: transparent;
+
+  color: #102568;
+
+  font-size: 18px;
+
+  line-height: 1.35;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.tl-help-side-list button:hover {
+  color: #ff7800;
+}
+
+
+/* =========================================
+   FOOTER
+========================================= */
+
+.tl-help-footer {
+  width: calc(100% - 160px);
+  max-width: 1260px;
+
+  margin: 0 auto;
+
+  padding:
+    36px
+    0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  border-top:
+    1px solid
+    #d7d7d7;
+
+  background: #ffffff;
+
+  color: #171717;
+
+  font-size: 18px;
+}
+
+
+.tl-help-footer a {
+  color: #172d74;
+
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1100px) {
+
+  .tl-help-header-inner {
+    width: calc(100% - 40px);
+  }
+
+
+  .tl-help-nav {
+    gap: 15px;
+  }
+
+
+  .tl-help-main {
+    width: 100%;
+
+    grid-template-columns: 1fr;
+  }
+
+
+  .tl-help-right {
+    display: grid;
+
+    grid-template-columns:
+      repeat(2, 1fr);
+
+    gap: 25px;
+  }
+
+
+  .tl-help-side-card {
+    margin: 0;
+  }
+
+}
+
+
+@media (max-width: 800px) {
+
+  .tl-help-header {
+    height: auto;
+  }
+
+
+  .tl-help-header-inner {
+    padding:
+      20px
+      0;
+
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 25px;
+  }
+
+
+  .tl-help-nav {
+    flex-wrap: wrap;
+  }
+
+
+  .tl-help-search-box {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+
+  .tl-help-search-button {
+    width: 100%;
+  }
+
+
+  .tl-help-categories {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+
+  .tl-help-common-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+  .tl-help-right {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+@media (max-width: 550px) {
+
+  .tl-help-logo span {
+    font-size: 34px;
+  }
+
+
+  .tl-help-categories {
+    grid-template-columns: 1fr;
+  }
+
+
+  .tl-help-section h1 {
+    font-size: 28px;
+  }
+
+}

@@ -1,0 +1,215 @@
+/* =========================================
+   TEAM LEAD LOGIN
+========================================= */
+
+.teamlead-login-page {
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background: #f3f4f6;
+}
+
+.teamlead-login-card {
+  width: 100%;
+  max-width: 460px;
+
+  overflow: hidden;
+
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 12px 35px rgba(17, 24, 39, 0.12);
+}
+
+/* BRAND */
+
+.teamlead-login-brand {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 28px 32px;
+
+  background: #111827;
+  color: #ffffff;
+}
+
+.teamlead-login-logo {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #2563eb;
+  color: #ffffff;
+
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.teamlead-login-brand h1 {
+  margin: 0;
+
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.teamlead-login-brand span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #cbd5e1;
+
+  font-size: 13px;
+}
+
+/* CONTENT */
+
+.teamlead-login-content {
+  padding: 34px 32px 36px;
+}
+
+.teamlead-login-content h2 {
+  margin: 0 0 8px;
+
+  color: #111827;
+
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.teamlead-login-content > p {
+  margin: 0 0 26px;
+
+  color: #6b7280;
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ERROR */
+
+.teamlead-login-error {
+  margin-bottom: 18px;
+
+  padding: 11px 13px;
+
+  border-radius: 7px;
+
+  background: #fee2e2;
+  color: #b91c1c;
+
+  font-size: 13px;
+}
+
+/* FORM */
+
+.teamlead-login-form {
+  display: flex;
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+.teamlead-login-form > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.teamlead-login-form label {
+  color: #111827;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.teamlead-login-form input {
+  width: 100%;
+  height: 48px;
+
+  box-sizing: border-box;
+
+  padding: 0 14px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #111827;
+
+  font-size: 14px;
+
+  outline: none;
+}
+
+.teamlead-login-form input:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* BUTTON */
+
+.teamlead-login-form button {
+  width: 100%;
+  height: 48px;
+
+  margin-top: 4px;
+
+  border: none;
+  border-radius: 7px;
+
+  background: #2563eb;
+  color: #ffffff;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.teamlead-login-form button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.teamlead-login-form button:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+/* MOBILE */
+
+@media (max-width: 520px) {
+  .teamlead-login-page {
+    padding: 16px;
+  }
+
+  .teamlead-login-brand {
+    padding: 24px;
+  }
+
+  .teamlead-login-content {
+    padding: 28px 24px 30px;
+  }
+
+  .teamlead-login-content h2 {
+    font-size: 24px;
+  }
+}

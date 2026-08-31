@@ -1,0 +1,719 @@
+/* =========================================
+   EMPLOYEE HELP PAGE
+========================================= */
+
+.employee-help-page {
+  min-height: 100vh;
+
+  background: #eeeeee;
+
+  color: #081b61;
+}
+
+
+/* =========================================
+   HEADER
+========================================= */
+
+.employee-help-header {
+  width: 100%;
+  height: 115px;
+
+  background: #ffffff;
+}
+
+
+.employee-help-header-inner {
+  width: calc(100% - 90px);
+  max-width: 1320px;
+  height: 100%;
+
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+/* =========================================
+   LOGO
+========================================= */
+
+.employee-help-logo {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+.employee-help-logo-circle {
+  width: 58px;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 5px solid #ff9700;
+  border-radius: 50%;
+
+  color: #ff9700;
+
+  font-size: 27px;
+}
+
+
+.employee-help-logo span {
+  color: #ff7900;
+
+  font-size: 44px;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   TOP NAV
+========================================= */
+
+.employee-help-nav {
+  display: flex;
+  align-items: center;
+
+  gap: 30px;
+}
+
+
+.employee-help-nav > button,
+.employee-help-menu-button {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 8px 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #071658;
+
+  font-family: inherit;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+
+  cursor: pointer;
+}
+
+
+.employee-help-nav > button:hover,
+.employee-help-menu-button:hover {
+  color: #ff7800;
+}
+
+
+/* =========================================
+   DROPDOWNS
+========================================= */
+
+.employee-help-menu-wrapper {
+  position: relative;
+}
+
+
+.employee-help-dropdown {
+  position: absolute;
+
+  top: 47px;
+
+  z-index: 100;
+
+  min-width: 250px;
+
+  padding: 13px 0;
+
+  border-radius: 4px;
+
+  background: #000000;
+
+  box-shadow:
+    0 10px 30px
+    rgba(0, 0, 0, 0.18);
+}
+
+
+.employee-help-dropdown::before {
+  content: "";
+
+  position: absolute;
+
+  top: -11px;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-bottom: 11px solid #000000;
+}
+
+
+.employee-help-dropdown button {
+  width: 100%;
+
+  padding: 14px 24px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 16px;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.employee-help-dropdown button:hover {
+  background: #171717;
+}
+
+
+.employee-help-features-dropdown {
+  left: -35px;
+}
+
+
+.employee-help-contact-dropdown {
+  left: -45px;
+}
+
+
+/* =========================================
+   SEARCH HERO
+========================================= */
+
+.employee-help-search-section {
+  min-height: 310px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #263673;
+}
+
+
+.employee-help-search-box {
+  width: 825px;
+  max-width: calc(100% - 40px);
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 34px 44px;
+
+  border-radius: 6px;
+
+  background: #f8f8f8;
+
+  box-sizing: border-box;
+}
+
+
+.employee-help-search-input-wrapper {
+  flex: 1;
+}
+
+
+.employee-help-search-input-wrapper input {
+  width: 100%;
+  height: 42px;
+
+  padding: 0 28px;
+
+  border: 1px solid #c5c5c5;
+  border-radius: 3px;
+
+  outline: none;
+
+  color: #575757;
+
+  font-family: inherit;
+
+  font-size: 16px;
+
+  box-sizing: border-box;
+}
+
+
+.employee-help-search-input-wrapper input:focus {
+  border-color: #ff7800;
+}
+
+
+/* =========================================
+   SEARCH BUTTON
+========================================= */
+
+.employee-help-search-button {
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  padding: 0 28px;
+
+  border: none;
+  border-radius: 3px;
+
+  background: #ff7200;
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.employee-help-search-button:hover {
+  background: #e96700;
+}
+
+
+/* =========================================
+   MAIN
+========================================= */
+
+.employee-help-main {
+  width: calc(100% - 80px);
+  max-width: 1345px;
+
+  margin: 0 auto;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    390px;
+
+  background: #ffffff;
+}
+
+
+/* =========================================
+   LEFT
+========================================= */
+
+.employee-help-left {
+  padding:
+    48px
+    24px
+    70px;
+}
+
+
+.employee-help-section h1 {
+  margin: 0;
+
+  color: #172d74;
+
+  font-size: 36px;
+  font-weight: 700;
+}
+
+
+.employee-help-divider {
+  height: 1px;
+
+  margin-top: 10px;
+
+  background: #d9d9d9;
+}
+
+
+/* =========================================
+   CATEGORIES
+========================================= */
+
+.employee-help-categories {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  column-gap: 45px;
+  row-gap: 42px;
+
+  padding-top: 34px;
+}
+
+
+.employee-help-category button {
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #142968;
+
+  font-family: inherit;
+
+  font-size: 19px;
+  font-weight: 700;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.employee-help-category button:hover {
+  color: #ff7800;
+}
+
+
+.employee-help-category p {
+  margin: 8px 0 0;
+
+  color: #111111;
+
+  font-size: 15px;
+
+  line-height: 1.45;
+}
+
+
+/* =========================================
+   COMMON QUESTIONS
+========================================= */
+
+.employee-help-common-section {
+  margin-top: 125px;
+}
+
+
+.employee-help-common-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap:
+    55px
+    70px;
+
+  padding-top: 34px;
+}
+
+
+.employee-help-question {
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #1a306f;
+
+  font-family: inherit;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.employee-help-question:hover {
+  color: #ff7800;
+}
+
+
+/* =========================================
+   RIGHT SIDE
+========================================= */
+
+.employee-help-right {
+  padding:
+    56px
+    35px;
+
+  background: #dddddd;
+}
+
+
+.employee-help-side-card {
+  margin-bottom: 38px;
+
+  padding:
+    35px
+    25px;
+
+  background: #ffffff;
+}
+
+
+.employee-help-side-card h2 {
+  margin: 0 0 22px;
+
+  color: #172d74;
+
+  font-size: 34px;
+  font-weight: 700;
+}
+
+
+.employee-help-side-list {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.employee-help-side-list button {
+  padding:
+    14px
+    0;
+
+  border: none;
+  border-bottom: 1px solid #dddddd;
+
+  background: transparent;
+
+  color: #102568;
+
+  font-family: inherit;
+
+  font-size: 17px;
+
+  line-height: 1.35;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.employee-help-side-list button:hover {
+  color: #ff7800;
+}
+
+
+/* =========================================
+   FOOTER
+========================================= */
+
+.employee-help-footer {
+  width: calc(100% - 160px);
+  max-width: 1260px;
+
+  margin: 0 auto;
+
+  padding:
+    36px
+    0
+    28px;
+
+  border-top: 1px solid #d7d7d7;
+
+  background: #ffffff;
+
+  color: #171717;
+
+  text-align: center;
+}
+
+
+.employee-help-contact-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  margin-bottom: 30px;
+
+  font-size: 17px;
+}
+
+
+.employee-help-contact-footer a {
+  color: #172d74;
+
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+
+.employee-help-copyright {
+  color: #8c7373;
+
+  font-size: 16px;
+}
+
+
+/* =========================================
+   GLOBAL SAFETY
+========================================= */
+
+.employee-help-page,
+.employee-help-page *,
+.employee-help-page *::before,
+.employee-help-page *::after {
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1100px) {
+
+  .employee-help-header-inner {
+    width: calc(100% - 40px);
+  }
+
+
+  .employee-help-nav {
+    gap: 15px;
+  }
+
+
+  .employee-help-main {
+    width: 100%;
+
+    grid-template-columns: 1fr;
+  }
+
+
+  .employee-help-right {
+    display: grid;
+
+    grid-template-columns:
+      repeat(2, 1fr);
+
+    gap: 25px;
+  }
+
+
+  .employee-help-side-card {
+    margin: 0;
+  }
+
+}
+
+
+@media (max-width: 800px) {
+
+  .employee-help-header {
+    height: auto;
+  }
+
+
+  .employee-help-header-inner {
+    padding:
+      20px
+      0;
+
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 25px;
+  }
+
+
+  .employee-help-nav {
+    flex-wrap: wrap;
+  }
+
+
+  .employee-help-search-box {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+
+  .employee-help-search-button {
+    width: 100%;
+  }
+
+
+  .employee-help-categories {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+
+  .employee-help-common-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+  .employee-help-right {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+@media (max-width: 550px) {
+
+  .employee-help-logo span {
+    font-size: 34px;
+  }
+
+
+  .employee-help-categories {
+    grid-template-columns: 1fr;
+  }
+
+
+  .employee-help-section h1 {
+    font-size: 28px;
+  }
+
+
+  .employee-help-footer {
+    width: calc(100% - 30px);
+  }
+
+
+  .employee-help-contact-footer {
+    flex-wrap: wrap;
+  }
+
+}

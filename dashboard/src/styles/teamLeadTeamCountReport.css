@@ -1,0 +1,254 @@
+/* =========================================
+   TEAM LEAD - TEAM COUNT REPORT
+========================================= */
+
+.tl-team-count-page {
+  width: 100%;
+  max-width: 100%;
+
+  overflow-x: hidden;
+
+  box-sizing: border-box;
+}
+
+
+/* TITLE */
+
+.tl-team-count-page h1 {
+  margin: 0 0 24px !important;
+
+  color: #6b7280 !important;
+
+  font-size: 30px !important;
+  font-weight: 500 !important;
+}
+
+
+/* HELP */
+
+.tl-team-count-help {
+  margin: 0 0 14px;
+
+  color: #ef1b1b;
+
+  font-size: 13px;
+}
+
+
+/* CONTROLS */
+
+.tl-team-count-controls {
+  width: 100%;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(170px, 1fr)
+    minmax(170px, 1fr)
+    minmax(210px, 1.1fr)
+    minmax(210px, 1.1fr)
+    minmax(190px, 0.95fr)
+    56px;
+
+  gap: 14px;
+
+  align-items: center;
+
+  margin-bottom: 42px;
+
+  box-sizing: border-box;
+}
+
+
+/* SELECTS */
+
+.tl-team-count-controls select {
+  width: 100%;
+  min-width: 0;
+
+  height: 44px;
+
+  padding: 0 14px;
+
+  border: 1px solid #b8c5d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-size: 14px;
+
+  box-sizing: border-box;
+}
+
+
+/* DATE */
+
+.tl-team-count-date {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  min-width: 0;
+}
+
+.tl-team-count-date label {
+  flex-shrink: 0;
+
+  color: #111827;
+
+  font-size: 14px;
+}
+
+.tl-team-count-date input {
+  width: 100%;
+  min-width: 0;
+
+  height: 44px;
+
+  padding: 0 12px;
+
+  border: 1px solid #b8c5d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-size: 14px;
+
+  box-sizing: border-box;
+}
+
+
+/* GO BUTTON */
+
+.tl-team-count-go {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+
+  height: 44px !important;
+
+  padding: 0 !important;
+
+  border: none !important;
+  border-radius: 5px !important;
+
+  background: #ff7800 !important;
+
+  color: #ffffff !important;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.tl-team-count-go:hover {
+  background: #ea6d00 !important;
+}
+
+
+/* REPORT CARD */
+
+.tl-team-count-card {
+  width: 100%;
+
+  padding: 32px;
+
+  background: #ffffff;
+
+  box-sizing: border-box;
+}
+
+
+/* TABLE */
+
+.tl-team-count-table {
+  width: 100%;
+
+  border-collapse: collapse;
+}
+
+.tl-team-count-table th,
+.tl-team-count-table td {
+  padding: 12px;
+
+  border: 1px solid #d8e0ec;
+
+  font-size: 13px;
+}
+
+.tl-team-count-table th {
+  background: #eef0ff;
+
+  color: #11246d;
+
+  text-align: left;
+
+  font-weight: 700;
+}
+
+.tl-team-count-table td {
+  background: #ffffff;
+
+  color: #11246d;
+}
+
+.tl-team-count-empty {
+  text-align: center !important;
+
+  padding: 18px !important;
+}
+
+
+/* PREVENT HORIZONTAL SCROLL */
+
+.tl-main {
+  max-width: calc(
+    100vw - var(--tl-sidebar-width)
+  );
+
+  overflow-x: hidden;
+}
+
+.tl-content {
+  width: 100%;
+  max-width: 100%;
+
+  overflow-x: hidden;
+
+  box-sizing: border-box;
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 1400px) {
+
+  .tl-team-count-controls {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+  }
+
+}
+
+@media (max-width: 800px) {
+
+  .tl-team-count-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .tl-team-count-date {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+}

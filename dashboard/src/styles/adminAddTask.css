@@ -1,0 +1,72 @@
+.admin-add-task-page { max-width: 1160px; margin: 0 auto; }
+.admin-add-task-back { border: 0; background: transparent; color: #176344; font: inherit; font-weight: 700; cursor: pointer; padding: 0 0 17px; }
+.admin-add-task-card { display: grid; gap: 25px; padding: 30px; border: 1px solid #dbe8e1; border-radius: 16px; background: #fff; box-shadow: 0 16px 42px rgba(22, 65, 51, .07); }
+/* Used when TaskForm is embedded inside a modal that already provides its own card chrome (e.g. AdminTasks.jsx edit modal) — keep breathing room but drop the duplicate card border/shadow. */
+.admin-add-task-card.embedded { padding: 22px 28px 28px; border: 0; border-radius: 0; box-shadow: none; }
+.admin-add-task-card header p, .admin-task-section-heading p { margin: 0 0 5px; color: #18775c; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.admin-add-task-card header h2, .admin-task-section-heading h3 { margin: 0; color: #173c31; }
+.admin-add-task-card header span { display: block; margin-top: 7px; color: #6b8177; }
+.admin-task-basics { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.admin-task-basics label, .admin-task-employee-panel label { display: grid; gap: 8px; color: #29463c; font-size: 14px; font-weight: 700; }
+.admin-task-basics input, .admin-task-basics select, .admin-task-employee-panel input { height: 50px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c8ddd3; border-radius: 9px; color: #173c31; font: inherit; }
+.admin-task-options { display: flex; align-items: center; gap: 26px; padding: 17px 19px; border: 1px solid #e1ebe6; border-radius: 11px; background: #fbfdfc; }
+.admin-task-options > div { display: flex; align-items: center; gap: 16px; }.admin-task-options label { display: inline-flex; align-items: center; gap: 7px; color: #29463c; font-size: 14px; }.admin-task-options input { accent-color: #18775c; }
+.admin-task-idle { margin-left: auto; }
+.admin-task-access, .admin-task-assignees { padding-top: 23px; border-top: 1px solid #e1ebe6; }
+.admin-task-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; }.admin-task-section-heading > span { color: #176344; font-size: 13px; font-weight: 750; }
+.admin-task-team-grid, .admin-task-employee-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; }
+.admin-task-team-grid button, .admin-task-employee-list button { min-height: 48px; display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #c8ddd3; border-radius: 9px; background: #fff; color: #29463c; font: inherit; text-align: left; cursor: pointer; }.admin-task-team-grid button.selected, .admin-task-employee-list button.selected { border-color: #18775c; background: #e8f5ee; color: #145b42; font-weight: 700; }
+.admin-task-team-grid i, .admin-task-employee-list i { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #a7c9ba; border-radius: 5px; color: #fff; font-size: 12px; font-style: normal; }.admin-task-team-grid button.selected i, .admin-task-employee-list button.selected i { border-color: #18775c; background: #18775c; }
+.admin-task-assignment-toggle { display: flex; gap: 10px; margin-bottom: 15px; }.admin-task-assignment-toggle button { padding: 10px 14px; border: 1px solid #c8ddd3; border-radius: 8px; background: #fff; color: #295145; font: inherit; font-weight: 700; cursor: pointer; }.admin-task-assignment-toggle button.selected { border-color: #18775c; background: #18775c; color: #fff; }
+.admin-task-employee-panel { padding: 16px; border-radius: 11px; background: #f7fbf9; }.admin-task-employee-panel > div:first-child { display: flex; align-items: end; justify-content: space-between; gap: 15px; margin-bottom: 14px; }.admin-task-employee-panel label { flex: 1; max-width: 360px; }.admin-task-employee-panel > div:first-child > span { color: #176344; font-size: 13px; font-weight: 750; }.admin-task-employee-list small { display: block; color: #6b8177; font-size: 12px; font-weight: 400; }
+.admin-add-task-card footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 22px; border-top: 1px solid #e1ebe6; }.admin-add-task-cancel, .admin-add-task-save { min-height: 44px; padding: 0 18px; border-radius: 9px; font: inherit; font-weight: 750; cursor: pointer; }.admin-add-task-cancel { border: 1px solid #c8ddd3; background: #fff; color: #295145; }.admin-add-task-save { border: 0; background: #18775c; color: #fff; }.admin-add-task-save:disabled { opacity: .65; cursor: not-allowed; }
+@media (max-width: 720px) { .admin-add-task-card { padding: 20px; }.admin-task-basics { grid-template-columns: 1fr; }.admin-task-options { align-items: flex-start; flex-direction: column; }.admin-task-idle { margin-left: 0; }.admin-task-employee-panel > div:first-child { align-items: stretch; flex-direction: column; } }
+
+/* Team choices must remain calm and readable in every saved colour theme. */
+.admin-task-selection-copy { display: block; margin-top: 5px; color: #6b8177; font-size: 13px; font-weight: 500; }
+.admin-task-section-heading > .admin-task-selection-count { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 999px; background: #edf7f1; color: #176344; font-size: 12px; font-weight: 800; }
+html[data-theme] .admin-task-team-grid .admin-task-team-option,
+html[data-theme] .admin-task-employee-list .admin-task-employee-option {
+  min-height: 54px !important;
+  border: 1px solid #c8ddd3 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #29463c !important;
+  box-shadow: 0 1px 2px rgba(22, 65, 51, .03) !important;
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+html[data-theme] .admin-task-team-grid .admin-task-team-option:hover,
+html[data-theme] .admin-task-employee-list .admin-task-employee-option:hover {
+  border-color: #72ae94 !important;
+  background: #f7fbf9 !important;
+  box-shadow: 0 5px 14px rgba(22, 65, 51, .08) !important;
+  transform: translateY(-1px);
+}
+html[data-theme] .admin-task-team-grid .admin-task-team-option.selected,
+html[data-theme] .admin-task-employee-list .admin-task-employee-option.selected {
+  border-color: #18775c !important;
+  background: #e8f5ee !important;
+  color: #145b42 !important;
+  box-shadow: inset 0 0 0 1px rgba(24, 119, 92, .08) !important;
+  font-weight: 750 !important;
+}
+html[data-theme] .admin-task-team-grid .admin-task-team-option i,
+html[data-theme] .admin-task-employee-list .admin-task-employee-option i {
+  width: 19px !important;
+  height: 19px !important;
+  flex: 0 0 19px;
+  border: 1.5px solid #8db8a6 !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  color: #ffffff !important;
+}
+html[data-theme] .admin-task-team-grid .admin-task-team-option.selected i,
+html[data-theme] .admin-task-employee-list .admin-task-employee-option.selected i {
+  border-color: #18775c !important;
+  background: #18775c !important;
+}
+html[data-theme] .admin-task-team-grid .admin-task-team-option:focus-visible,
+html[data-theme] .admin-task-employee-list .admin-task-employee-option:focus-visible {
+  outline: 3px solid rgba(24, 119, 92, .24);
+  outline-offset: 2px;
+}

@@ -1,0 +1,176 @@
+/* =========================================
+   TEAM LEAD COUNT REPORT
+========================================= */
+
+.tl-count-page {
+  width: 100%;
+}
+
+.tl-count-page h1 {
+  margin: 0 0 24px !important;
+
+  color: #6b7280 !important;
+
+  font-size: 30px !important;
+  font-weight: 500 !important;
+}
+
+.tl-count-help {
+  margin: 0 0 14px;
+
+  color: #ef1b1b;
+
+  font-size: 13px;
+}
+
+
+/* =========================================
+   CONTROLS
+========================================= */
+
+.tl-count-controls {
+  display: grid;
+
+  grid-template-columns:
+    255px
+    255px
+    345px
+    56px;
+
+  gap: 14px;
+
+  align-items: end;
+
+  margin-bottom: 42px;
+}
+
+.tl-count-date {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.tl-count-date label {
+  flex-shrink: 0;
+
+  color: #111827;
+
+  font-size: 14px;
+}
+
+.tl-count-date input,
+.tl-count-controls select {
+  width: 100%;
+  height: 42px;
+
+  padding: 0 12px;
+
+  border: 1px solid #b8c5d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-size: 14px;
+}
+
+.tl-count-go {
+  width: 56px !important;
+  height: 42px !important;
+
+  padding: 0 !important;
+
+  border: none !important;
+  border-radius: 5px !important;
+
+  background: #ff7800 !important;
+
+  color: #ffffff !important;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.tl-count-go:hover {
+  background: #ea6d00 !important;
+}
+
+
+/* =========================================
+   REPORT CARD
+========================================= */
+
+.tl-count-report-card {
+  padding: 32px;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+}
+
+.tl-count-table {
+  width: 100%;
+
+  border-collapse: collapse;
+}
+
+.tl-count-table th,
+.tl-count-table td {
+  padding: 12px;
+
+  border: 1px solid #dbe3ef;
+
+  text-align: left;
+
+  font-size: 13px;
+}
+
+.tl-count-table th {
+  background: #eef0ff;
+
+  color: #11246d;
+
+  font-weight: 700;
+}
+
+.tl-count-table td {
+  background: #ffffff;
+
+  color: #11246d;
+}
+
+.tl-count-empty {
+  text-align: center !important;
+
+  padding: 18px !important;
+
+  color: #374151 !important;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1100px) {
+  .tl-count-controls {
+    grid-template-columns:
+      1fr 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .tl-count-controls {
+    grid-template-columns:
+      1fr;
+  }
+
+  .tl-count-date {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+}

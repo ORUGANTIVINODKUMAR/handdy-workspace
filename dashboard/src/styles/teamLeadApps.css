@@ -1,0 +1,360 @@
+/* =========================================
+   TEAM LEAD APPS
+========================================= */
+
+.tl-apps-layout {
+  min-height: 100vh;
+
+  background: #eef5ff;
+}
+
+
+/* =========================================
+   MAIN
+========================================= */
+
+.tl-apps-main {
+  min-height: 100vh;
+
+  margin-left:
+    var(--tl-sidebar-width);
+
+  background: #eef5ff;
+}
+
+
+/* =========================================
+   TOP BAR
+========================================= */
+
+.tl-apps-topbar {
+  height: 65px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 30px;
+
+  background: #ffffff;
+
+  border-bottom:
+    1px solid #bfd0e9;
+
+  box-sizing: border-box;
+}
+
+
+.tl-apps-user {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #001c52;
+
+  font-size: 14px;
+}
+
+
+.tl-apps-user-icon {
+  font-size: 17px;
+}
+
+
+/* =========================================
+   CONTENT
+========================================= */
+
+.tl-apps-content {
+  padding: 28px 30px;
+}
+
+
+.tl-apps-content h1 {
+  margin: 0 0 22px;
+
+  color: #707070;
+
+  font-size: 30px;
+  font-weight: 500;
+}
+
+
+/* =========================================
+   CARD
+========================================= */
+
+.tl-apps-card {
+  width: 100%;
+
+  min-height: 480px;
+
+  padding:
+    46px
+    50px
+    60px;
+
+  background: #ffffff;
+
+  border-radius: 4px;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   INTRO TEXT
+========================================= */
+
+.tl-apps-card h2 {
+  margin:
+    0
+    0
+    55px;
+
+  color: #112b87;
+
+  font-size: 22px;
+  font-weight: 700;
+
+  text-align: left;
+}
+
+
+/* =========================================
+   GRID
+========================================= */
+
+.tl-apps-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 60px;
+
+  align-items: start;
+}
+
+
+/* =========================================
+   APP ITEM
+========================================= */
+
+.tl-app-item {
+  text-align: center;
+
+  color: #10286c;
+}
+
+
+.tl-app-item h3 {
+  margin:
+    25px
+    0
+    8px;
+
+  color: #10286c;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+
+.tl-app-item p {
+  margin: 0 0 18px;
+
+  color: #10286c;
+
+  font-size: 14px;
+}
+
+
+.tl-app-item small {
+  display: block;
+
+  margin-top: 18px;
+
+  color: #29479b;
+
+  font-size: 12px;
+}
+
+
+/* =========================================
+   WINDOWS LOGO
+========================================= */
+
+.tl-windows-logo {
+  width: 76px;
+  height: 76px;
+
+  display: grid;
+
+  grid-template-columns:
+    1fr
+    1fr;
+
+  grid-template-rows:
+    1fr
+    1fr;
+
+  gap: 4px;
+
+  margin:
+    0
+    auto;
+
+  transform:
+    skewY(-7deg);
+}
+
+
+.tl-windows-logo span {
+  display: block;
+
+  background: #287ce5;
+}
+
+
+/* =========================================
+   APPLE LOGO
+========================================= */
+
+.tl-apple-logo {
+  width: 90px;
+  height: 90px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin:
+    -8px
+    auto
+    0;
+
+  color: #287ce5;
+
+  font-size: 95px;
+
+  line-height: 1;
+}
+
+
+/* =========================================
+   UBUNTU LOGO
+========================================= */
+
+.tl-ubuntu-logo {
+  width: 90px;
+  height: 90px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin:
+    -8px
+    auto
+    0;
+
+  color: #287ce5;
+
+  font-size: 90px;
+
+  line-height: 1;
+}
+
+
+/* =========================================
+   INFO LINE
+========================================= */
+
+.tl-app-info-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+}
+
+
+/* =========================================
+   DOWNLOAD BUTTON
+========================================= */
+
+.tl-windows-download {
+  height: 38px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  padding: 0 14px;
+
+  border: none;
+
+  border-radius: 3px;
+
+  background: #287ce5;
+
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+.tl-windows-download:hover {
+  background: #176bd4;
+}
+
+
+/* =========================================
+   INSTALL LINK
+========================================= */
+
+.tl-install-link {
+  margin-top: 10px;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #10286c;
+
+  font-size: 13px;
+
+  text-decoration: underline;
+
+  cursor: pointer;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1000px) {
+
+  .tl-apps-grid {
+    grid-template-columns:
+      1fr;
+
+    gap: 55px;
+  }
+
+
+  .tl-apps-card h2 {
+    text-align: center;
+  }
+
+}

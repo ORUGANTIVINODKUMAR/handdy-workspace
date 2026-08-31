@@ -1,0 +1,181 @@
+.tl-team-timesheet-page {
+  width: 100%;
+}
+
+.tl-team-timesheet-page h1 {
+  margin: 0 0 18px !important;
+
+  color: #6b7280 !important;
+
+  font-size: 30px !important;
+  font-weight: 500 !important;
+}
+
+.tl-team-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-bottom: 28px;
+}
+
+.tl-team-view-buttons {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.tl-team-view-buttons button {
+  min-width: 92px;
+  height: 38px;
+
+  padding: 0 14px;
+
+  border: 1px solid #b9c6d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.tl-team-view-buttons button.active {
+  border-color: #287ce5;
+
+  background: #287ce5;
+
+  color: #ffffff;
+}
+
+.tl-team-filter {
+  width: 165px;
+  height: 38px;
+
+  padding: 0 12px;
+
+  border: 1px solid #b9c6d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  font-size: 14px;
+}
+
+.tl-team-help {
+  margin: 0 0 14px;
+
+  color: #ef1b1b;
+
+  font-size: 13px;
+}
+
+.tl-team-controls {
+  display: grid;
+
+  grid-template-columns:
+    225px
+    225px
+    180px
+    225px
+    56px;
+
+  gap: 14px;
+
+  align-items: center;
+
+  margin-bottom: 42px;
+}
+
+.tl-team-controls select,
+.tl-team-controls input {
+  width: 100%;
+  height: 44px;
+
+  box-sizing: border-box;
+
+  padding: 0 14px;
+
+  border: 1px solid #b9c6d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-size: 14px;
+}
+
+.tl-team-go {
+  width: 56px !important;
+  height: 44px !important;
+
+  padding: 0 !important;
+
+  border: none !important;
+  border-radius: 5px !important;
+
+  background: #ff7800 !important;
+
+  color: #ffffff !important;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.tl-team-go:hover {
+  background: #e86d00 !important;
+}
+
+.tl-team-result {
+  width: 100%;
+  min-height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d8e0ec;
+
+  background: #ffffff;
+
+  color: #1f2a44;
+
+  font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+  .tl-team-controls {
+    grid-template-columns:
+      repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 750px) {
+  .tl-team-top-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tl-team-view-buttons {
+    flex-wrap: wrap;
+  }
+
+  .tl-team-filter {
+    width: 100%;
+  }
+
+  .tl-team-controls {
+    grid-template-columns: 1fr;
+  }
+}

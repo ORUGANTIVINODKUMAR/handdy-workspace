@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src http://localhost:5000 http://127.0.0.1:5000; img-src 'self' data:; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Handdy - Sign in</title>
+  </head>
+  <body data-page="login">
+    <main class="desktop-shell">
+      <header class="app-header">
+        <div class="brand-mark" aria-hidden="true">H</div>
+        <div>
+          <p class="app-eyebrow">EMPLOYEE TIME &amp; ATTENDANCE</p>
+          <h1>Handdy Desktop</h1>
+        </div>
+      </header>
+      <section id="loginSection" class="login-view" aria-labelledby="login-title">
+        <div class="login-card">
+          <p class="section-eyebrow">WELCOME BACK</p>
+          <h2 id="login-title">Sign in to your workspace</h2>
+          <p class="login-copy">Manage your attendance and track your work in one place.</p>
+          <form id="loginForm">
+            <div class="form-field">
+              <label for="email">Work email</label>
+              <input type="email" id="email" name="email" autocomplete="email" placeholder="name@company.com" required />
+            </div>
+            <div class="form-field">
+              <label for="password">Password</label>
+              <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Enter your password" required />
+            </div>
+            <button type="submit" id="loginButton">Login</button>
+          </form>
+          <p id="message" role="alert"></p>
+        </div>
+      </section>
+    </main>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

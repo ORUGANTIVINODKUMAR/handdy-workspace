@@ -1,0 +1,319 @@
+/* =========================================
+   EMPLOYEE APPS PAGE
+========================================= */
+
+.employee-apps-page {
+  width: 100%;
+  min-width: 0;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   TITLE
+========================================= */
+
+.employee-apps-page h1 {
+  margin: 0 0 18px;
+
+  color: #6b7280;
+
+  font-size: 30px;
+  font-weight: 500;
+}
+
+
+/* =========================================
+   CARD
+========================================= */
+
+.employee-apps-card {
+  width: 100%;
+  min-height: 525px;
+
+  padding: 48px 52px;
+
+  background: #ffffff;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   HEADING
+========================================= */
+
+.employee-apps-card h2 {
+  margin: 0 0 28px;
+
+  color: #0c2b83;
+
+  font-size: 22px;
+  font-weight: 700;
+
+  line-height: 1.35;
+}
+
+
+/* =========================================
+   DESCRIPTION
+========================================= */
+
+.employee-apps-description {
+  margin: 0 0 55px;
+
+  color: #0c2b83;
+
+  font-size: 15px;
+  font-weight: 600;
+
+  line-height: 1.45;
+}
+
+
+/* =========================================
+   APP GRID
+========================================= */
+
+.employee-apps-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 70px;
+
+  align-items: start;
+}
+
+
+/* =========================================
+   APP ITEM
+========================================= */
+
+.employee-app-item {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  flex-direction: column;
+
+  text-align: center;
+}
+
+
+.employee-app-item h3 {
+  margin: 34px 0 10px;
+
+  color: #0c2b83;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+
+.employee-app-item p {
+  margin: 0 0 14px;
+
+  color: #0c2b83;
+
+  font-size: 14px;
+}
+
+
+.employee-app-item small {
+  display: block;
+
+  max-width: 360px;
+
+  margin-top: 12px;
+
+  color: #2450a4;
+
+  font-size: 13px;
+
+  line-height: 1.4;
+}
+
+
+/* =========================================
+   WINDOWS LOGO
+========================================= */
+
+.employee-windows-logo {
+  width: 86px;
+  height: 78px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  grid-template-rows:
+    repeat(2, 1fr);
+
+  gap: 4px;
+
+  transform: skewY(-7deg);
+}
+
+
+.employee-windows-logo span {
+  display: block;
+
+  background: #287ee5;
+}
+
+
+/* =========================================
+   WINDOWS DOWNLOAD
+========================================= */
+
+.employee-windows-download {
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  padding: 0 16px;
+
+  border: none;
+  border-radius: 4px;
+
+  background: #287ee5;
+
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.employee-windows-download:hover {
+  background: #1f6ed3;
+}
+
+
+/* =========================================
+   APPLE
+========================================= */
+
+.employee-apple-logo {
+  height: 78px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #287ee5;
+
+  font-size: 80px;
+
+  line-height: 1;
+}
+
+
+/* =========================================
+   UBUNTU
+========================================= */
+
+.employee-ubuntu-logo {
+  height: 78px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #287ee5;
+
+  font-size: 80px;
+
+  line-height: 1;
+}
+
+
+/* =========================================
+   INFO LINE
+========================================= */
+
+.employee-app-info-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+}
+
+
+/* =========================================
+   INSTALL LINK
+========================================= */
+
+.employee-install-link {
+  margin-top: 15px;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #0c2b83;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+
+  text-decoration: underline;
+
+  cursor: pointer;
+}
+
+
+/* =========================================
+   SAFETY
+========================================= */
+
+.employee-apps-page,
+.employee-apps-page *,
+.employee-apps-page *::before,
+.employee-apps-page *::after {
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1000px) {
+
+  .employee-apps-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+
+@media (max-width: 650px) {
+
+  .employee-apps-card {
+    padding: 28px 18px;
+  }
+
+
+  .employee-apps-grid {
+    grid-template-columns: 1fr;
+
+    gap: 55px;
+  }
+
+}

@@ -1,0 +1,102 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { SquareX } from "lucide-react";
+import TeamLeadSidebar from "./TeamLeadSidebar";
+import axiosInstance from "../../api/axiosInstance";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import "../../styles/teamLeadSidebar.css";
+import "../../styles/teamLeadTasks.css";
+
+function TeamLeadTasks() {
+  const navigate = useNavigate();
+  const [tasks, setTasks] = useState([]);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("Active");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadTasks = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const { data } = await axiosInstance.get("/tasks", { params: { limit: 100 } });
+      setTasks(data.tasks || []);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to load tasks."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadTasks(); }, [loadTasks]);
+
+  const filteredTasks = useMemo(() => {
+    const text = search.trim().toLowerCase();
+    return tasks.filter((task) => {
+      const matchesSearch = !text || task.taskName?.toLowerCase().includes(text) || task.taskCode?.toLowerCase().includes(text);
+      const taskStatus = task.isActive ? "Active" : "Inactive";
+      return matchesSearch && (status === "All" || status === taskStatus);
+    });
+  }, [search, status, tasks]);
+
+  const toggleTask = async (taskId) => {
+    try {
+      await axiosInstance.patch(`/tasks/${taskId}/toggle-status`);
+      await loadTasks();
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to update task."));
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!window.confirm("Delete this task?")) return;
+    try {
+      await axiosInstance.delete(`/tasks/${taskId}`);
+      await loadTasks();
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to delete task."));
+    }
+  };
+
+  return (
+    <div className="tl-page">
+      <TeamLeadSidebar />
+      <main className="tl-main">
+        <div className="tl-tasks-header">
+          <div><p>TEAM TASK MANAGEMENT</p><h1>Tasks</h1><span>Create and manage work for your team.</span></div>
+          <button type="button" onClick={() => navigate("/team-lead/tasks/add")}>+ Add task</button>
+        </div>
+        {error && <p className="status-message error-message" role="alert">{error}</p>}
+        <section className="tl-tasks-card">
+          <div className="tl-tasks-toolbar">
+            <label>Search tasks<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by task name" aria-label="Search tasks" /></label>
+            <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="All">All</option><option value="Active">Active</option><option value="Inactive">Inactive</option>
+            </select></label>
+          </div>
+          <div className="tl-tasks-table-wrapper">
+            <table className="tl-tasks-table">
+              <thead><tr><th>Task</th><th>Type</th><th>Project</th><th>Assigned to</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {loading ? <tr><td colSpan="6">Loading tasks...</td></tr> : filteredTasks.length === 0 ? <tr><td colSpan="6">No tasks found.</td></tr> : filteredTasks.map((task) => (
+                  <tr key={task._id}>
+                    <td>{task.taskName} <small>{task.taskCode}</small></td>
+                    <td>{task.taskType}</td><td>{task.project?.projectName || "-"}</td>
+                    <td>{task.assignToAllEmployees ? "Entire team" : (task.assignedTo || []).map((item) => item.fullName).join(", ") || "-"}</td>
+                    <td><span className={`tl-task-status ${task.isActive ? "is-active" : "is-inactive"}`}>{task.isActive ? "Active" : "Inactive"}</span></td>
+                    <td className="tl-task-actions">
+                      <button type="button" className="tl-task-toggle" onClick={() => toggleTask(task._id)}>{task.isActive ? "Deactivate" : "Activate"}</button>
+                      <button type="button" className="tl-task-delete" aria-label={`Delete ${task.taskName}`} onClick={() => deleteTask(task._id)}><SquareX size={17} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export default TeamLeadTasks;

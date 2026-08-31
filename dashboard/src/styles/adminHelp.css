@@ -1,0 +1,326 @@
+/* =========================================
+   HELP PAGE
+========================================= */
+
+.admin-help-page {
+  width: 100%;
+}
+
+/* =========================================
+   SEARCH AREA
+========================================= */
+
+.help-search-section {
+  padding: 70px 20px;
+  background: var(--sidebar-bg, #263574);
+}
+
+.help-search-box {
+  width: min(760px, 100%);
+  margin: 0 auto;
+
+  display: flex;
+  gap: 12px;
+
+  padding: 28px;
+
+  background: #ffffff;
+  border-radius: 6px;
+}
+
+.help-search-box input {
+  flex: 1;
+
+  height: 46px;
+  padding: 0 16px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+
+  font-size: 15px;
+  outline: none;
+}
+
+.help-search-box input:focus {
+  border-color: var(--primary);
+}
+
+.help-search-box button {
+  min-width: 120px;
+
+  border: none;
+  border-radius: 4px;
+
+  background: var(--primary);
+  color: #ffffff;
+
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.help-search-box button:hover {
+  background: var(--primary-hover);
+}
+
+/* =========================================
+   CONTENT LAYOUT
+========================================= */
+
+.help-content-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 35px;
+
+  padding: 42px 28px;
+  background: #ffffff;
+}
+
+/* =========================================
+   MAIN CONTENT
+========================================= */
+
+.help-main-content {
+  min-width: 0;
+}
+
+.help-section {
+  margin-bottom: 55px;
+}
+
+.help-section h2 {
+  margin: 0 0 26px;
+  padding-bottom: 12px;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  color: var(--text-main, #111827);
+
+  font-size: 30px;
+}
+
+/* =========================================
+   CATEGORY GRID
+========================================= */
+
+.help-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px 45px;
+}
+
+.help-category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.help-category-card strong {
+  color: var(--primary);
+  font-size: 17px;
+}
+
+.help-category-card span {
+  color: #374151;
+  line-height: 1.35;
+}
+
+/* =========================================
+   QUESTIONS
+========================================= */
+
+.help-question-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 34px 55px;
+}
+
+.help-question {
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  color: var(--primary);
+  text-align: left;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.help-question:hover {
+  text-decoration: underline;
+}
+
+.help-no-results {
+  color: #6b7280;
+}
+
+/* =========================================
+   RIGHT PANEL
+========================================= */
+
+.help-sidebar-panel {
+  background: #e5e5e5;
+  padding: 32px;
+}
+
+.help-side-card {
+  background: #ffffff;
+  padding: 24px;
+
+  margin-bottom: 30px;
+}
+
+.help-side-card h2 {
+  margin: 0 0 20px;
+
+  color: var(--primary);
+
+  font-size: 28px;
+}
+
+.help-side-links {
+  display: flex;
+  flex-direction: column;
+}
+
+.help-side-links button {
+  padding: 13px 0;
+
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+
+  background: transparent;
+
+  color: var(--primary);
+
+  text-align: left;
+
+  font-size: 15px;
+
+  cursor: pointer;
+}
+
+.help-side-links button:hover {
+  text-decoration: underline;
+}
+
+/* =========================================
+   FOOTER
+========================================= */
+
+.help-footer {
+  padding: 34px 20px;
+
+  border-top: 1px solid #e5e7eb;
+
+  background: #ffffff;
+
+  text-align: center;
+
+  color: #374151;
+}
+
+.help-footer p {
+  margin: 8px 0;
+}
+
+.help-footer a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1000px) {
+  .help-content-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .help-category-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .help-sidebar-panel {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 650px) {
+  .help-search-box {
+    flex-direction: column;
+  }
+
+  .help-search-box button {
+    height: 45px;
+  }
+
+  .help-category-grid,
+  .help-question-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .help-content-layout {
+    padding: 25px 18px;
+  }
+}
+/* =========================================
+   HELP PAGE BUTTON TEXT VISIBILITY
+========================================= */
+
+/* Category cards */
+.help-category-card {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+}
+
+.help-category-card strong,
+.help-category-card span {
+  color: #ffffff !important;
+}
+
+/* Common question buttons */
+.help-question {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.help-question:hover {
+  color: #ffffff !important;
+  text-decoration: none;
+}
+
+/* Recent posts / right side category buttons */
+.help-side-links button {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+
+  padding: 12px 14px;
+  margin-bottom: 2px;
+
+  border-radius: 8px;
+  border: none;
+}
+
+.help-side-links button:hover {
+  color: #ffffff !important;
+  text-decoration: none;
+}
