@@ -3,7 +3,7 @@ services:
     name: handdy-workspace
     runtime: node
     plan: starter
-    buildCommand: npm ci --prefix backend && npm ci --prefix dashboard && npm run build --prefix dashboard
+    buildCommand: npm ci --include=dev --prefix backend && npm ci --include=dev --prefix dashboard && npm run build --prefix dashboard
     startCommand: npm start --prefix backend
     healthCheckPath: /health
     envVars:
