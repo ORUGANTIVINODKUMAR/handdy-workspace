@@ -1,7 +1,13 @@
 const { contextBridge } = require("electron");
 
+// The packaged desktop client uses the live Handdy API. Developers can still
+// override this with HANDDY_API_URL when running against a local/test server.
+const apiBaseUrl =
+  process.env.HANDDY_API_URL ||
+  "https://handdy-workspace.onrender.com/api";
+
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
   platform: process.platform,
-  apiBaseUrl: process.env.HANDDY_API_URL || "http://localhost:5000/api",
+  apiBaseUrl,
 });

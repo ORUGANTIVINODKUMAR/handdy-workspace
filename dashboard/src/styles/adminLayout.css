@@ -377,7 +377,7 @@
 .employees-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
 
   gap: 16px;
 
@@ -407,6 +407,11 @@
 
 .employees-search input {
   width: min(320px, 45vw);
+}
+
+.employees-team-filter {
+  width: min(220px, 35vw);
+  margin-left: 0 !important;
 }
 
 .employees-search button {

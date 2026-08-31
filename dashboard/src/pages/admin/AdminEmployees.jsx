@@ -11,7 +11,6 @@ function AdminEmployees() {
   const [employees, setEmployees] = useState([]);
   const [teams, setTeams] = useState([]);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -63,10 +62,6 @@ function AdminEmployees() {
         params.search = search.trim();
       }
 
-      if (status !== "") {
-        params.isActive = status;
-      }
-
       if (teamFilter) {
         params.team = teamFilter;
       }
@@ -86,7 +81,7 @@ function AdminEmployees() {
     } finally {
       setLoading(false);
     }
-  }, [search, status, teamFilter, page, limit]);
+  }, [search, teamFilter, page, limit]);
 
   useEffect(() => {
     void fetchEmployees();
@@ -367,23 +362,7 @@ function AdminEmployees() {
           </form>
 
           <select
-            value={status}
-            onChange={(event) => { setStatus(event.target.value); setPage(1); }}
-          >
-            <option value="">
-              All Employees
-            </option>
-
-            <option value="true">
-              Active
-            </option>
-
-            <option value="false">
-              Inactive
-            </option>
-          </select>
-
-          <select
+            className="employees-team-filter"
             value={teamFilter}
             onChange={(event) => { setTeamFilter(event.target.value); setPage(1); }}
             aria-label="Filter employees by team"
