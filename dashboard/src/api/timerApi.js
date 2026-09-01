@@ -26,6 +26,8 @@ export const stopTimer = async () => {
 
   return response.data;
 };
+
+
 export const getActiveTimer = async () => {
   const response = await axiosInstance.get("/time-logs/active");
 
