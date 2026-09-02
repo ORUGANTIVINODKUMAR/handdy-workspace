@@ -36,6 +36,16 @@ export const updateEmployee = async (employeeId, employeeData) => {
   return response.data;
 };
 
+// Admin - reset an employee's password
+export const resetEmployeePassword = async (employeeId, password) => {
+  const response = await axiosInstance.put(
+    `/employees/${employeeId}/reset-password`,
+    { password }
+  );
+
+  return response.data;
+};
+
 // Admin - assign/remove Team Lead
 export const assignTeamLead = async (employeeId, teamLeadId) => {
   const response = await axiosInstance.put(

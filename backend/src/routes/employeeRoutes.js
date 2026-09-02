@@ -6,6 +6,7 @@ const {
   getMyTeamMemberById,
   getEmployeeById,
   updateEmployee,
+  resetEmployeePassword,
   assignTeamLead,
   deleteEmployee,
 } = require("../controllers/employeeController");
@@ -61,6 +62,14 @@ router.put(
   protect,
   authorizeRoles("admin"),
   updateEmployee
+);
+
+// Admin - reset an employee's password
+router.put(
+  "/:id/reset-password",
+  protect,
+  authorizeRoles("admin"),
+  resetEmployeePassword
 );
 
 // Admin - delete employee

@@ -5,6 +5,9 @@ const {
   login,
   getProfile,
   updateProfile,
+  forgotPassword,
+  resetPassword,
+  changePassword,
   logout,
 } = require("../controllers/authController");
 
@@ -26,6 +29,12 @@ const registrationLimiter = createRateLimit({
   message: "Too many registration attempts. Please try again later.",
 });
 
+const passwordResetLimiter = createRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Too many password reset requests. Please try again later.",
+});
+
 // Only administrators can create employee accounts.
 router.post(
   "/register",
@@ -36,8 +45,12 @@ router.post(
 );
 router.post("/login", loginLimiter, login);
 
+router.post("/forgot-password", passwordResetLimiter, forgotPassword);
+router.post("/reset-password", passwordResetLimiter, resetPassword);
+
 // Protected current-user routes
 router.post("/logout", protect, logout);
+router.put("/change-password", protect, changePassword);
 
 router.get("/me", protect, getProfile);
 

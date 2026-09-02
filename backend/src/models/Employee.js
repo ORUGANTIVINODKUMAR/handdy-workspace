@@ -154,6 +154,18 @@ const employeeSchema = new mongoose.Schema(
       default: false,
       select: false,
     },
+
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: true,

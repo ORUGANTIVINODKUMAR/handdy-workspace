@@ -2,6 +2,11 @@ const Employee = require("../models/Employee");
 const generateToken = require("../utils/generateToken");
 const Team = require("../models/Team");
 const { syncEmployeeTeam } = require("../services/teamAssignmentService");
+const { sendPasswordResetEmail } = require("../utils/mailer");
+const {
+  generatePasswordResetToken,
+  hashResetToken,
+} = require("../utils/passwordResetUtils");
 
 // ======================================================
 // BUILD SAFE USER RESPONSE
@@ -510,6 +515,165 @@ const updateProfile = async (
 };
 
 // ======================================================
+// FORGOT PASSWORD - request a reset link by email
+// ======================================================
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Always respond the same way whether or not the email exists, so this
+    // endpoint can't be used to discover which emails have accounts.
+    const genericResponse = () =>
+      res.status(200).json({
+        success: true,
+        message:
+          "If an account exists for that email, a password reset link has been sent.",
+      });
+
+    if (!email || typeof email !== "string") {
+      return genericResponse();
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const employee = await Employee.findOne({
+      email: normalizedEmail,
+      isActive: true,
+    }).select("_id email");
+
+    if (!employee) {
+      return genericResponse();
+    }
+
+    const { rawToken, tokenHash, expiresAt } = generatePasswordResetToken();
+
+    // findByIdAndUpdate (not .save()) avoids re-validating the full document
+    // against a partially-selected employee record.
+    await Employee.findByIdAndUpdate(employee._id, {
+      $set: {
+        passwordResetTokenHash: tokenHash,
+        passwordResetExpires: expiresAt,
+      },
+    });
+
+    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+    const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+    try {
+      await sendPasswordResetEmail({ to: employee.email, resetUrl });
+    } catch (mailError) {
+      console.error("Unable to send password reset email:", mailError);
+    }
+
+    return genericResponse();
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+// ======================================================
+// RESET PASSWORD - consume a reset token
+// ======================================================
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "A valid reset token is required.",
+      });
+    }
+
+    if (!password || typeof password !== "string" || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least 8 characters.",
+      });
+    }
+
+    const employee = await Employee.findOne({
+      passwordResetTokenHash: hashResetToken(token),
+      passwordResetExpires: { $gt: new Date() },
+    }).select("+tokenVersion +passwordResetTokenHash +passwordResetExpires");
+
+    if (!employee) {
+      return res.status(400).json({
+        success: false,
+        message: "This password reset link is invalid or has expired.",
+      });
+    }
+
+    employee.password = password;
+    employee.passwordResetTokenHash = null;
+    employee.passwordResetExpires = null;
+    employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+
+    await employee.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Your password has been reset. You can now log in.",
+    });
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+// ======================================================
+// CHANGE PASSWORD - logged-in user changes their own password
+// ======================================================
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required.",
+      });
+    }
+
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must contain at least 8 characters.",
+      });
+    }
+
+    const employee = await Employee.findById(req.user._id).select(
+      "+password +tokenVersion"
+    );
+
+    const passwordMatches = await employee.comparePassword(currentPassword);
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    employee.password = newPassword;
+    employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+
+    await employee.save();
+
+    // Bumping tokenVersion invalidates other sessions; issue this session a
+    // fresh token in the same response so the caller isn't logged out too.
+    const token = generateToken(employee._id, employee.tokenVersion);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully.",
+      token,
+    });
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+// ======================================================
 // LOGOUT EMPLOYEE
 // ======================================================
 const logout = async (req, res) => {
@@ -533,5 +697,8 @@ module.exports = {
   login,
   getProfile,
   updateProfile,
+  forgotPassword,
+  resetPassword,
+  changePassword,
   logout,
 };

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
-import { getEmployees } from "../../api/employeeApi";
+import { getEmployees, resetEmployeePassword } from "../../api/employeeApi";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
@@ -48,6 +48,17 @@ function AdminEmployees() {
     role: "employee",
     team: "",
     isActive: true,
+  });
+
+  // RESET PASSWORD
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetPasswordEmployee, setResetPasswordEmployee] = useState(null);
+  const [resetPasswordSaving, setResetPasswordSaving] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState("");
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState("");
+  const [resetPasswordFormData, setResetPasswordFormData] = useState({
+    password: "",
+    confirmPassword: "",
   });
 
   // LOAD EMPLOYEES
@@ -318,6 +329,68 @@ function AdminEmployees() {
     }
   };
 
+  // OPEN RESET PASSWORD
+  const openResetPassword = (employee) => {
+    setResetPasswordEmployee(employee);
+    setResetPasswordFormData({ password: "", confirmPassword: "" });
+    setResetPasswordError("");
+    setResetPasswordSuccess("");
+    setShowResetPassword(true);
+  };
+
+  // CLOSE RESET PASSWORD MODAL
+  const closeResetPasswordModal = () => {
+    setShowResetPassword(false);
+    setResetPasswordEmployee(null);
+  };
+
+  // RESET PASSWORD FORM CHANGE
+  const handleResetPasswordFormChange = (event) => {
+    const { name, value } = event.target;
+
+    setResetPasswordFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  // SUBMIT RESET PASSWORD
+  const handleResetPassword = async (event) => {
+    event.preventDefault();
+
+    setResetPasswordError("");
+    setResetPasswordSuccess("");
+
+    if (resetPasswordFormData.password.length < 8) {
+      setResetPasswordError("Password must contain at least 8 characters.");
+      return;
+    }
+
+    if (resetPasswordFormData.password !== resetPasswordFormData.confirmPassword) {
+      setResetPasswordError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      setResetPasswordSaving(true);
+
+      await resetEmployeePassword(
+        resetPasswordEmployee._id,
+        resetPasswordFormData.password
+      );
+
+      setResetPasswordSuccess("Password reset successfully.");
+      setResetPasswordFormData({ password: "", confirmPassword: "" });
+      setTimeout(closeResetPasswordModal, 1200);
+    } catch (requestError) {
+      setResetPasswordError(
+        getApiErrorMessage(requestError, "Unable to reset password.")
+      );
+    } finally {
+      setResetPasswordSaving(false);
+    }
+  };
+
   return (
     <DashboardLayout title="Employees">
 
@@ -463,6 +536,16 @@ function AdminEmployees() {
                           }
                         >
                           Edit
+                        </button>
+
+                        <button
+                          className="edit-action-button"
+                          type="button"
+                          onClick={() =>
+                            openResetPassword(employee)
+                          }
+                        >
+                          Reset Password
                         </button>
 
                         <button
@@ -849,6 +932,122 @@ function AdminEmployees() {
                   {editSaving
                     ? "Updating..."
                     : "Update Employee"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+
+      {/* =========================
+          RESET PASSWORD MODAL
+      ========================== */}
+
+      {showResetPassword && (
+        <div className="employee-modal-overlay">
+
+          <div className="employee-modal">
+
+            <div className="employee-modal-header">
+
+              <div>
+                <p className="admin-eyebrow">
+                  EMPLOYEE MANAGEMENT
+                </p>
+
+                <h2>
+                  Reset Password
+                  {resetPasswordEmployee?.fullName
+                    ? ` — ${resetPasswordEmployee.fullName}`
+                    : ""}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                className="modal-close-button"
+                onClick={closeResetPasswordModal}
+              >
+                ×
+              </button>
+
+            </div>
+
+            {resetPasswordError && (
+              <div
+                className="admin-error-box"
+                role="alert"
+              >
+                {resetPasswordError}
+              </div>
+            )}
+
+            {resetPasswordSuccess && (
+              <div className="profile-success-box">
+                {resetPasswordSuccess}
+              </div>
+            )}
+
+            <form
+              className="employee-form"
+              onSubmit={handleResetPassword}
+            >
+
+              <div>
+                <label htmlFor="resetPassword">
+                  New Password
+                </label>
+
+                <input
+                  id="resetPassword"
+                  name="password"
+                  type="password"
+                  placeholder="Enter new password"
+                  value={resetPasswordFormData.password}
+                  onChange={handleResetPasswordFormChange}
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="resetConfirmPassword">
+                  Confirm New Password
+                </label>
+
+                <input
+                  id="resetConfirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={resetPasswordFormData.confirmPassword}
+                  onChange={handleResetPasswordFormChange}
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div className="employee-form-actions">
+
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={closeResetPasswordModal}
+                  disabled={resetPasswordSaving}
+                >
+                  Close
+                </button>
+
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={resetPasswordSaving}
+                >
+                  {resetPasswordSaving
+                    ? "Saving..."
+                    : "Reset Password"}
                 </button>
 
               </div>

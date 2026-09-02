@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
+import { changePassword } from "../../api/authApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function ProfilePage() {
@@ -22,6 +23,15 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const [passwordFormData, setPasswordFormData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -110,6 +120,58 @@ function ProfilePage() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = (event) => {
+    const { name, value } = event.target;
+
+    setPasswordFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handlePasswordSubmit = async (event) => {
+    event.preventDefault();
+
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (passwordFormData.newPassword.length < 8) {
+      setPasswordError("New password must contain at least 8 characters.");
+      return;
+    }
+
+    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    try {
+      setPasswordSaving(true);
+
+      const response = await changePassword(
+        passwordFormData.currentPassword,
+        passwordFormData.newPassword
+      );
+
+      if (response?.token) {
+        localStorage.setItem("token", response.token);
+      }
+
+      setPasswordSuccess("Password changed successfully.");
+      setPasswordFormData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (requestError) {
+      setPasswordError(
+        getApiErrorMessage(requestError, "Unable to change password.")
+      );
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -289,6 +351,81 @@ function ProfilePage() {
             </div>
           </form>
         )}
+      </section>
+
+      <section className="admin-card profile-settings-card">
+        <form
+          className="profile-settings-form"
+          onSubmit={handlePasswordSubmit}
+        >
+          <h3>Change password</h3>
+
+          {passwordError && (
+            <div className="admin-error-box">{passwordError}</div>
+          )}
+
+          {passwordSuccess && (
+            <div className="profile-success-box">{passwordSuccess}</div>
+          )}
+
+          <div className="profile-form-row">
+            <label>
+              <span className="required">*</span>
+              Current password
+            </label>
+
+            <input
+              name="currentPassword"
+              type="password"
+              value={passwordFormData.currentPassword}
+              onChange={handlePasswordChange}
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          <div className="profile-form-row">
+            <label>
+              <span className="required">*</span>
+              New password
+            </label>
+
+            <input
+              name="newPassword"
+              type="password"
+              value={passwordFormData.newPassword}
+              onChange={handlePasswordChange}
+              autoComplete="new-password"
+              required
+            />
+          </div>
+
+          <div className="profile-form-row">
+            <label>
+              <span className="required">*</span>
+              Confirm new password
+            </label>
+
+            <input
+              name="confirmPassword"
+              type="password"
+              value={passwordFormData.confirmPassword}
+              onChange={handlePasswordChange}
+              autoComplete="new-password"
+              required
+            />
+          </div>
+
+          <div className="profile-save-actions">
+            <button
+              type="submit"
+              className="profile-save-button"
+              disabled={passwordSaving}
+            >
+              {passwordSaving ? "Saving..." : "Change password"}
+            </button>
+          </div>
+        </form>
       </section>
     </DashboardLayout>
   );

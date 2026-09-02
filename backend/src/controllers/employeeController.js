@@ -159,6 +159,39 @@ const updateEmployee = async (req, res) => {
     return handleEmployeeError(res, error);
   }
 };
+// Admin - reset an employee's password directly
+const resetEmployeePassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password || typeof password !== "string" || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least 8 characters.",
+      });
+    }
+
+    const employee = await Employee.findById(req.params.id).select("+tokenVersion");
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found.",
+      });
+    }
+
+    employee.password = password;
+    employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+    await employee.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully.",
+    });
+  } catch (error) {
+    return handleEmployeeError(res, error);
+  }
+};
 // Admin - assign or remove a Team Lead for an employee
 const assignTeamLead = async (req, res) => {
   try {
@@ -329,6 +362,7 @@ module.exports = {
   getMyTeamMemberById,
   getEmployeeById,
   updateEmployee,
+  resetEmployeePassword,
   deleteEmployee,
   assignTeamLead,
 };

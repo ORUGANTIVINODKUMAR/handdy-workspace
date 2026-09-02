@@ -225,6 +225,69 @@
 
 
 /* =========================================
+   FORGOT / RESET PASSWORD EXTRAS
+========================================= */
+
+.auth-success {
+  margin-bottom: 24px;
+
+  padding: 15px 16px;
+
+  border-radius: 10px;
+
+  background: #e7f7ee;
+
+  color: #157347;
+
+  font-size: 15px;
+}
+
+
+.auth-link-row {
+  margin: 22px 0 0;
+
+  text-align: center;
+
+  font-size: 15px;
+}
+
+
+.auth-link-row a {
+  color: #195c74;
+
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+
+.auth-link-row a:hover {
+  text-decoration: underline;
+}
+
+
+.auth-forgot-link {
+  display: block;
+
+  margin: -10px 0 22px;
+
+  text-align: right;
+
+  color: #195c74;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+
+.auth-forgot-link:hover {
+  text-decoration: underline;
+}
+
+
+/* =========================================
    RESPONSIVE
 ========================================= */
 

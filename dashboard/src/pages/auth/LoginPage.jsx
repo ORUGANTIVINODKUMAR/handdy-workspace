@@ -4,6 +4,7 @@ import {
 } from "react";
 
 import {
+  Link,
   useNavigate,
 } from "react-router-dom";
 
@@ -220,6 +221,10 @@ function LoginPage() {
               required
             />
           </div>
+
+          <Link to="/forgot-password" className="auth-forgot-link">
+            Forgot password?
+          </Link>
 
           <button
             type="submit"
