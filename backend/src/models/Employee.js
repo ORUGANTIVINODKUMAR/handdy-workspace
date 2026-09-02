@@ -53,8 +53,8 @@ const employeeSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        values: ["admin", "team_lead", "employee"],
-        message: "Role must be admin, team_lead, or employee",
+        values: ["admin", "team_lead", "hr", "manager", "employee"],
+        message: "Role must be admin, team_lead, hr, manager, or employee",
       },
       default: "employee",
     },

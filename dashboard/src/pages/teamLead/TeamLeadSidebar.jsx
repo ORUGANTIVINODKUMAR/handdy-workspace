@@ -204,6 +204,7 @@ function TeamLeadSidebar() {
               <NavLink to="/team-lead/timesheets/team" className={subNavClass}>Team timesheet</NavLink>
               <NavLink to="/team-lead/timesheets/detailed" className={subNavClass}>Detailed timesheet</NavLink>
               <NavLink to="/team-lead/timesheets/project-hours" className={subNavClass}>Project hours</NavLink>
+              <NavLink to="/team-lead/timesheets/attendance" className={subNavClass}>Attendance</NavLink>
             </div>}
 
           </section>

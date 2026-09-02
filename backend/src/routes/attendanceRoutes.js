@@ -35,7 +35,7 @@ router.get(
 router.get(
   "/admin/history",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "hr", "manager"),
   getAllAttendanceHistory
 );
 

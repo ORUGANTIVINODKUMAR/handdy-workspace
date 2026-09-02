@@ -156,7 +156,7 @@ function AdminEmployees() {
         [name]: value,
       };
 
-      if (name === "role" && value === "admin") updatedData.team = "";
+      if (name === "role" && ["admin", "hr", "manager"].includes(value)) updatedData.team = "";
 
       return updatedData;
     });
@@ -191,7 +191,7 @@ function AdminEmployees() {
       !formData.fullName.trim() ||
       !formData.email.trim() ||
       !formData.password ||
-      (formData.role !== "admin" && !formData.team)
+      (["employee", "team_lead"].includes(formData.role) && !formData.team)
     ) {
       setFormError(
         "Employee ID, Full Name, Email, Password and Team are required."
@@ -210,7 +210,7 @@ function AdminEmployees() {
         email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
-        team: formData.role === "admin" ? null : formData.team,
+        team: ["admin", "hr", "manager"].includes(formData.role) ? null : formData.team,
       });
 
       closeAddEmployeeModal();
@@ -258,7 +258,7 @@ function AdminEmployees() {
             : value,
       };
 
-      if (name === "role" && value === "admin") updatedData.team = "";
+      if (name === "role" && ["admin", "hr", "manager"].includes(value)) updatedData.team = "";
 
       return updatedData;
     });
@@ -279,7 +279,7 @@ function AdminEmployees() {
       !editFormData.employeeId.trim() ||
       !editFormData.fullName.trim() ||
       !editFormData.email.trim() ||
-      (editFormData.role !== "admin" && !editFormData.team)
+      (["employee", "team_lead"].includes(editFormData.role) && !editFormData.team)
     ) {
       setEditError(
         "Employee ID, Full Name, Email and Team are required."
@@ -307,7 +307,7 @@ function AdminEmployees() {
           role:
             editFormData.role,
 
-          team: editFormData.role === "admin" ? null : editFormData.team,
+          team: ["admin", "hr", "manager"].includes(editFormData.role) ? null : editFormData.team,
 
           isActive:
             editFormData.isActive,
@@ -720,13 +720,17 @@ function AdminEmployees() {
                     Team Lead
                   </option>
 
+                  <option value="hr">HR</option>
+
+                  <option value="manager">Manager</option>
+
                   <option value="admin">
                     Admin
                   </option>
                 </select>
               </div>
 
-              {formData.role !== "admin" && (
+              {["employee", "team_lead"].includes(formData.role) && (
                 <div>
                   <label htmlFor="addTeam">Team</label>
                   <select id="addTeam" name="team" value={formData.team} onChange={handleFormChange} required>
@@ -874,13 +878,17 @@ function AdminEmployees() {
                     Team Lead
                   </option>
 
+                  <option value="hr">HR</option>
+
+                  <option value="manager">Manager</option>
+
                   <option value="admin">
                     Admin
                   </option>
                 </select>
               </div>
 
-              {editFormData.role !== "admin" && (
+              {["employee", "team_lead"].includes(editFormData.role) && (
                 <div>
                   <label htmlFor="editTeam">Team</label>
                   <select id="editTeam" name="team" value={editFormData.team} onChange={handleEditFormChange} required>

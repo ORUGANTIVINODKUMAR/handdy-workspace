@@ -69,8 +69,10 @@ function DashboardLayout({ title, children }) {
     );
   }
 
-  const dashboardPath =
-    user?.role === "team_lead"
+  const isAttendanceStaff = ["hr", "manager"].includes(user?.role);
+  const dashboardPath = isAttendanceStaff
+    ? "/attendance"
+    : user?.role === "team_lead"
       ? "/team-lead/dashboard"
       : "/employee/dashboard";
 
@@ -112,7 +114,7 @@ function DashboardLayout({ title, children }) {
         aria-label="Main navigation"
       >
         <NavLink to={dashboardPath}>
-          Dashboard
+          {isAttendanceStaff ? "Attendance" : "Dashboard"}
         </NavLink>
 
         {user?.role === "team_lead" && (
@@ -121,9 +123,11 @@ function DashboardLayout({ title, children }) {
           </NavLink>
         )}
 
-        <NavLink to="/profile">
-          My Profile
-        </NavLink>
+        {!isAttendanceStaff && (
+          <NavLink to="/profile">
+            My Profile
+          </NavLink>
+        )}
       </nav>
 
       <main className="dashboard-main">

@@ -20,6 +20,10 @@ function getDashboardForRole(role) {
     case "team_lead":
       return "/team-lead/dashboard";
 
+    case "hr":
+    case "manager":
+      return "/attendance";
+
     case "employee":
       return "/employee/dashboard";
 

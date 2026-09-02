@@ -102,6 +102,7 @@ function AdminReportPage({
   scope = "company",
   variant = "detailed",
   trackingLabel = "tracking activity",
+  allowEmployeeFilter = scope === "company",
 }) {
   const [fromDate, setFromDate] = useState(localDate);
   const [toDate, setToDate] = useState(localDate);
@@ -120,7 +121,7 @@ function AdminReportPage({
     const loadOptions = async () => {
       try {
         const [employeeData, projectData] = await Promise.all([
-          scope === "company"
+          allowEmployeeFilter
             ? getEmployees({ limit: 100 })
             : Promise.resolve({ employees: [] }),
           mode === "time"
@@ -137,7 +138,7 @@ function AdminReportPage({
     };
 
     void loadOptions();
-  }, [mode, scope]);
+  }, [allowEmployeeFilter, mode, scope]);
 
   const totalSeconds = useMemo(
     () => records.reduce((sum, record) => sum + getWorkedSeconds(record), 0),
@@ -216,7 +217,7 @@ function AdminReportPage({
           </div>
 
           <div className="admin-report-controls">
-            {scope === "company" && mode !== "tracking" && (
+            {allowEmployeeFilter && mode !== "tracking" && (
               <select
                 value={employee}
                 onChange={(event) => setEmployee(event.target.value)}

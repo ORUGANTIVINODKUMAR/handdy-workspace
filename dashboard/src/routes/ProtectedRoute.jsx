@@ -83,6 +83,15 @@ function ProtectedRoute({
       );
     }
 
+    if (user.role === "hr" || user.role === "manager") {
+      return (
+        <Navigate
+          to="/attendance"
+          replace
+        />
+      );
+    }
+
     return (
       <Navigate
         to="/login"

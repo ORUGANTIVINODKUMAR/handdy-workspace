@@ -135,6 +135,14 @@ function EmployeeOnly({ children }) {
   );
 }
 
+function AttendanceStaffOnly({ children }) {
+  return (
+    <ProtectedRoute allowedRoles={["hr", "manager"]}>
+      {children}
+    </ProtectedRoute>
+  );
+}
+
 
 // ==========================================
 // APP ROUTES
@@ -227,6 +235,20 @@ function AppRoutes() {
               description="Admin attendance page."
             />
           </AdminOnly>
+        }
+      />
+
+      <Route
+        path="/attendance"
+        element={
+          <AttendanceStaffOnly>
+            <AdminReportPage
+              title="Attendance"
+              description="Company attendance for all employees."
+              mode="attendance"
+              allowEmployeeFilter={false}
+            />
+          </AttendanceStaffOnly>
         }
       />
 
