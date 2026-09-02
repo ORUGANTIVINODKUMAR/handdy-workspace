@@ -297,13 +297,6 @@ function AdminSidebar() {
                   Project hours
                 </NavLink>
 
-                <NavLink
-                  to="/admin/timesheets/attendance"
-                  className={subNavClass}
-                >
-                  Attendance
-                </NavLink>
-
               </div>
             )}
 
