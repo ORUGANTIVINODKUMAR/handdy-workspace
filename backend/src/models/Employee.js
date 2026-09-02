@@ -146,9 +146,26 @@ const employeeSchema = new mongoose.Schema(
       default: 0,
       select: false,
     },
+
+    // This operational exemption is intentionally backend-only. It is not
+    // included in admin employee forms or ordinary employee API responses.
+    idleTrackingExempt: {
+      type: Boolean,
+      default: false,
+      select: false,
+    },
   },
   {
     timestamps: true,
+  }
+);
+
+// The product supports one locally managed idle-exempt employee.
+employeeSchema.index(
+  { idleTrackingExempt: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { idleTrackingExempt: true },
   }
 );
 

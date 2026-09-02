@@ -22,6 +22,19 @@ const today = () => {
 
 const duration = (seconds = 0) => `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 
+const getIdleSeconds = (record) => {
+  if (record.status === "stopped" && record.totalIdleSeconds !== undefined) {
+    return record.totalIdleSeconds || 0;
+  }
+
+  const now = Date.now();
+  return (record.pauses || []).reduce((total, pause) => {
+    if (pause.reason !== "idle" || !pause.pausedAt) return total;
+    const end = pause.resumedAt ? new Date(pause.resumedAt).getTime() : now;
+    return total + Math.max(0, Math.floor((end - new Date(pause.pausedAt).getTime()) / 1000));
+  }, 0);
+};
+
 function RoleReportPage({ title, description, mode = "time", scope = "team" }) {
   const { user } = useAuth();
   const [fromDate, setFromDate] = useState(today);
@@ -67,7 +80,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team" }) {
         <header><div><span className="admin-report-kicker">Results</span><h2>{records.length} records</h2></div>{mode === "time" && <strong><Clock3 size={16} />{duration(totalSeconds)}</strong>}</header>
         {error && <p className="admin-report-message error-message" role="alert">{error}</p>}
         {!error && hasRun && records.length === 0 && <div className="admin-report-empty"><FileSearch size={26} /><strong>No records found</strong><span>No matching activity exists for the selected dates.</span></div>}
-        {!error && mode === "time" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Worked</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{duration(record.totalWorkedSeconds)}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
+        {!error && mode === "time" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Worked</th><th>Idle</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{duration(record.totalWorkedSeconds)}</td><td>{duration(getIdleSeconds(record))}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
         {!error && mode === "attendance" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Hours</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "—"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "—"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
       </section>
     </div>

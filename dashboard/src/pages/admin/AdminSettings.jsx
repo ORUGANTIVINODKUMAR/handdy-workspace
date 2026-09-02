@@ -1,5 +1,10 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
+import {
+  getIdlePolicy,
+  updateIdlePolicy,
+} from "../../api/settingsApi";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import "../../styles/adminSettings.css";
 
 function AdminSettings() {
@@ -57,7 +62,53 @@ function AdminSettings() {
   const [employees, setEmployees] =
     useState("");
 
-  const handleSave = () => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [settingsError, setSettingsError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    const loadIdleSettings = async () => {
+      try {
+        const response = await getIdlePolicy();
+
+        if (active && response.idlePolicy?.idleThresholdMinutes) {
+          setBreakInactiveMinutes(
+            response.idlePolicy.idleThresholdMinutes
+          );
+        }
+      } catch (error) {
+        if (active) {
+          setSettingsError(
+            getApiErrorMessage(error, "Unable to load idle settings.")
+          );
+        }
+      }
+    };
+
+    loadIdleSettings();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSave = async () => {
+    const idleThresholdMinutes = Number(breakInactiveMinutes);
+
+    if (
+      !Number.isInteger(idleThresholdMinutes) ||
+      idleThresholdMinutes < 1 ||
+      idleThresholdMinutes > 240
+    ) {
+      setSettingsMessage("");
+      setSettingsError(
+        "Idle threshold must be a whole number from 1 to 240 minutes."
+      );
+      return;
+    }
+
     const settings = {
       timezone,
       dateFormat,
@@ -81,7 +132,23 @@ function AdminSettings() {
     };
 
     localStorage.setItem("handdy-admin-settings", JSON.stringify(settings));
-    alert("Settings saved successfully.");
+    setIsSaving(true);
+    setSettingsMessage("");
+    setSettingsError("");
+
+    try {
+      const response = await updateIdlePolicy(idleThresholdMinutes);
+      setBreakInactiveMinutes(
+        response.idlePolicy?.idleThresholdMinutes || idleThresholdMinutes
+      );
+      setSettingsMessage("Settings saved successfully.");
+    } catch (error) {
+      setSettingsError(
+        getApiErrorMessage(error, "Unable to save idle settings.")
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -95,10 +162,22 @@ function AdminSettings() {
               type="button"
               className="settings-save-button"
               onClick={handleSave}
+              disabled={isSaving}
             >
-              Save settings
+              {isSaving ? "Saving…" : "Save settings"}
             </button>
           </div>
+
+          {(settingsMessage || settingsError) && (
+            <p
+              className={`settings-save-message${
+                settingsError ? " is-error" : ""
+              }`}
+              role="status"
+            >
+              {settingsError || settingsMessage}
+            </p>
+          )}
 
           {/* =====================================
               TIMEZONE
@@ -290,13 +369,16 @@ function AdminSettings() {
 
             <div className="settings-inline">
               <span>
-                Show break message in desktop timer if inactive for
+                Automatically pause the desktop timer when there is no
+                mouse or keyboard activity for
               </span>
 
               <input
                 className="settings-small-input"
                 type="number"
                 min="1"
+                max="240"
+                step="1"
                 value={breakInactiveMinutes}
                 onChange={(event) =>
                   setBreakInactiveMinutes(
@@ -550,8 +632,9 @@ function AdminSettings() {
               type="button"
               className="settings-save-button"
               onClick={handleSave}
+              disabled={isSaving}
             >
-              Save settings
+              {isSaving ? "Saving…" : "Save settings"}
             </button>
           </div>
         </div>

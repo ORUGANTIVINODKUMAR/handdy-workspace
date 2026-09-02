@@ -281,7 +281,7 @@ function AppRoutes() {
         path="/admin/timesheets/team"
         element={
           <AdminOnly>
-            <AdminReportPage title="Team timesheet" description="Company project and task timer activity by employee." />
+            <AdminReportPage title="Team timesheet" description="Employee totals across company project and task timer activity." variant="team" />
           </AdminOnly>
         }
       />
@@ -290,7 +290,7 @@ function AppRoutes() {
         path="/admin/timesheets/detailed"
         element={
           <AdminOnly>
-            <AdminReportPage title="Detailed timesheet" description="Detailed company project and task timer activity." />
+            <AdminReportPage title="Detailed timesheet" description="Every company timer session with start, finish, worked, idle, and status details." variant="detailed" />
           </AdminOnly>
         }
       />
@@ -299,7 +299,7 @@ function AppRoutes() {
         path="/admin/timesheets/project-hours"
         element={
           <AdminOnly>
-            <AdminReportPage title="Project hours" description="Worked duration grouped through project timer records." />
+            <AdminReportPage title="Project hours" description="Worked and idle duration grouped by project." variant="project" />
           </AdminOnly>
         }
       />

@@ -61,6 +61,21 @@
   background: var(--primary-hover) !important;
 }
 
+.settings-save-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.settings-save-message {
+  margin: 14px 0 0;
+  color: #137052;
+  font-weight: 700;
+}
+
+.settings-save-message.is-error {
+  color: #b42318;
+}
+
 .settings-select {
   height: 46px;
   padding: 0 16px;

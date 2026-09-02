@@ -11,6 +11,12 @@ const pauseSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    reason: {
+      type: String,
+      enum: ["manual", "idle"],
+      default: "manual",
+    },
   },
   {
     _id: false,
@@ -53,6 +59,12 @@ const taskTimeLogSchema = new mongoose.Schema(
     },
 
     totalPausedSeconds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalIdleSeconds: {
       type: Number,
       default: 0,
       min: 0,

@@ -22,9 +22,77 @@ const localDate = () => {
 };
 
 const formatDuration = (seconds = 0) => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
   return `${hours}h ${minutes}m`;
+};
+
+const getPauseSeconds = (record, reason) => {
+  const now = Date.now();
+
+  return (record.pauses || []).reduce((total, pause) => {
+    if (!pause.pausedAt || (reason && pause.reason !== reason)) return total;
+    const end = pause.resumedAt ? new Date(pause.resumedAt).getTime() : now;
+    const start = new Date(pause.pausedAt).getTime();
+    return total + Math.max(0, Math.floor((end - start) / 1000));
+  }, 0);
+};
+
+const getWorkedSeconds = (record) => {
+  if (record.status === "stopped") {
+    return Math.max(0, Number(record.totalWorkedSeconds) || 0);
+  }
+
+  if (!record.startedAt) return 0;
+  const end = record.stoppedAt ? new Date(record.stoppedAt).getTime() : Date.now();
+  const elapsed = Math.max(0, Math.floor((end - new Date(record.startedAt).getTime()) / 1000));
+  return Math.max(0, elapsed - getPauseSeconds(record));
+};
+
+const getIdleSeconds = (record) => {
+  if (record.status === "stopped" && record.totalIdleSeconds !== undefined) {
+    return Math.max(0, Number(record.totalIdleSeconds) || 0);
+  }
+
+  return getPauseSeconds(record, "idle");
+};
+
+const buildGroupedRows = (records, groupBy) => {
+  const groups = new Map();
+
+  records.forEach((record) => {
+    const entity = groupBy === "employee" ? record.employee : record.project;
+    const key = entity?._id || `unassigned-${groupBy}`;
+    const label = groupBy === "employee"
+      ? entity?.fullName || "Unassigned employee"
+      : entity?.projectName || "Unassigned project";
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        label,
+        sessions: 0,
+        employees: new Set(),
+        projects: new Set(),
+        tasks: new Set(),
+        workedSeconds: 0,
+        idleSeconds: 0,
+      });
+    }
+
+    const group = groups.get(key);
+    group.sessions += 1;
+    group.employees.add(record.employee?._id || "unassigned");
+    group.projects.add(record.project?._id || "unassigned");
+    group.tasks.add(record.task?._id || "unassigned");
+    group.workedSeconds += getWorkedSeconds(record);
+    group.idleSeconds += getIdleSeconds(record);
+  });
+
+  return [...groups.values()].sort(
+    (first, second) => second.workedSeconds - first.workedSeconds
+  );
 };
 
 function AdminReportPage({
@@ -32,6 +100,7 @@ function AdminReportPage({
   description,
   mode = "time",
   scope = "company",
+  variant = "detailed",
   trackingLabel = "tracking activity",
 }) {
   const [fromDate, setFromDate] = useState(localDate);
@@ -51,13 +120,19 @@ function AdminReportPage({
     const loadOptions = async () => {
       try {
         const [employeeData, projectData] = await Promise.all([
-          scope === "company" ? getEmployees({ limit: 100 }) : Promise.resolve({ employees: [] }),
-          mode === "time" ? getAllProjects({ limit: 100 }) : Promise.resolve({ projects: [] }),
+          scope === "company"
+            ? getEmployees({ limit: 100 })
+            : Promise.resolve({ employees: [] }),
+          mode === "time"
+            ? getAllProjects({ limit: 100 })
+            : Promise.resolve({ projects: [] }),
         ]);
         setEmployees(employeeData.employees || []);
         setProjects(projectData.projects || []);
       } catch (requestError) {
-        setError(getApiErrorMessage(requestError, "Unable to load report filters."));
+        setError(
+          getApiErrorMessage(requestError, "Unable to load report filters.")
+        );
       }
     };
 
@@ -65,9 +140,32 @@ function AdminReportPage({
   }, [mode, scope]);
 
   const totalSeconds = useMemo(
-    () => records.reduce((sum, record) => sum + (record.totalWorkedSeconds || 0), 0),
-    [records],
+    () => records.reduce((sum, record) => sum + getWorkedSeconds(record), 0),
+    [records]
   );
+  const totalIdleSeconds = useMemo(
+    () => records.reduce((sum, record) => sum + getIdleSeconds(record), 0),
+    [records]
+  );
+  const teamRows = useMemo(
+    () => buildGroupedRows(records, "employee"),
+    [records]
+  );
+  const projectRows = useMemo(
+    () => buildGroupedRows(records, "project"),
+    [records]
+  );
+
+  const resultCount = variant === "team"
+    ? teamRows.length
+    : variant === "project"
+      ? projectRows.length
+      : records.length;
+  const resultLabel = variant === "team"
+    ? "employees"
+    : variant === "project"
+      ? "projects"
+      : "records";
 
   const runReport = async () => {
     setHasRun(true);
@@ -94,10 +192,14 @@ function AdminReportPage({
         : scope === "personal"
           ? await getMyTimeLogs(params)
           : await getAdminTimeLogs(params);
-      setRecords(mode === "attendance" ? data.attendance || [] : data.timeLogs || []);
+      setRecords(
+        mode === "attendance" ? data.attendance || [] : data.timeLogs || []
+      );
     } catch (requestError) {
       setRecords([]);
-      setError(getApiErrorMessage(requestError, "Unable to generate this report."));
+      setError(
+        getApiErrorMessage(requestError, "Unable to generate this report.")
+      );
     } finally {
       setLoading(false);
     }
@@ -115,19 +217,46 @@ function AdminReportPage({
 
           <div className="admin-report-controls">
             {scope === "company" && mode !== "tracking" && (
-              <select value={employee} onChange={(event) => setEmployee(event.target.value)} aria-label="Employee">
+              <select
+                value={employee}
+                onChange={(event) => setEmployee(event.target.value)}
+                aria-label="Employee"
+              >
                 <option value="">All employees</option>
-                {employees.map((item) => <option value={item._id} key={item._id}>{item.fullName}</option>)}
+                {employees.map((item) => (
+                  <option value={item._id} key={item._id}>{item.fullName}</option>
+                ))}
               </select>
             )}
             {mode === "time" && (
-              <select value={project} onChange={(event) => setProject(event.target.value)} aria-label="Project">
+              <select
+                value={project}
+                onChange={(event) => setProject(event.target.value)}
+                aria-label="Project"
+              >
                 <option value="">All projects</option>
-                {projects.map((item) => <option value={item._id} key={item._id}>{item.projectName}</option>)}
+                {projects.map((item) => (
+                  <option value={item._id} key={item._id}>{item.projectName}</option>
+                ))}
               </select>
             )}
-            <label>From<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
-            <label>To<input type="date" value={toDate} min={fromDate} onChange={(event) => setToDate(event.target.value)} /></label>
+            <label>
+              From
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(event) => setFromDate(event.target.value)}
+              />
+            </label>
+            <label>
+              To
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate}
+                onChange={(event) => setToDate(event.target.value)}
+              />
+            </label>
             <button type="button" onClick={runReport} disabled={loading}>
               <Search size={16} />{loading ? "Loading…" : "Generate"}
             </button>
@@ -136,27 +265,85 @@ function AdminReportPage({
 
         <section className="admin-report-results card">
           <header>
-            <div><span className="admin-report-kicker">Results</span><h2>{records.length} records</h2></div>
-            {mode === "time" && <strong><Clock3 size={16} />{formatDuration(totalSeconds)}</strong>}
+            <div>
+              <span className="admin-report-kicker">Results</span>
+              <h2>{resultCount} {resultLabel}</h2>
+            </div>
+            {mode === "time" && (
+              <div className="admin-report-totals">
+                <strong><Clock3 size={16} />Worked {formatDuration(totalSeconds)}</strong>
+                <strong><Activity size={16} />Idle {formatDuration(totalIdleSeconds)}</strong>
+              </div>
+            )}
           </header>
 
-          {error && <p className="admin-report-message error-message" role="alert">{error}</p>}
+          {error && (
+            <p className="admin-report-message error-message" role="alert">{error}</p>
+          )}
           {!error && mode === "tracking" && hasRun && (
-            <div className="admin-report-empty"><Activity size={26} /><strong>No {trackingLabel} received</strong><span>The current desktop timer does not collect this data yet. This report will populate after the Electron tracking module is added.</span></div>
+            <div className="admin-report-empty">
+              <Activity size={26} />
+              <strong>No {trackingLabel} received</strong>
+              <span>The current desktop timer does not collect this data yet.</span>
+            </div>
           )}
           {!error && mode === "tracking" && !hasRun && (
-            <div className="admin-report-empty"><FileSearch size={26} /><strong>Generate a report</strong><span>Choose a date range to check for {trackingLabel}.</span></div>
+            <div className="admin-report-empty">
+              <FileSearch size={26} />
+              <strong>Generate a report</strong>
+              <span>Choose a date range to check for {trackingLabel}.</span>
+            </div>
           )}
           {!error && mode !== "tracking" && hasRun && records.length === 0 && (
-            <div className="admin-report-empty"><FileSearch size={26} /><strong>No records found</strong><span>No matching data exists for the selected filters.</span></div>
+            <div className="admin-report-empty">
+              <FileSearch size={26} />
+              <strong>No records found</strong>
+              <span>No matching data exists for the selected filters.</span>
+            </div>
           )}
 
-          {!error && mode === "time" && records.length > 0 && (
-            <div className="admin-report-table-wrap"><table><thead><tr><th>Employee</th><th>Project</th><th>Task</th><th>Started</th><th>Worked</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}><td>{record.employee?.fullName || "My activity"}</td><td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{formatDuration(record.totalWorkedSeconds)}</td><td>{record.status}</td></tr>)}</tbody></table></div>
+          {!error && mode === "time" && records.length > 0 && variant === "team" && (
+            <div className="admin-report-table-wrap">
+              <table>
+                <thead><tr><th>Employee</th><th>Sessions</th><th>Projects</th><th>Tasks</th><th>Worked</th><th>Idle</th></tr></thead>
+                <tbody>{teamRows.map((row) => (
+                  <tr key={row.key}><td>{row.label}</td><td>{row.sessions}</td><td>{row.projects.size}</td><td>{row.tasks.size}</td><td>{formatDuration(row.workedSeconds)}</td><td>{formatDuration(row.idleSeconds)}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+
+          {!error && mode === "time" && records.length > 0 && variant === "project" && (
+            <div className="admin-report-table-wrap">
+              <table>
+                <thead><tr><th>Project</th><th>Sessions</th><th>Employees</th><th>Tasks</th><th>Worked</th><th>Idle</th></tr></thead>
+                <tbody>{projectRows.map((row) => (
+                  <tr key={row.key}><td>{row.label}</td><td>{row.sessions}</td><td>{row.employees.size}</td><td>{row.tasks.size}</td><td>{formatDuration(row.workedSeconds)}</td><td>{formatDuration(row.idleSeconds)}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+
+          {!error && mode === "time" && records.length > 0 && variant === "detailed" && (
+            <div className="admin-report-table-wrap">
+              <table>
+                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Finished</th><th>Worked</th><th>Idle</th><th>Status</th></tr></thead>
+                <tbody>{records.map((record) => (
+                  <tr key={record._id}>{scope === "company" && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{record.stoppedAt ? new Date(record.stoppedAt).toLocaleString() : "Active"}</td><td>{formatDuration(getWorkedSeconds(record))}</td><td>{formatDuration(getIdleSeconds(record))}</td><td>{record.status}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
           )}
 
           {!error && mode === "attendance" && records.length > 0 && (
-            <div className="admin-report-table-wrap"><table><thead><tr>{scope === "company" && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Total hours</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{scope === "company" && <td>{record.employee?.fullName || "-"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "-"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "-"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>)}</tbody></table></div>
+            <div className="admin-report-table-wrap">
+              <table>
+                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Total hours</th><th>Status</th></tr></thead>
+                <tbody>{records.map((record) => (
+                  <tr key={record._id}>{scope === "company" && <td>{record.employee?.fullName || "—"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "—"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "—"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>

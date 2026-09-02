@@ -86,9 +86,8 @@ function BillingContent() {
         setEmployees(nextEmployees);
         setTeams(nextTeams);
         const firstTeam = nextTeams[0];
-        const firstLeadId = recordId(firstTeam?.teamLead);
         const firstEmployee = firstTeam
-          ? nextEmployees.find((employee) => recordId(employee.teamLead) === firstLeadId)
+          ? nextEmployees.find((employee) => recordId(employee.team) === recordId(firstTeam))
           : nextEmployees[0];
         setTeamId(firstTeam ? recordId(firstTeam) : "all");
         setEmployeeId(recordId(firstEmployee));
@@ -102,11 +101,9 @@ function BillingContent() {
 
   const filteredEmployees = useMemo(() => {
     if (teamId === "all") return employees;
-    if (teamId === "unassigned") return employees.filter((employee) => !recordId(employee.teamLead));
-    const selectedTeam = teams.find((team) => recordId(team) === teamId);
-    const leadId = recordId(selectedTeam?.teamLead);
-    return employees.filter((employee) => recordId(employee.teamLead) === leadId);
-  }, [employees, teamId, teams]);
+    if (teamId === "unassigned") return employees.filter((employee) => !recordId(employee.team));
+    return employees.filter((employee) => recordId(employee.team) === teamId);
+  }, [employees, teamId]);
 
   const selectedEmployee = useMemo(
     () => employees.find((employee) => recordId(employee) === employeeId),
@@ -117,11 +114,9 @@ function BillingContent() {
     setTeamId(value);
     setReport(null);
     let nextEmployees = employees;
-    if (value === "unassigned") nextEmployees = employees.filter((employee) => !recordId(employee.teamLead));
+    if (value === "unassigned") nextEmployees = employees.filter((employee) => !recordId(employee.team));
     else if (value !== "all") {
-      const selectedTeam = teams.find((team) => recordId(team) === value);
-      const leadId = recordId(selectedTeam?.teamLead);
-      nextEmployees = employees.filter((employee) => recordId(employee.teamLead) === leadId);
+      nextEmployees = employees.filter((employee) => recordId(employee.team) === value);
     }
     setEmployeeId(recordId(nextEmployees[0]));
   };

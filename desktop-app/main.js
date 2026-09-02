@@ -1,6 +1,17 @@
-const { app, BrowserWindow, Menu } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  ipcMain,
+  powerMonitor,
+  shell,
+} = require("electron");
 const path = require("path");
 const { fileURLToPath } = require("url");
+
+ipcMain.handle("system:get-idle-time", () =>
+  powerMonitor.getSystemIdleTime()
+);
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -18,7 +29,22 @@ function createWindow() {
     },
   });
 
-  mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const destination = new URL(url);
+
+      if (
+        destination.protocol === "https:" &&
+        destination.origin === "https://handdy-workspace.onrender.com"
+      ) {
+        shell.openExternal(destination.href);
+      }
+    } catch {
+      // Ignore malformed or unapproved external URLs.
+    }
+
+    return { action: "deny" };
+  });
   mainWindow.webContents.on("will-navigate", (event, url) => {
     try {
       const destination = fileURLToPath(url);

@@ -108,6 +108,15 @@ const startTimer = async (req, res) => {
 const pauseTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
+        const reason = req.body?.reason === "idle" ? "idle" : "manual";
+
+        if (reason === "idle" && req.user.idleTrackingExempt) {
+            return res.status(200).json({
+                success: true,
+                skipped: true,
+                message: "Idle tracking is disabled for this employee.",
+            });
+        }
 
         const activeTimer = await TaskTimeLog.findOneAndUpdate(
             {
@@ -115,7 +124,13 @@ const pauseTimer = async (req, res) => {
                 status: "running",
             },
             {
-                $push: { pauses: { pausedAt: new Date(), resumedAt: null } },
+                $push: {
+                    pauses: {
+                        pausedAt: new Date(),
+                        resumedAt: null,
+                        reason,
+                    },
+                },
                 $set: { status: "paused" },
             },
             { new: true }
@@ -130,7 +145,9 @@ const pauseTimer = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Timer paused successfully.",
+            message: reason === "idle"
+                ? "Timer paused because the system is idle."
+                : "Timer paused successfully.",
             timeLog: activeTimer,
         });
     } catch (error) {
@@ -144,13 +161,24 @@ const pauseTimer = async (req, res) => {
 const resumeTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
+        const reason = req.body?.reason === "idle" ? "idle" : "manual";
+        const filter = {
+            employee: employeeId,
+            status: "paused",
+            pauses: {
+                $elemMatch: {
+                    resumedAt: null,
+                    ...(reason === "idle" ? { reason: "idle" } : {}),
+                },
+            },
+        };
+        const pauseFilter = {
+            "elem.resumedAt": null,
+            ...(reason === "idle" ? { "elem.reason": "idle" } : {}),
+        };
 
         const pausedTimer = await TaskTimeLog.findOneAndUpdate(
-            {
-                employee: employeeId,
-                status: "paused",
-                "pauses.resumedAt": null,
-            },
+            filter,
             {
                 $set: {
                     "pauses.$[elem].resumedAt": new Date(),
@@ -158,7 +186,7 @@ const resumeTimer = async (req, res) => {
                 },
             },
             {
-                arrayFilters: [{ "elem.resumedAt": null }],
+                arrayFilters: [pauseFilter],
                 new: true,
             }
         );
@@ -172,7 +200,9 @@ const resumeTimer = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Timer resumed successfully.",
+            message: reason === "idle"
+                ? "Activity detected. Timer resumed automatically."
+                : "Timer resumed successfully.",
             timeLog: pausedTimer,
         });
     } catch (error) {
@@ -201,13 +231,19 @@ const stopTimer = async (req, res) => {
 
         const stoppedAt = new Date();
         let totalPausedSeconds = 0;
+        let totalIdleSeconds = 0;
 
         for (const pause of activeTimer.pauses) {
             const pauseEnd = pause.resumedAt || stoppedAt;
 
-            totalPausedSeconds += Math.floor(
+            const pauseSeconds = Math.floor(
                 (pauseEnd.getTime() - pause.pausedAt.getTime()) / 1000
             );
+            totalPausedSeconds += pauseSeconds;
+
+            if (pause.reason === "idle") {
+                totalIdleSeconds += pauseSeconds;
+            }
 
             if (!pause.resumedAt) {
                 pause.resumedAt = stoppedAt;
@@ -225,6 +261,7 @@ const stopTimer = async (req, res) => {
 
         activeTimer.stoppedAt = stoppedAt;
         activeTimer.totalPausedSeconds = totalPausedSeconds;
+        activeTimer.totalIdleSeconds = totalIdleSeconds;
         activeTimer.totalWorkedSeconds = totalWorkedSeconds;
         activeTimer.status = "stopped";
         activeTimer.isActiveTimer = false;

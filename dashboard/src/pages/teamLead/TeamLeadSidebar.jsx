@@ -179,7 +179,7 @@ function TeamLeadSidebar() {
             </button>
 
             {!collapsed && myTimesheetOpen && <div className="tl-sidebar-submenu">
-              <NavLink to="/team-lead/timesheet" className={subNavClass}>My timesheet</NavLink>
+              <NavLink to="/team-lead/timesheet" end className={subNavClass}>My timesheet</NavLink>
               <NavLink to="/team-lead/timesheet/details" className={subNavClass}>My detailed timesheet</NavLink>
               <NavLink to="/team-lead/timesheet/count" className={subNavClass}>My count report</NavLink>
             </div>}

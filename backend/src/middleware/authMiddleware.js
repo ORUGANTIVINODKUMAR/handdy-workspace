@@ -20,7 +20,7 @@ const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const employee = await Employee.findById(decoded.employeeId).select(
-      "+tokenVersion"
+      "+tokenVersion +idleTrackingExempt"
     );
 
     if (!employee) {

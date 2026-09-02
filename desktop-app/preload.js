@@ -1,4 +1,4 @@
-const { contextBridge } = require("electron");
+const { contextBridge, ipcRenderer } = require("electron");
 
 // The packaged desktop client uses the live Handdy API. Developers can still
 // override this with HANDDY_API_URL when running against a local/test server.
@@ -10,4 +10,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
   platform: process.platform,
   apiBaseUrl,
+  getSystemIdleTime: () => ipcRenderer.invoke("system:get-idle-time"),
 });

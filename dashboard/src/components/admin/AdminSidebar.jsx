@@ -209,6 +209,7 @@ function AdminSidebar() {
 
                 <NavLink
                   to="/admin/my-timesheet"
+                  end
                   className={subNavClass}
                 >
                   My timesheet

@@ -101,12 +101,41 @@ npm install
 npm start
 ```
 
-The desktop timer uses `http://localhost:5000/api` by default. To use another
-backend, set `HANDDY_API_URL` before starting or packaging the app. The current
-desktop module supports login, attendance, projects/tasks, and timer controls.
-Keystroke, application, website, and screenshot collection are intentionally
-not fabricated; those collectors belong to the next Electron implementation
-phase.
+The packaged desktop timer uses the hosted Handdy API by default. Set
+`HANDDY_API_URL` before starting or packaging to use a different backend.
+
+### Idle-time tracking
+
+Admins set the inactivity threshold under **Settings → Idle and Logout**. While
+an employee timer is running, Electron reads only the operating system's idle
+duration; it does not record keys, clicks, or pointer positions. The timer is
+automatically paused after the configured threshold and resumes when activity
+returns. Idle pauses are excluded from worked/billable time and reported
+separately.
+
+One employee can be exempted through a local-only backend command. Set these
+values in `backend/.env` without committing the credentials, then run
+`npm run create:idle-exempt` inside `backend`:
+
+```text
+EXEMPT_EMPLOYEE_EMAIL=employee@example.com
+EXEMPT_EMPLOYEE_ID=EMP001
+EXEMPT_EMPLOYEE_NAME=Employee Name
+EXEMPT_EMPLOYEE_PASSWORD=use-a-strong-password
+EXEMPT_EMPLOYEE_TEAM_ID=optional-mongodb-team-id
+```
+
+The command creates or updates that employee and removes the exemption from
+any previously exempt employee. The exemption is unavailable in the admin UI
+and ordinary employee update API.
+
+### Team assignment consistency
+
+Billing filters employees by their exact team assignment. To inspect older
+employee records without changing data, run `npm run audit:teams` inside
+`backend`. If the listed repairs are correct, run `npm run repair:teams`.
+Ambiguous records are never changed automatically and are reported for manual
+review.
 
 ## Validation
 

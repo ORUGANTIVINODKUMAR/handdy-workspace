@@ -6,7 +6,10 @@ const TaskTimeLog = require("../models/TaskTimeLog");
 const Team = require("../models/Team");
 const { aggregateBillingLogs, DEFAULT_TIMEZONE, getBillingDateRange, getBillingEmployeeAccess } = require("../utils/billingUtils");
 
-const employeeFields = "employeeId fullName email department designation role isActive teamLead";
+// Billing needs both relationships: `team` is the authoritative assignment
+// used by the Team filter, while `teamLead` is retained for access checks and
+// older employee records.
+const employeeFields = "employeeId fullName email department designation role isActive team teamLead";
 
 const getAuthorizedEmployee = async (user, requestedId) => {
   const access = getBillingEmployeeAccess(user, requestedId);

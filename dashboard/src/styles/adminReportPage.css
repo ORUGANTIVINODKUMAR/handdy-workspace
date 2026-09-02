@@ -11,6 +11,7 @@
 .admin-report-results { min-height: 320px; overflow: hidden; }
 .admin-report-results > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -22px -22px 0; padding: 20px 22px; border-bottom: 1px solid var(--border-light); }
 .admin-report-results > header strong { display: inline-flex; align-items: center; gap: 7px; color: var(--primary); font-size: 13px; }
+.admin-report-totals { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .admin-report-empty { display: flex; align-items: center; flex-direction: column; justify-content: center; min-height: 235px; color: var(--primary); text-align: center; }
 .admin-report-empty strong { margin: 12px 0 5px; color: var(--text-heading); font-size: 14px; }
 .admin-report-empty span { max-width: 500px; color: var(--text-muted); font-size: 12px; line-height: 1.55; }

@@ -198,6 +198,7 @@ function EmployeeSidebar() {
 
                 <NavLink
                   to="/employee/timesheet"
+                  end
                   className={subNavClass}
                 >
                   My timesheet

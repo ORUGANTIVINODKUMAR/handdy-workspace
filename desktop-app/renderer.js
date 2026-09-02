@@ -11,14 +11,17 @@ const isLoginPage = document.body.dataset.page === "login";
 const userName = document.getElementById("userName");
 const userRole = document.getElementById("userRole");
 
-const attendanceStatus = document.getElementById("attendanceStatus");
-const checkInTime = document.getElementById("checkInTime");
-const checkOutTime = document.getElementById("checkOutTime");
-const totalHours = document.getElementById("totalHours");
-const attendanceMessage = document.getElementById("attendanceMessage");
-
-const checkInButton = document.getElementById("checkInButton");
-const checkOutButton = document.getElementById("checkOutButton");
+const todayDate = document.getElementById("todayDate");
+const todayTotal = document.getElementById("todayTotal");
+const todayIdle = document.getElementById("todayIdle");
+const todaySessions = document.getElementById("todaySessions");
+const todayTasks = document.getElementById("todayTasks");
+const todayTimesheetBody = document.getElementById("todayTimesheetBody");
+const todayTimesheetEmpty = document.getElementById("todayTimesheetEmpty");
+const timesheetMessage = document.getElementById("timesheetMessage");
+const refreshTimesheetButton = document.getElementById(
+  "refreshTimesheetButton"
+);
 
 const projectSelect = document.getElementById("projectSelect");
 const taskSelect = document.getElementById("taskSelect");
@@ -65,6 +68,15 @@ const timerNote = document.getElementById("timerNote");
 const API_BASE_URL =
   window.electronAPI?.apiBaseUrl || "http://localhost:5000/api";
 let timerInterval = null;
+let idleMonitorInterval = null;
+let idlePolicyRefreshInterval = null;
+let idleCheckInProgress = false;
+let idlePolicy = null;
+let currentTimeLog = null;
+let automaticIdlePause = false;
+
+const IDLE_CHECK_INTERVAL_MS = 5000;
+const ACTIVE_AGAIN_SECONDS = 2;
 
 const showTimerView = (viewName) => {
   timerViewPanels.forEach((panel) => {
@@ -77,8 +89,14 @@ const showTimerView = (viewName) => {
 };
 
 timerNavigationButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    showTimerView(button.dataset.timerView);
+  button.addEventListener("click", async () => {
+    const viewName = button.dataset.timerView;
+
+    showTimerView(viewName);
+
+    if (viewName === "dashboard") {
+      await loadTodayTimesheet();
+    }
   });
 });
 
@@ -101,6 +119,94 @@ if (addNoteButton) {
 
 function getToken() {
   return localStorage.getItem("token");
+}
+
+function getOpenPauseReason(timeLog) {
+  const openPause = [...(timeLog?.pauses || [])]
+    .reverse()
+    .find((pause) => !pause.resumedAt);
+
+  return openPause?.reason || "manual";
+}
+
+async function loadIdlePolicy() {
+  const token = getToken();
+
+  if (!token || !window.electronAPI?.getSystemIdleTime) {
+    idlePolicy = null;
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/settings/idle-policy`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to load idle settings.");
+    }
+
+    idlePolicy = {
+      thresholdSeconds:
+        Number(data.idlePolicy?.idleThresholdMinutes || 0) * 60,
+      exempt: Boolean(data.idlePolicy?.idleTrackingExempt),
+    };
+  } catch (error) {
+    console.error("Idle policy could not be loaded:", error);
+    idlePolicy = null;
+  }
+}
+
+async function checkSystemIdleState() {
+  if (
+    idleCheckInProgress ||
+    !idlePolicy ||
+    idlePolicy.exempt ||
+    !currentTimeLog ||
+    !getToken()
+  ) {
+    return;
+  }
+
+  idleCheckInProgress = true;
+
+  try {
+    const idleSeconds = await window.electronAPI.getSystemIdleTime();
+
+    if (
+      currentTimeLog.status === "running" &&
+      idleSeconds >= idlePolicy.thresholdSeconds
+    ) {
+      await pauseTimer("idle");
+    } else if (
+      currentTimeLog.status === "paused" &&
+      automaticIdlePause &&
+      idleSeconds <= ACTIVE_AGAIN_SECONDS
+    ) {
+      await resumeTimer("idle");
+    }
+  } catch (error) {
+    console.error("Unable to check system idle time:", error);
+  } finally {
+    idleCheckInProgress = false;
+  }
+}
+
+function startIdleMonitor() {
+  if (idleMonitorInterval) {
+    clearInterval(idleMonitorInterval);
+  }
+
+  if (!idlePolicy || idlePolicy.exempt) {
+    return;
+  }
+
+  idleMonitorInterval = setInterval(
+    checkSystemIdleState,
+    IDLE_CHECK_INTERVAL_MS
+  );
 }
 function updateProfileUI(user) {
   profileFullName.textContent =
@@ -244,10 +350,14 @@ async function loadTasks(projectId) {
 
 function formatTime(value) {
   if (!value) {
-    return "Not recorded";
+    return "—";
   }
 
-  return new Date(value).toLocaleTimeString();
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(value));
 }
 
 function showLoggedInView(user) {
@@ -271,56 +381,135 @@ function showLoggedOutView() {
   if (appSection) appSection.hidden = true;
 }
 
-function updateAttendanceUI(attendance) {
-  if (!attendance) {
-    attendanceStatus.textContent = "Not checked in";
-    checkInTime.textContent = "Not recorded";
-    checkOutTime.textContent = "Not recorded";
-    totalHours.textContent = "Not available";
+function isToday(value) {
+  const date = new Date(value);
+  const now = new Date();
 
-    checkInButton.disabled = false;
-    checkOutButton.disabled = true;
-
-    return;
-  }
-
-  if (attendance.checkOut) {
-    attendanceStatus.textContent = "Checked out";
-  } else {
-    attendanceStatus.textContent = "Checked in";
-  }
-
-  checkInTime.textContent = formatTime(
-    attendance.checkIn
-  );
-
-  checkOutTime.textContent = formatTime(
-    attendance.checkOut
-  );
-
-  totalHours.textContent =
-    attendance.totalHours !== undefined &&
-      attendance.totalHours !== null
-      ? attendance.totalHours
-      : "Not available";
-
-  checkInButton.disabled = true;
-
-  checkOutButton.disabled = Boolean(
-    attendance.checkOut
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
   );
 }
 
-async function getTodayAttendance() {
+function getTimeLogWorkedSeconds(timeLog) {
+  if (
+    timeLog.status === "stopped" &&
+    Number.isFinite(Number(timeLog.totalWorkedSeconds))
+  ) {
+    return Math.max(Number(timeLog.totalWorkedSeconds), 0);
+  }
+
+  return calculateWorkedSeconds(timeLog);
+}
+
+function getTimeLogIdleSeconds(timeLog) {
+  if (
+    timeLog.status === "stopped" &&
+    Number.isFinite(Number(timeLog.totalIdleSeconds))
+  ) {
+    return Math.max(Number(timeLog.totalIdleSeconds), 0);
+  }
+
+  const now = Date.now();
+  return (timeLog.pauses || []).reduce((total, pause) => {
+    if (pause.reason !== "idle" || !pause.pausedAt) {
+      return total;
+    }
+
+    const end = pause.resumedAt
+      ? new Date(pause.resumedAt).getTime()
+      : now;
+    const start = new Date(pause.pausedAt).getTime();
+
+    return total + Math.max(0, Math.floor((end - start) / 1000));
+  }, 0);
+}
+
+function appendTimesheetCell(row, value) {
+  const cell = document.createElement("td");
+  cell.textContent = value;
+  row.appendChild(cell);
+}
+
+function renderTodayTimesheet(timeLogs) {
+  const totalSeconds = timeLogs.reduce(
+    (total, timeLog) => total + getTimeLogWorkedSeconds(timeLog),
+    0
+  );
+  const totalIdleSeconds = timeLogs.reduce(
+    (total, timeLog) => total + getTimeLogIdleSeconds(timeLog),
+    0
+  );
+  const taskIds = new Set(
+    timeLogs.map((timeLog) =>
+      String(timeLog.task?._id || timeLog.task || "unassigned")
+    )
+  );
+
+  todayDate.textContent = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+  todayTotal.textContent = formatDuration(totalSeconds);
+  todayIdle.textContent = formatDuration(totalIdleSeconds);
+  todaySessions.textContent = String(timeLogs.length);
+  todayTasks.textContent = String(taskIds.size);
+  todayTimesheetBody.textContent = "";
+  todayTimesheetEmpty.hidden = timeLogs.length > 0;
+
+  timeLogs.forEach((timeLog) => {
+    const row = document.createElement("tr");
+    const status = timeLog.status || "unknown";
+
+    appendTimesheetCell(
+      row,
+      timeLog.project?.projectName || "Unassigned"
+    );
+    appendTimesheetCell(
+      row,
+      timeLog.task?.taskName || "Unassigned"
+    );
+    appendTimesheetCell(row, formatTime(timeLog.startedAt));
+    appendTimesheetCell(
+      row,
+      timeLog.stoppedAt ? formatTime(timeLog.stoppedAt) : "Active"
+    );
+
+    const statusCell = document.createElement("td");
+    const statusBadge = document.createElement("span");
+    statusBadge.className = `timesheet-status timesheet-status-${status}`;
+    statusBadge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    statusCell.appendChild(statusBadge);
+    row.appendChild(statusCell);
+
+    appendTimesheetCell(
+      row,
+      formatDuration(getTimeLogIdleSeconds(timeLog))
+    );
+    appendTimesheetCell(
+      row,
+      formatDuration(getTimeLogWorkedSeconds(timeLog))
+    );
+    todayTimesheetBody.appendChild(row);
+  });
+}
+
+async function loadTodayTimesheet() {
   const token = getToken();
 
   if (!token) {
     return;
   }
 
+  timesheetMessage.textContent = "Loading today’s task time…";
+  refreshTimesheetButton.disabled = true;
+
   try {
     const response = await fetch(
-      `${API_BASE_URL}/attendance/today`,
+      `${API_BASE_URL}/time-logs/history?limit=100`,
       {
         method: "GET",
         headers: {
@@ -332,17 +521,24 @@ async function getTodayAttendance() {
     const data = await response.json();
 
     if (!response.ok) {
-      attendanceMessage.textContent =
+      timesheetMessage.textContent =
         data.message ||
-        "Unable to load attendance.";
+        "Unable to load today’s timesheet.";
 
       return;
     }
 
-    updateAttendanceUI(data.attendance);
+    const todaysTimeLogs = (data.timeLogs || []).filter((timeLog) =>
+      isToday(timeLog.startedAt)
+    );
+
+    renderTodayTimesheet(todaysTimeLogs);
+    timesheetMessage.textContent = "";
   } catch (error) {
-    attendanceMessage.textContent =
+    timesheetMessage.textContent =
       "Unable to reach the backend server.";
+  } finally {
+    refreshTimesheetButton.disabled = false;
   }
 }
 function formatDuration(totalSeconds) {
@@ -435,6 +631,8 @@ async function loadActiveTimer() {
     }
 
     if (!data.timeLog) {
+      currentTimeLog = null;
+      automaticIdlePause = false;
       timerStatus.textContent = "Idle";
       timerDuration.textContent = "00:00:00";
 
@@ -447,10 +645,16 @@ async function loadActiveTimer() {
     }
 
     const timeLog = data.timeLog;
+    currentTimeLog = timeLog;
+    automaticIdlePause =
+      timeLog.status === "paused" &&
+      getOpenPauseReason(timeLog) === "idle";
 
     timerStatus.textContent =
       timeLog.status === "paused"
-        ? "Paused"
+        ? automaticIdlePause
+          ? "Idle pause"
+          : "Paused"
         : "Running";
 
     if (timeLog.project) {
@@ -528,6 +732,8 @@ async function stopTimer() {
       timerInterval = null;
     }
 
+    currentTimeLog = null;
+    automaticIdlePause = false;
     timerStatus.textContent = "Idle";
 
     timerDuration.textContent = formatDuration(
@@ -553,7 +759,7 @@ async function stopTimer() {
     stopTimerButton.disabled = false;
   }
 }
-async function pauseTimer() {
+async function pauseTimer(reason = "manual") {
   const token = getToken();
 
   timerMessage.textContent = "";
@@ -571,8 +777,10 @@ async function pauseTimer() {
       {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ reason }),
       }
     );
 
@@ -586,10 +794,18 @@ async function pauseTimer() {
       return;
     }
 
+    if (data.skipped) {
+      pauseTimerButton.disabled = false;
+      return;
+    }
+
     if (timerInterval) {
       clearInterval(timerInterval);
       timerInterval = null;
     }
+
+    currentTimeLog = data.timeLog;
+    automaticIdlePause = reason === "idle";
 
     const workedSeconds =
       calculateWorkedSeconds(data.timeLog);
@@ -597,7 +813,8 @@ async function pauseTimer() {
     timerDuration.textContent =
       formatDuration(workedSeconds);
 
-    timerStatus.textContent = "Paused";
+    timerStatus.textContent =
+      reason === "idle" ? "Idle pause" : "Paused";
 
     timerMessage.textContent =
       data.message || "Timer paused successfully.";
@@ -616,7 +833,7 @@ async function pauseTimer() {
     pauseTimerButton.disabled = false;
   }
 }
-async function resumeTimer() {
+async function resumeTimer(reason = "manual") {
   const token = getToken();
 
   timerMessage.textContent = "";
@@ -634,14 +851,21 @@ async function resumeTimer() {
       {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ reason }),
       }
     );
 
     const data = await response.json();
 
     if (!response.ok) {
+      if (reason === "idle" && response.status === 404) {
+        automaticIdlePause = false;
+        return;
+      }
+
       timerMessage.textContent =
         data.message || "Unable to resume timer.";
 
@@ -649,6 +873,8 @@ async function resumeTimer() {
       return;
     }
 
+    currentTimeLog = data.timeLog;
+    automaticIdlePause = false;
     timerStatus.textContent = "Running";
 
     timerMessage.textContent =
@@ -726,6 +952,8 @@ async function startTimer() {
 
     timerStatus.textContent = "Running";
 
+    currentTimeLog = data.timeLog;
+    automaticIdlePause = false;
     startLiveDuration(data.timeLog);
 
     timerMessage.textContent =
@@ -825,98 +1053,9 @@ loginForm?.addEventListener(
   }
 );
 
-checkInButton?.addEventListener(
+refreshTimesheetButton?.addEventListener(
   "click",
-  async () => {
-    const token = getToken();
-
-    attendanceMessage.textContent = "";
-
-    try {
-      checkInButton.disabled = true;
-
-      const response = await fetch(
-        `${API_BASE_URL}/attendance/check-in`,
-        {
-          method: "POST",
-
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        attendanceMessage.textContent =
-          data.message ||
-          "Check-in failed.";
-
-        return;
-      }
-
-      attendanceMessage.textContent =
-        data.message ||
-        "Check-in successful.";
-
-      updateAttendanceUI(
-        data.attendance
-      );
-    } catch (error) {
-      attendanceMessage.textContent =
-        "Unable to reach the backend server.";
-    } finally {
-      await getTodayAttendance();
-    }
-  }
-);
-
-checkOutButton?.addEventListener(
-  "click",
-  async () => {
-    const token = getToken();
-
-    attendanceMessage.textContent = "";
-
-    try {
-      checkOutButton.disabled = true;
-
-      const response = await fetch(
-        `${API_BASE_URL}/attendance/check-out`,
-        {
-          method: "POST",
-
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        attendanceMessage.textContent =
-          data.message ||
-          "Check-out failed.";
-
-        return;
-      }
-
-      attendanceMessage.textContent =
-        data.message ||
-        "Check-out successful.";
-
-      updateAttendanceUI(
-        data.attendance
-      );
-    } catch (error) {
-      attendanceMessage.textContent =
-        "Unable to reach the backend server.";
-    } finally {
-      await getTodayAttendance();
-    }
-  }
+  loadTodayTimesheet
 );
 
 startTimerButton?.addEventListener(
@@ -929,11 +1068,11 @@ stopTimerButton?.addEventListener(
 );
 pauseTimerButton?.addEventListener(
   "click",
-  pauseTimer
+  () => pauseTimer("manual")
 );
 resumeTimerButton?.addEventListener(
   "click",
-  resumeTimer
+  () => resumeTimer("manual")
 );
 logoutButton?.addEventListener(
   "click",
@@ -953,6 +1092,14 @@ logoutButton?.addEventListener(
 
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
+    if (idleMonitorInterval) {
+      clearInterval(idleMonitorInterval);
+    }
+
+    if (idlePolicyRefreshInterval) {
+      clearInterval(idlePolicyRefreshInterval);
+    }
 
     window.location.replace("./index.html");
   }
@@ -975,9 +1122,16 @@ async function initializeApp() {
   if (storedUser && token) {
     showLoggedInView(storedUser);
 
-    await getTodayAttendance();
+    await loadIdlePolicy();
     await loadProjects();
     await loadActiveTimer();
+    await loadTodayTimesheet();
+    startIdleMonitor();
+
+    idlePolicyRefreshInterval = setInterval(async () => {
+      await loadIdlePolicy();
+      startIdleMonitor();
+    }, 60 * 1000);
   } else {
     showLoggedOutView();
   }
