@@ -23,6 +23,23 @@ const serviceRateSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const projectRateSchema = new mongoose.Schema(
+  {
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      required: [true, "Project is required"],
+    },
+    chargeRate: {
+      type: Number,
+      required: [true, "Charge rate is required"],
+      min: [0.01, "Charge rate must be greater than zero"],
+      max: [1_000_000, "Charge rate is too large"],
+    },
+  },
+  { _id: false }
+);
+
 const employeeSchema = new mongoose.Schema(
   {
     employeeId: {
@@ -144,12 +161,25 @@ const employeeSchema = new mongoose.Schema(
     serviceRates: {
       type: [serviceRateSchema],
       default: [],
+      select: false,
       validate: {
         validator(assignments) {
           const serviceTypes = assignments.map((assignment) => assignment.serviceType);
           return new Set(serviceTypes).size === serviceTypes.length;
         },
         message: "A service type cannot be assigned more than once",
+      },
+    },
+
+    projectRates: {
+      type: [projectRateSchema],
+      default: [],
+      validate: {
+        validator(assignments) {
+          const projectIds = assignments.map((assignment) => String(assignment.project));
+          return new Set(projectIds).size === projectIds.length;
+        },
+        message: "The same project cannot be assigned more than once",
       },
     },
 

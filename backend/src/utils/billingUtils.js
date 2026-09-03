@@ -126,9 +126,12 @@ const splitLogByDay = (log, rangeStart, rangeEnd, timezone) => {
 
 const roundCurrency = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-const getEmployeeChargeRate = (employee, serviceType) => {
-  if (!serviceType || !Array.isArray(employee?.serviceRates)) return null;
-  const assignment = employee.serviceRates.find((item) => item.serviceType === serviceType);
+const getEmployeeChargeRate = (employee, projectId) => {
+  if (!projectId || !Array.isArray(employee?.projectRates)) return null;
+  const targetProjectId = String(projectId?._id || projectId);
+  const assignment = employee.projectRates.find(
+    (item) => String(item?.project?._id || item?.project || "") === targetProjectId,
+  );
   const rate = Number(assignment?.chargeRate);
   return Number.isFinite(rate) && rate > 0 ? rate : null;
 };
@@ -150,14 +153,13 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     const project = log.projectRecord || {};
     const isBreak = task.taskType === "break";
     const serviceType = isBreak ? null : project.serviceType || null;
-    const chargeRate = isBreak ? null : getEmployeeChargeRate(employee, serviceType);
+    const projectId = project._id || log.project;
+    const chargeRate = isBreak ? null : getEmployeeChargeRate(employee, projectId);
     const billingWarning = isBreak
       ? null
-      : !serviceType
-        ? "Service Type not configured."
-        : chargeRate === null
-          ? "Charge rate not configured."
-          : null;
+      : chargeRate === null
+        ? "Charge rate not configured for this employee and project."
+        : null;
     for (const segment of splitLogByDay(log, rangeStart, rangeEnd, timezone)) {
       if (isBreak) breakSeconds += segment.seconds;
       else taskSeconds += segment.seconds;
@@ -165,7 +167,7 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       if (!isBreak) {
         const key = `${project._id || log.project}:${task._id || log.task}`;
         const current = taskGroups.get(key) || {
-          projectId: String(project._id || log.project),
+          projectId: String(projectId),
           projectCode: project.projectCode || "",
           projectName: project.projectName || "Deleted project",
           clientName: project.clientName || "",
@@ -187,7 +189,7 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       day.entries.push({
         logId: String(log._id),
         type: isBreak ? "break" : "work",
-        projectId: String(project._id || log.project),
+        projectId: String(projectId),
         projectName: project.projectName || "Deleted project",
         clientName: project.clientName || "",
         taskId: String(task._id || log.task),
@@ -209,9 +211,9 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     .map((task) => ({
       ...task,
       billableAmount: calculateBillableAmount(task.totalSeconds, task.chargeRate),
-      billingWarning: task.serviceType
-        ? task.chargeRate === null ? "Charge rate not configured." : null
-        : "Service Type not configured.",
+      billingWarning: task.chargeRate === null
+        ? "Charge rate not configured for this employee and project."
+        : null,
     }))
     .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.taskName.localeCompare(b.taskName));
   const projectsMap = new Map();
@@ -266,6 +268,8 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     warnings: missingRateTasks.map((task) => ({
       taskId: task.taskId,
       taskName: task.taskName,
+      projectId: task.projectId,
+      projectName: task.projectName,
       serviceType: task.serviceType,
       message: task.billingWarning,
     })),

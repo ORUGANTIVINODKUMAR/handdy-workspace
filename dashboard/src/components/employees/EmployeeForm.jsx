@@ -1,10 +1,10 @@
-import { SERVICE_TYPES } from "../../constants/serviceTypes";
-import { EMPTY_SERVICE_RATE } from "../../utils/employeeFormValidation";
+import { EMPTY_PROJECT_RATE } from "../../utils/employeeFormValidation";
 
 function EmployeeForm({
   mode,
   formData,
   teams,
+  projects = [],
   saving,
   error,
   onFieldChange,
@@ -12,21 +12,40 @@ function EmployeeForm({
   onCancel,
 }) {
   const isCreate = mode === "create";
-  const serviceRates = formData.serviceRates || [];
+  const projectRates = formData.projectRates || [];
+  const projectOptions = [...projects];
+  for (const assignment of projectRates) {
+    if (assignment.project && assignment.projectName && !projectOptions.some((project) => project._id === assignment.project)) {
+      projectOptions.push({
+        _id: assignment.project,
+        projectName: assignment.projectName,
+        status: assignment.projectStatus || "Completed",
+      });
+    }
+  }
 
-  const updateServiceRate = (index, field, value) => {
-    const nextRates = serviceRates.map((assignment, rowIndex) => (
-      rowIndex === index ? { ...assignment, [field]: value } : assignment
+  const updateProjectRate = (index, field, value) => {
+    const selectedProject = field === "project"
+      ? projectOptions.find((project) => project._id === value)
+      : null;
+    const nextRates = projectRates.map((assignment, rowIndex) => (
+      rowIndex === index
+        ? {
+            ...assignment,
+            [field]: value,
+            ...(selectedProject ? { projectName: selectedProject.projectName, projectStatus: selectedProject.status } : {}),
+          }
+        : assignment
     ));
-    onFieldChange("serviceRates", nextRates);
+    onFieldChange("projectRates", nextRates);
   };
 
-  const addServiceRate = () => {
-    onFieldChange("serviceRates", [...serviceRates, { ...EMPTY_SERVICE_RATE }]);
+  const addProjectRate = () => {
+    onFieldChange("projectRates", [...projectRates, { ...EMPTY_PROJECT_RATE }]);
   };
 
-  const removeServiceRate = (index) => {
-    onFieldChange("serviceRates", serviceRates.filter((_, rowIndex) => rowIndex !== index));
+  const removeProjectRate = (index) => {
+    onFieldChange("projectRates", projectRates.filter((_, rowIndex) => rowIndex !== index));
   };
 
   return (
@@ -91,26 +110,29 @@ function EmployeeForm({
       <section className="employee-form-section employee-services-section">
         <div className="employee-form-section-heading">
           <span>02</span>
-          <div><h3>Services and charge rates</h3><p>Assign each service once and enter its hourly employee rate.</p></div>
+          <div><h3>Projects and charge rates</h3><p>Assign each project once and enter the employee's hourly rate.</p></div>
         </div>
 
         <div className="employee-service-labels" aria-hidden="true">
-          <span>Service type</span><span>Hourly charge rate</span><span>Action</span>
+          <span>Project Name</span><span>Hourly charge rate</span><span>Action</span>
         </div>
         <div className="employee-service-rows">
-          {serviceRates.map((assignment, index) => (
-            <div className="employee-service-row" key={`${index}-${assignment.serviceType}`}>
+          {projectRates.map((assignment, index) => (
+            <div className="employee-service-row" key={`${index}-${assignment.project}`}>
               <label>
-                <span className="employee-mobile-label">Service type</span>
-                <select value={assignment.serviceType} onChange={(event) => updateServiceRate(index, "serviceType", event.target.value)} required>
-                  <option value="">Select service</option>
-                  {SERVICE_TYPES.map((serviceType) => (
+                <span className="employee-mobile-label">Project Name</span>
+                <select value={assignment.project} onChange={(event) => updateProjectRate(index, "project", event.target.value)} required>
+                  <option value="">Select project</option>
+                  {projectOptions.map((project) => (
                     <option
-                      key={serviceType}
-                      value={serviceType}
-                      disabled={serviceRates.some((item, rowIndex) => rowIndex !== index && item.serviceType === serviceType)}
+                      key={project._id}
+                      value={project._id}
+                      disabled={
+                        projectRates.some((item, rowIndex) => rowIndex !== index && item.project === project._id)
+                        || (project.status !== "Active" && assignment.project !== project._id)
+                      }
                     >
-                      {serviceType}
+                      {project.projectName}{project.status !== "Active" ? " (Inactive)" : ""}
                     </option>
                   ))}
                 </select>
@@ -125,14 +147,14 @@ function EmployeeForm({
                   step="0.01"
                   inputMode="decimal"
                   value={assignment.chargeRate}
-                  onChange={(event) => updateServiceRate(index, "chargeRate", event.target.value)}
+                  onChange={(event) => updateProjectRate(index, "chargeRate", event.target.value)}
                   placeholder="0.00"
-                  aria-label={`Charge rate for service row ${index + 1}`}
+                  aria-label={`Charge rate for project row ${index + 1}`}
                   required
                 />
                 <span className="employee-rate-suffix">/ hour</span>
               </label>
-              <button type="button" className="employee-remove-service" onClick={() => removeServiceRate(index)}>Remove</button>
+              <button type="button" className="employee-remove-service" onClick={() => removeProjectRate(index)}>Remove</button>
             </div>
           ))}
         </div>
@@ -140,10 +162,10 @@ function EmployeeForm({
         <button
           type="button"
           className="employee-add-service"
-          onClick={addServiceRate}
-          disabled={serviceRates.length >= SERVICE_TYPES.length}
+          onClick={addProjectRate}
+          disabled={projectRates.length >= projectOptions.length}
         >
-          + Add Another Service
+          + Add Another Project
         </button>
       </section>
 

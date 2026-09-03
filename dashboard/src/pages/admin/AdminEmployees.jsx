@@ -5,13 +5,15 @@ import { getEmployees, resetEmployeePassword } from "../../api/employeeApi";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import EmployeeForm from "../../components/employees/EmployeeForm";
-import { EMPTY_SERVICE_RATE, validateEmployeeForm } from "../../utils/employeeFormValidation";
+import { getAllActiveProjects } from "../../api/projectApi";
+import { EMPTY_PROJECT_RATE, validateEmployeeForm } from "../../utils/employeeFormValidation";
 
 function AdminEmployees() {
   const location = useLocation();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -35,7 +37,7 @@ function AdminEmployees() {
     password: "",
     role: "employee",
     team: "",
-    serviceRates: [{ ...EMPTY_SERVICE_RATE }],
+    projectRates: [{ ...EMPTY_PROJECT_RATE }],
   });
 
   // EDIT EMPLOYEE
@@ -51,7 +53,7 @@ function AdminEmployees() {
     role: "employee",
     team: "",
     isActive: true,
-    serviceRates: [{ ...EMPTY_SERVICE_RATE }],
+    projectRates: [{ ...EMPTY_PROJECT_RATE }],
   });
 
   // RESET PASSWORD
@@ -115,6 +117,12 @@ function AdminEmployees() {
   }, []);
 
   useEffect(() => {
+    getAllActiveProjects()
+      .then(setProjects)
+      .catch((requestError) => setError(getApiErrorMessage(requestError, "Unable to load projects.")));
+  }, []);
+
+  useEffect(() => {
     if (location.state?.openAddEmployee) {
       navigate(location.pathname, { replace: true, state: null });
     }
@@ -173,7 +181,7 @@ function AdminEmployees() {
       password: "",
       role: "employee",
       team: "",
-      serviceRates: [{ ...EMPTY_SERVICE_RATE }],
+      projectRates: [{ ...EMPTY_PROJECT_RATE }],
     });
 
     setFormError("");
@@ -206,8 +214,8 @@ function AdminEmployees() {
         password: formData.password,
         role: formData.role,
         team: ["admin", "hr", "manager"].includes(formData.role) ? null : formData.team,
-        serviceRates: formData.serviceRates.map((assignment) => ({
-          serviceType: assignment.serviceType,
+        projectRates: formData.projectRates.map((assignment) => ({
+          project: assignment.project,
           chargeRate: Number(assignment.chargeRate),
         })),
       });
@@ -238,12 +246,14 @@ function AdminEmployees() {
       role: employee.role || "employee",
       team: employee.team?._id || employee.team || "",
       isActive: employee.isActive ?? true,
-      serviceRates: employee.serviceRates?.length
-        ? employee.serviceRates.map((assignment) => ({
-            serviceType: assignment.serviceType || "",
+      projectRates: employee.projectRates?.length
+        ? employee.projectRates.map((assignment) => ({
+            project: assignment.project?._id || assignment.project || "",
+            projectName: assignment.project?.projectName || "Archived project",
+            projectStatus: assignment.project?.status || "Completed",
             chargeRate: assignment.chargeRate ?? "",
           }))
-        : [{ ...EMPTY_SERVICE_RATE }],
+        : [{ ...EMPTY_PROJECT_RATE }],
     });
 
     setEditError("");
@@ -305,8 +315,8 @@ function AdminEmployees() {
           isActive:
             editFormData.isActive,
 
-          serviceRates: editFormData.serviceRates.map((assignment) => ({
-            serviceType: assignment.serviceType,
+          projectRates: editFormData.projectRates.map((assignment) => ({
+            project: assignment.project,
             chargeRate: Number(assignment.chargeRate),
           })),
         }
@@ -468,7 +478,7 @@ function AdminEmployees() {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Team</th>
-                <th>Service Rates</th>
+                <th>Project Rates</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -511,8 +521,8 @@ function AdminEmployees() {
                     <td>{employee.team?.teamName || "-"}</td>
 
                     <td>
-                      {employee.serviceRates?.length
-                        ? employee.serviceRates.map((assignment) => `${assignment.serviceType}: $${Number(assignment.chargeRate).toFixed(2)}/hr`).join(", ")
+                      {employee.projectRates?.length
+                        ? employee.projectRates.map((assignment) => `${assignment.project?.projectName || "Archived project"}: $${Number(assignment.chargeRate).toFixed(2)}/hr`).join(", ")
                         : "Not configured"}
                     </td>
 
@@ -634,6 +644,7 @@ function AdminEmployees() {
               mode="create"
               formData={formData}
               teams={teams}
+              projects={projects}
               saving={saving}
               error={formError}
               onFieldChange={handleFormChange}
@@ -679,6 +690,7 @@ function AdminEmployees() {
               mode="edit"
               formData={editFormData}
               teams={teams}
+              projects={projects}
               saving={editSaving}
               error={editError}
               onFieldChange={handleEditFormChange}

@@ -4,6 +4,10 @@ const Employee = require("../src/models/Employee");
 const Task = require("../src/models/Task");
 const Project = require("../src/models/Project");
 const { normalizeServiceRates } = require("../src/utils/serviceRates");
+const { normalizeProjectRates } = require("../src/utils/projectRates");
+
+const PROJECT_ONE = "64b000000000000000000021";
+const PROJECT_TWO = "64b000000000000000000022";
 
 test("normalizes one and multiple service rate assignments", () => {
   assert.deepEqual(normalizeServiceRates([{ serviceType: "Tax", chargeRate: "25" }]), [
@@ -38,6 +42,40 @@ test("legacy employees without service rates remain valid and receive an empty l
   });
   await legacyEmployee.validate();
   assert.deepEqual(legacyEmployee.serviceRates.toObject(), []);
+});
+
+test("normalizes multiple project rates using project IDs", () => {
+  assert.deepEqual(normalizeProjectRates([
+    { project: PROJECT_ONE, chargeRate: "25" },
+    { project: { _id: PROJECT_TWO }, chargeRate: "30.50" },
+  ]), [
+    { project: PROJECT_ONE, chargeRate: 25 },
+    { project: PROJECT_TWO, chargeRate: 30.5 },
+  ]);
+});
+
+test("rejects duplicate projects, missing projects, and invalid project rates", () => {
+  assert.throws(() => normalizeProjectRates([]), /at least one project/i);
+  assert.throws(() => normalizeProjectRates([{ project: "", chargeRate: 25 }]), /valid project/i);
+  assert.throws(() => normalizeProjectRates([{ project: PROJECT_ONE, chargeRate: -1 }]), /positive charge rate/i);
+  assert.throws(() => normalizeProjectRates([
+    { project: PROJECT_ONE, chargeRate: 25 },
+    { project: PROJECT_ONE, chargeRate: 30 },
+  ]), /same project/i);
+});
+
+test("employee project rates reject duplicate project IDs", async () => {
+  const employeeWithDuplicates = new Employee({
+    employeeId: "DUPLICATE-PROJECTS",
+    fullName: "Duplicate Projects",
+    email: "duplicate-projects@example.com",
+    password: "password123",
+    projectRates: [
+      { project: PROJECT_ONE, chargeRate: 25 },
+      { project: PROJECT_ONE, chargeRate: 30 },
+    ],
+  });
+  await assert.rejects(employeeWithDuplicates.validate(), /same project/i);
 });
 
 test("legacy work tasks remain readable without a duplicated service type", async () => {

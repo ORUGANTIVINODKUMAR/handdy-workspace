@@ -10,9 +10,9 @@ const employee = {
   _id: "64b000000000000000000001",
   employeeId: "EMP-1",
   fullName: "Lee Thomas",
-  serviceRates: [
-    { serviceType: "Tax", chargeRate: 25 },
-    { serviceType: "Audit", chargeRate: 30 },
+  projectRates: [
+    { project: "64b000000000000000000000021", chargeRate: 25 },
+    { project: "64b000000000000000000000023", chargeRate: 30 },
   ],
 };
 const workTask = { _id: "64b000000000000000000000011", taskName: "Tax Preparation", taskType: "work" };
@@ -33,9 +33,9 @@ const log = (id, taskRecord, startedAt, seconds, projectRecord = project) => ({
   pauses: [],
 });
 
-const reportFor = (logs, startDate = "2026-08-01", endDate = "2026-08-03") => {
+const reportFor = (logs, startDate = "2026-08-01", endDate = "2026-08-03", employeeRecord = employee) => {
   const range = getBillingDateRange(startDate, endDate, "UTC");
-  return aggregateBillingLogs({ logs, employee, startDate, endDate, timezone: "UTC", rangeStart: range.start, rangeEnd: range.endExclusive });
+  return aggregateBillingLogs({ logs, employee: employeeRecord, startDate, endDate, timezone: "UTC", rangeStart: range.start, rangeEnd: range.endExclusive });
 };
 
 test("same task across days and sessions is aggregated by task ID", () => {
@@ -61,7 +61,7 @@ test("multiple work tasks and break tasks have separate totals", () => {
   assert.equal(report.taskSummary.length, 2);
 });
 
-test("billing applies the employee rate for each task service", () => {
+test("billing applies the employee rate for each task project ID", () => {
   const report = reportFor([
     log("1", workTask, "2026-08-01T09:00:00Z", 7200),
     log("2", secondTask, "2026-08-01T11:00:00Z", 1800, {
@@ -78,7 +78,7 @@ test("billing applies the employee rate for each task service", () => {
   assert.equal(report.summary.missingRateCount, 0);
 });
 
-test("billing ignores a stale task service and uses the project's service", () => {
+test("billing ignores service text and uses the project's database ID", () => {
   const taskWithStaleService = { ...workTask, serviceType: "Audit" };
   const report = reportFor([log("1", taskWithStaleService, "2026-08-01T09:00:00Z", 3600)]);
   assert.equal(report.taskSummary[0].serviceType, "Tax");
@@ -92,7 +92,7 @@ test("billing amount uses the displayed two-decimal billable hours", () => {
   assert.equal(report.taskSummary[0].billableAmount, 76.75);
 });
 
-test("billing returns a warning and no amount when a service rate is missing", () => {
+test("billing returns a warning and no amount when a project rate is missing", () => {
   const bookkeepingTask = {
     _id: "64b000000000000000000000099",
     taskName: "Monthly books",
@@ -106,20 +106,32 @@ test("billing returns a warning and no amount when a service rate is missing", (
   const report = reportFor([log("1", bookkeepingTask, "2026-08-01T09:00:00Z", 3600, bookkeepingProject)]);
   assert.equal(report.taskSummary[0].chargeRate, null);
   assert.equal(report.taskSummary[0].billableAmount, null);
-  assert.equal(report.taskSummary[0].billingWarning, "Charge rate not configured.");
+  assert.equal(report.taskSummary[0].billingWarning, "Charge rate not configured for this employee and project.");
   assert.equal(report.summary.totalBillableAmount, 0);
   assert.equal(report.summary.missingRateCount, 1);
 });
 
-test("billing does not infer service type from a legacy project name", () => {
-  const legacyNamedProject = {
-    _id: "64b000000000000000000000025",
-    projectName: "TAX PREPARATION",
+test("renaming a project does not break its ID-based billing rate", () => {
+  const renamedProject = { ...project, projectName: "Completely Renamed Project", serviceType: "Audit" };
+  const report = reportFor([log("1", workTask, "2026-08-01T09:00:00Z", 3600, renamedProject)]);
+  assert.equal(report.taskSummary[0].projectName, "Completely Renamed Project");
+  assert.equal(report.taskSummary[0].billableAmount, 25);
+});
+
+test("an edited employee project rate changes the billing total", () => {
+  const employeeWithEditedRate = {
+    ...employee,
+    projectRates: [{ project: project._id, chargeRate: 40 }],
   };
-  const report = reportFor([log("1", workTask, "2026-08-01T09:00:00Z", 3600, legacyNamedProject)]);
-  assert.equal(report.taskSummary[0].serviceType, null);
-  assert.equal(report.taskSummary[0].billableAmount, null);
-  assert.equal(report.taskSummary[0].billingWarning, "Service Type not configured.");
+  const report = reportFor(
+    [log("1", workTask, "2026-08-01T09:00:00Z", 7200)],
+    "2026-08-01",
+    "2026-08-03",
+    employeeWithEditedRate,
+  );
+  assert.equal(report.taskSummary[0].chargeRate, 40);
+  assert.equal(report.taskSummary[0].billableAmount, 80);
+  assert.equal(report.summary.totalBillableAmount, 80);
 });
 
 test("paused time is not added back into a completed timer session", () => {
@@ -131,8 +143,8 @@ test("paused time is not added back into a completed timer session", () => {
   assert.equal(report.summary.totalSeconds, 3600);
 });
 
-test("same task name in different projects is not combined", () => {
-  const otherProject = { _id: "64b000000000000000000000022", projectName: "XYZ CPA", serviceType: "Tax" };
+test("same task and project names do not cause rates to match across project IDs", () => {
+  const otherProject = { _id: "64b000000000000000000000022", projectName: project.projectName, serviceType: "Tax" };
   const sameNameTask = { _id: "64b000000000000000000000014", taskName: "Tax Preparation", taskType: "work" };
   const report = reportFor([
     log("1", workTask, "2026-08-01T09:00:00Z", 3600),
@@ -140,6 +152,9 @@ test("same task name in different projects is not combined", () => {
   ]);
   assert.equal(report.taskSummary.length, 2);
   assert.equal(report.projects.length, 2);
+  assert.equal(report.taskSummary.find((task) => task.projectId === project._id).billableAmount, 25);
+  assert.equal(report.taskSummary.find((task) => task.projectId === otherProject._id).billableAmount, null);
+  assert.equal(report.summary.totalBillableAmount, 25);
 });
 
 test("date boundaries clip overnight records to the selected period", () => {

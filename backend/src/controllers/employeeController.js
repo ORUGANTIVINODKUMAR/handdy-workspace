@@ -2,7 +2,12 @@ const Employee = require("../models/Employee");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const Team = require("../models/Team");
 const { syncEmployeeTeam } = require("../services/teamAssignmentService");
-const { normalizeServiceRates } = require("../utils/serviceRates");
+const { validateProjectRates } = require("../services/projectRateService");
+
+const populateEmployeeRates = (query) => query.populate(
+  "projectRates.project",
+  "projectCode projectName status",
+);
 
 const handleEmployeeError = (res, error) => {
   if (error.code === 11000) {
@@ -66,13 +71,13 @@ const getAllEmployees = async (req, res) => {
     }
     const totalEmployees = await Employee.countDocuments(filter);
 
-    const employees = await Employee.find(filter)
+    const employees = await populateEmployeeRates(Employee.find(filter)
       .select("-password")
       .populate("team", "teamName isActive")
       .populate("teamLead", "employeeId fullName")
       .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(limit));
 
     return res.status(200).json({
       success: true,
@@ -90,9 +95,9 @@ const getAllEmployees = async (req, res) => {
 // Get one employee by MongoDB ID
 const getEmployeeById = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id).select("-password")
+    const employee = await populateEmployeeRates(Employee.findById(req.params.id).select("-password")
       .populate("team", "teamName isActive")
-      .populate("teamLead", "employeeId fullName");
+      .populate("teamLead", "employeeId fullName"));
 
     if (!employee) {
       return res.status(404).json({
@@ -135,8 +140,9 @@ const updateEmployee = async (req, res) => {
       if (req.body[field] !== undefined) employee[field] = req.body[field];
     }
 
-    if (req.body.serviceRates !== undefined) {
-      employee.serviceRates = normalizeServiceRates(req.body.serviceRates);
+    if (req.body.projectRates !== undefined) {
+      const existingProjectIds = employee.projectRates.map((assignment) => assignment.project);
+      employee.projectRates = await validateProjectRates(req.body.projectRates, { existingProjectIds });
     }
 
     if (req.body.password !== undefined) {
@@ -151,9 +157,9 @@ const updateEmployee = async (req, res) => {
 
     const requestedTeam = req.body.team !== undefined ? req.body.team : employee.team;
     await syncEmployeeTeam(employee, requestedTeam);
-    const updatedEmployee = await Employee.findById(employee._id)
+    const updatedEmployee = await populateEmployeeRates(Employee.findById(employee._id)
       .populate("team", "teamName isActive")
-      .populate("teamLead", "employeeId fullName");
+      .populate("teamLead", "employeeId fullName"));
 
     return res.status(200).json({
       success: true,
@@ -312,13 +318,13 @@ const getMyTeam = async (req, res) => {
   try {
     const teamLeadId = req.user._id;
 
-    const employees = await Employee.find({
+    const employees = await populateEmployeeRates(Employee.find({
       teamLead: teamLeadId,
       isActive: true,
     })
       .select("-password")
       .populate("team", "teamName")
-      .sort("fullName");
+      .sort("fullName"));
 
     return res.status(200).json({
       success: true,
@@ -337,11 +343,11 @@ const getMyTeamMemberById = async (req, res) => {
   try {
     const teamLeadId = req.user._id;
 
-    const employee = await Employee.findOne({
+    const employee = await populateEmployeeRates(Employee.findOne({
       _id: req.params.id,
       teamLead: teamLeadId,
       isActive: true,
-    }).select("-password");
+    }).select("-password"));
 
     if (!employee) {
       return res.status(404).json({

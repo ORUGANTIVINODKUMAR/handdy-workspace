@@ -72,12 +72,12 @@ function EmployeeDetailsPage() {
             </div>
 
             <section className="employee-details-services">
-              <h3>Service charge rates</h3>
-              {employee.serviceRates?.length ? (
+              <h3>Project charge rates</h3>
+              {employee.projectRates?.length ? (
                 <div>
-                  {employee.serviceRates.map((assignment) => (
-                    <article key={assignment.serviceType}>
-                      <span>{assignment.serviceType}</span>
+                  {employee.projectRates.map((assignment) => (
+                    <article key={assignment.project?._id || assignment.project}>
+                      <span>{assignment.project?.projectName || "Archived project"}</span>
                       <strong>${Number(assignment.chargeRate).toFixed(2)} / hour</strong>
                     </article>
                   ))}

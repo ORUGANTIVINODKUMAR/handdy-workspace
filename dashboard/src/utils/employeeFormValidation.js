@@ -1,6 +1,4 @@
-import { SERVICE_TYPES } from "../constants/serviceTypes.js";
-
-export const EMPTY_SERVICE_RATE = { serviceType: "", chargeRate: "" };
+export const EMPTY_PROJECT_RATE = { project: "", chargeRate: "" };
 
 export const validateEmployeeForm = (formData, { passwordRequired = false } = {}) => {
   if (!formData.employeeId.trim() || !formData.fullName.trim() || !formData.email.trim()) {
@@ -16,23 +14,24 @@ export const validateEmployeeForm = (formData, { passwordRequired = false } = {}
   if (["employee", "team_lead"].includes(formData.role) && !formData.team) {
     return "Team is required for employees and Team Leads.";
   }
-  if (!Array.isArray(formData.serviceRates) || formData.serviceRates.length === 0) {
-    return "Add at least one service type and charge rate.";
+  if (!Array.isArray(formData.projectRates) || formData.projectRates.length === 0) {
+    return "Add at least one project and charge rate.";
   }
 
-  const selectedServices = new Set();
-  for (const assignment of formData.serviceRates) {
-    if (!SERVICE_TYPES.includes(assignment.serviceType)) {
-      return "Select a service type for every service row.";
+  const selectedProjects = new Set();
+  for (const assignment of formData.projectRates) {
+    const projectId = String(assignment.project || "").trim();
+    if (!projectId) {
+      return "Select a project for every project row.";
     }
-    if (selectedServices.has(assignment.serviceType)) {
-      return `${assignment.serviceType} cannot be assigned more than once.`;
+    if (selectedProjects.has(projectId)) {
+      return "The same project cannot be assigned more than once.";
     }
     const chargeRate = Number(assignment.chargeRate);
     if (assignment.chargeRate === "" || !Number.isFinite(chargeRate) || chargeRate <= 0 || chargeRate > 1_000_000) {
-      return `Enter a valid positive charge rate for ${assignment.serviceType}.`;
+      return "Enter a valid positive charge rate for every project.";
     }
-    selectedServices.add(assignment.serviceType);
+    selectedProjects.add(projectId);
   }
   return "";
 };
