@@ -103,7 +103,7 @@ function AdminSidebar() {
 
           {!collapsed && (
             <div className="admin-handdy-name">
-              Handdy
+              Upsilon
             </div>
           )}
 

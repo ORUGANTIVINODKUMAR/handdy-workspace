@@ -102,7 +102,7 @@ function TeamLeadSidebar() {
 
           {!collapsed && (
             <div className="tl-brand-name">
-              Handdy
+              Upsilon
             </div>
           )}
 
