@@ -100,7 +100,7 @@ test("legacy projects without a service type remain readable", async () => {
   assert.equal(legacyProject.serviceType, null);
 });
 
-test("projects accept only the configured service type options", async () => {
+test("legacy project service classification is optional but remains validated", async () => {
   const validProject = new Project({
     projectCode: "VALID-PROJECT",
     projectName: "Annual return",
@@ -123,5 +123,6 @@ test("projects accept only the configured service type options", async () => {
     projectName: "Missing service",
     createdBy: "64b000000000000000000001",
   });
-  await assert.rejects(missingServiceProject.validate(), /Service Type is required/i);
+  await missingServiceProject.validate();
+  assert.equal(missingServiceProject.serviceType, null);
 });

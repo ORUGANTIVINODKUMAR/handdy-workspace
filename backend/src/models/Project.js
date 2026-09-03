@@ -16,11 +16,10 @@ const projectSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Required for newly created projects while remaining compatible with
-    // legacy database records that predate this field.
+    // Retained only for backward compatibility with existing project data.
+    // Employee rates and billing are linked by project ID instead.
     serviceType: {
       type: String,
-      required: [function requireServiceForNewProject() { return this.isNew; }, "Service Type is required"],
       enum: {
         values: [...SERVICE_TYPES, null],
         message: "Select a valid service type",

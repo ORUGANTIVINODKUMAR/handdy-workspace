@@ -1,7 +1,6 @@
 const Project = require("../models/Project");
 const Client = require("../models/Client");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
-const { SERVICE_TYPES } = require("../utils/serviceRates");
 
 const handleProjectError = (res, error) => {
   if (error.code === 11000) {
@@ -38,9 +37,6 @@ const resolveProjectClients = async (value) => {
 const createProject = async (req, res) => {
   try {
     const payload = { ...req.body };
-    if (!SERVICE_TYPES.includes(payload.serviceType)) {
-      return res.status(400).json({ success: false, message: "Select a valid Service Type." });
-    }
     payload.projectCode = payload.projectCode?.trim() || await generateProjectCode();
     const clientResolution = await resolveProjectClients(payload.clients || payload.client);
     if (clientResolution.error) return res.status(400).json({ success: false, message: clientResolution.error });
@@ -78,7 +74,6 @@ const getAllProjects = async (req, res) => {
         { projectCode: { $regex: safeSearch, $options: "i" } },
         { projectName: { $regex: safeSearch, $options: "i" } },
         { clientName: { $regex: safeSearch, $options: "i" } },
-        { serviceType: { $regex: safeSearch, $options: "i" } },
       ];
     }
 
@@ -153,9 +148,6 @@ const updateProject = async (req, res) => {
     }
 
     const updates = { ...req.body };
-    if (updates.serviceType !== undefined && !SERVICE_TYPES.includes(updates.serviceType)) {
-      return res.status(400).json({ success: false, message: "Select a valid Service Type." });
-    }
     if (updates.clients !== undefined || updates.client !== undefined) {
       const clientResolution = await resolveProjectClients(updates.clients || updates.client);
       if (clientResolution.error) return res.status(400).json({ success: false, message: clientResolution.error });

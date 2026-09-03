@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
-import { SERVICE_TYPES } from "../../constants/serviceTypes";
 
 function AdminProjects() {
   const [projects, setProjects] = useState([]);
@@ -23,7 +22,6 @@ function AdminProjects() {
 
   const [formData, setFormData] = useState({
     projectName: "",
-    serviceType: "",
     clients: [],
     status: "Active",
   });
@@ -36,7 +34,6 @@ function AdminProjects() {
 
   const [editFormData, setEditFormData] = useState({
     projectName: "",
-    serviceType: "",
     clients: [],
     status: "Active",
   });
@@ -147,7 +144,6 @@ function AdminProjects() {
 
     setFormData({
       projectName: "",
-      serviceType: "",
       clients: [],
       status: "Active",
     });
@@ -164,11 +160,6 @@ function AdminProjects() {
       return;
     }
 
-    if (!SERVICE_TYPES.includes(formData.serviceType)) {
-      setFormError("Service Type is required.");
-      return;
-    }
-
     if (formData.clients.length === 0) {
       setFormError("Select at least one client.");
       return;
@@ -180,7 +171,6 @@ function AdminProjects() {
 
       await axiosInstance.post("/projects", {
         projectName: formData.projectName.trim(),
-        serviceType: formData.serviceType,
         clients: formData.clients,
         status: formData.status,
       });
@@ -205,7 +195,6 @@ function AdminProjects() {
 
     setEditFormData({
       projectName: project.projectName || "",
-      serviceType: project.serviceType || "",
       clients: (project.clients || [project.client]).map((client) => typeof client === "string" ? client : client?._id).filter(Boolean),
       status: project.status || "Active",
     });
@@ -239,11 +228,6 @@ function AdminProjects() {
       return;
     }
 
-    if (!SERVICE_TYPES.includes(editFormData.serviceType)) {
-      setEditError("Service Type is required.");
-      return;
-    }
-
     if (editFormData.clients.length === 0) {
       setEditError("Select at least one client.");
       return;
@@ -258,9 +242,6 @@ function AdminProjects() {
         {
           projectName:
             editFormData.projectName.trim(),
-
-          serviceType:
-            editFormData.serviceType,
 
           clients: editFormData.clients,
 
@@ -353,7 +334,6 @@ function AdminProjects() {
             <thead>
               <tr>
                 <th>Project Name</th>
-                <th>Service Type</th>
                 <th>Clients</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -363,13 +343,13 @@ function AdminProjects() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5">
+                  <td colSpan="4">
                     Loading projects...
                   </td>
                 </tr>
               ) : projects.length === 0 ? (
                 <tr>
-                  <td colSpan="5">
+                  <td colSpan="4">
                     No projects found.
                   </td>
                 </tr>
@@ -380,8 +360,6 @@ function AdminProjects() {
                     <td>
                       {project.projectName || "-"}
                     </td>
-
-                    <td>{project.serviceType || "Service Type not configured"}</td>
 
                     <td>
                       {project.clientName || "-"}
@@ -573,14 +551,6 @@ function AdminProjects() {
               </div>
 
               <div>
-                <label>Service Type</label>
-                <select name="serviceType" value={formData.serviceType} onChange={handleFormChange} required>
-                  <option value="">Select service type</option>
-                  {SERVICE_TYPES.map((serviceType) => <option key={serviceType} value={serviceType}>{serviceType}</option>)}
-                </select>
-              </div>
-
-              <div>
                 <label>Status</label>
 
                 <select
@@ -690,15 +660,6 @@ function AdminProjects() {
                     </button>;
                   })}
                 </div>
-              </div>
-
-              <div>
-                <label>Service Type</label>
-                <select name="serviceType" value={editFormData.serviceType} onChange={handleEditFormChange} required>
-                  <option value="">Select service type</option>
-                  {SERVICE_TYPES.map((serviceType) => <option key={serviceType} value={serviceType}>{serviceType}</option>)}
-                </select>
-                {!editFormData.serviceType && <small>Service Type not configured. Select one before saving.</small>}
               </div>
 
               <div>
