@@ -56,6 +56,18 @@ const formatClockDuration = (seconds = 0) => {
   return `${String(Math.floor(safeSeconds / 3600)).padStart(2, "0")}:${String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, "0")}`;
 };
 
+const toDecimalHours = (seconds = 0) =>
+  Math.round((Math.max(0, Number(seconds) || 0) / 3600) * 100) / 100;
+
+const formatDecimalCells = (worksheet) => {
+  Object.values(worksheet).forEach((cell) => {
+    if (cell && typeof cell === "object" && cell.t === "n") {
+      cell.z = "0.0#";
+    }
+  });
+  return worksheet;
+};
+
 const formatDate = (dateKey) => new Intl.DateTimeFormat(undefined, {
   year: "numeric", month: "short", day: "numeric",
 }).format(new Date(`${dateKey}T00:00:00`));
@@ -162,16 +174,24 @@ function BillingContent() {
       ["Period", `${formatDate(report.period.startDate)} - ${formatDate(report.period.endDate)}`],
       [],
       ["Task Summary"],
-      ["Project", "Client", "Task", "Description", "Total Hours"],
-      ...report.taskSummary.map((task) => [task.projectName, task.clientName, task.taskName, task.taskDescription, formatClockDuration(task.totalSeconds)]),
+      ["Project", "Client", "Task", "Description", "Total Hours", "Decimal Hours"],
+      ...report.taskSummary.map((task) => [
+        task.projectName,
+        task.clientName,
+        task.taskName,
+        task.taskDescription,
+        formatClockDuration(task.totalSeconds),
+        toDecimalHours(task.totalSeconds),
+      ]),
       [],
       ["Time Summary"],
-      ["Task Hours", formatClockDuration(report.summary.taskSeconds)],
-      ["Break Hours", formatClockDuration(report.summary.breakSeconds)],
-      ["Total Recorded Hours", formatClockDuration(report.summary.totalSeconds)],
+      ["Metric", "Total Hours", "Decimal Hours"],
+      ["Task Hours", formatClockDuration(report.summary.taskSeconds), toDecimalHours(report.summary.taskSeconds)],
+      ["Break Hours", formatClockDuration(report.summary.breakSeconds), toDecimalHours(report.summary.breakSeconds)],
+      ["Total Recorded Hours", formatClockDuration(report.summary.totalSeconds), toDecimalHours(report.summary.totalSeconds)],
     ];
     const dailyRows = [
-      ["Date", "Type", "Project", "Client", "Task", "Description", "Start", "End", "Duration"],
+      ["Date", "Type", "Project", "Client", "Task", "Description", "Start", "End", "Duration", "Decimal Hours"],
       ...report.dailyDetails.flatMap((day) => day.entries.map((entry) => [
         day.date,
         entry.type === "break" ? "Break" : "Task",
@@ -182,11 +202,14 @@ function BillingContent() {
         new Date(entry.startedAt).toLocaleString(undefined, { timeZone: report.period.timezone }),
         new Date(entry.stoppedAt).toLocaleString(undefined, { timeZone: report.period.timezone }),
         formatClockDuration(entry.durationSeconds),
+        toDecimalHours(entry.durationSeconds),
       ])),
     ];
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(titleRows), "Billing Summary");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(dailyRows), "Daily Details");
+    const summarySheet = formatDecimalCells(XLSX.utils.aoa_to_sheet(titleRows));
+    const dailySheet = formatDecimalCells(XLSX.utils.aoa_to_sheet(dailyRows));
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Billing Summary");
+    XLSX.utils.book_append_sheet(workbook, dailySheet, "Daily Details");
     const safeName = report.employee.fullName.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
     XLSX.writeFile(workbook, `Billing-${safeName}-${report.period.startDate}-${report.period.endDate}.xlsx`);
   };
