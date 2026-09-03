@@ -4,7 +4,6 @@ const Project = require("../models/Project");
 const Team = require("../models/Team");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const { resolveTeamsProject } = require("../utils/taskProjectResolution");
-const { SERVICE_TYPES } = require("../utils/serviceRates");
 
 const normalizeAssignments = (assignedTo) => {
   const values = Array.isArray(assignedTo)
@@ -97,7 +96,6 @@ const createTask = async (req, res) => {
       taskName,
       description,
       taskType,
-      serviceType,
       project,
       team,
       teams,
@@ -115,9 +113,6 @@ const createTask = async (req, res) => {
     }
 
     const normalizedTaskType = taskType || "work";
-    if (normalizedTaskType === "work" && !SERVICE_TYPES.includes(serviceType)) {
-      return res.status(400).json({ success: false, message: "Select a service type for this work task." });
-    }
 
     const resolvedTaskCode = taskCode?.trim().toUpperCase() || await generateTaskCode();
     const existingTask = await Task.findOne({ taskCode: resolvedTaskCode });
@@ -164,7 +159,6 @@ const createTask = async (req, res) => {
       description: description?.trim() || "",
 
       taskType: normalizedTaskType,
-      serviceType: normalizedTaskType === "work" ? serviceType : null,
 
       project: resolvedProject || null,
       team: teamResolution.teamIds[0],
@@ -187,7 +181,7 @@ const createTask = async (req, res) => {
     });
 
     const populatedTask = await Task.findById(task._id)
-      .populate("project", "projectCode projectName")
+      .populate("project", "projectCode projectName serviceType")
       .populate("team", "teamName")
       .populate("teams", "teamName")
       .populate(
@@ -297,7 +291,7 @@ const getAllTasks = async (req, res) => {
     const tasks = await Task.find(filter)
       .populate(
         "project",
-        "projectCode projectName"
+        "projectCode projectName serviceType"
       )
       .populate("team", "teamName")
       .populate("teams", "teamName")
@@ -345,7 +339,7 @@ const getTaskById = async (req, res) => {
     const task = await Task.findOne(idFilter)
       .populate(
         "project",
-        "projectCode projectName"
+        "projectCode projectName serviceType"
       )
       .populate("team", "teamName")
       .populate("teams", "teamName")
@@ -394,7 +388,6 @@ const updateTask = async (req, res) => {
       taskName,
       description,
       taskType,
-      serviceType,
       project,
       team,
       teams,
@@ -443,15 +436,6 @@ const updateTask = async (req, res) => {
 
     if (taskType !== undefined) {
       task.taskType = taskType;
-    }
-
-    if (serviceType !== undefined) {
-      task.serviceType = serviceType || null;
-    }
-    if (task.taskType === "break") {
-      task.serviceType = null;
-    } else if (!SERVICE_TYPES.includes(task.serviceType)) {
-      return res.status(400).json({ success: false, message: "Select a service type for this work task." });
     }
 
     if (project !== undefined) {
@@ -517,7 +501,7 @@ const updateTask = async (req, res) => {
       await Task.findById(task._id)
         .populate(
           "project",
-          "projectCode projectName"
+          "projectCode projectName serviceType"
         )
         .populate("team", "teamName")
         .populate("teams", "teamName")
@@ -621,7 +605,7 @@ const resolveProjectForTeams = async (req, res) => {
 
     let project = null;
     if (resolution.status === "resolved") {
-      project = await Project.findById(resolution.projectId).select("projectCode projectName");
+      project = await Project.findById(resolution.projectId).select("projectCode projectName serviceType");
     }
 
     return res.status(200).json({

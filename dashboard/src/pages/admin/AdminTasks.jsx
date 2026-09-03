@@ -579,7 +579,7 @@ function AdminTasks() {
                             {task.taskType === "break" ? "Break time" : "Work time"}
                           </td>
 
-                          <td>{task.taskType === "break" ? "-" : task.serviceType || "Not configured"}</td>
+                          <td>{task.taskType === "break" ? "-" : task.project?.serviceType || "Service Type not configured"}</td>
 
                           <td>
                             {getAssignedName(

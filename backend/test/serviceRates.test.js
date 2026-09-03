@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const Employee = require("../src/models/Employee");
 const Task = require("../src/models/Task");
+const Project = require("../src/models/Project");
 const { normalizeServiceRates } = require("../src/utils/serviceRates");
 
 test("normalizes one and multiple service rate assignments", () => {
@@ -39,7 +40,7 @@ test("legacy employees without service rates remain valid and receive an empty l
   assert.deepEqual(legacyEmployee.serviceRates.toObject(), []);
 });
 
-test("legacy work tasks without a service type remain readable", async () => {
+test("legacy work tasks remain readable without a duplicated service type", async () => {
   const legacyTask = new Task({
     taskCode: "LEGACY-TASK",
     taskName: "Legacy task",
@@ -47,5 +48,42 @@ test("legacy work tasks without a service type remain readable", async () => {
     createdBy: "64b000000000000000000001",
   });
   await legacyTask.validate();
-  assert.equal(legacyTask.serviceType, null);
+  assert.equal(legacyTask.serviceType, undefined);
+});
+
+test("legacy projects without a service type remain readable", async () => {
+  const legacyProject = Project.hydrate({
+    _id: "64b000000000000000000009",
+    projectCode: "LEGACY-PROJECT",
+    projectName: "TAX PREPARATION",
+    createdBy: "64b000000000000000000001",
+  });
+  await legacyProject.validate();
+  assert.equal(legacyProject.serviceType, null);
+});
+
+test("projects accept only the configured service type options", async () => {
+  const validProject = new Project({
+    projectCode: "VALID-PROJECT",
+    projectName: "Annual return",
+    serviceType: "Business Tax Return",
+    createdBy: "64b000000000000000000001",
+  });
+  await validProject.validate();
+  assert.equal(validProject.serviceType, "Business Tax Return");
+
+  const invalidProject = new Project({
+    projectCode: "INVALID-PROJECT",
+    projectName: "Tax by project name",
+    serviceType: "TAX PREPARATION",
+    createdBy: "64b000000000000000000001",
+  });
+  await assert.rejects(invalidProject.validate(), /valid service type/i);
+
+  const missingServiceProject = new Project({
+    projectCode: "MISSING-SERVICE-PROJECT",
+    projectName: "Missing service",
+    createdBy: "64b000000000000000000001",
+  });
+  await assert.rejects(missingServiceProject.validate(), /Service Type is required/i);
 });

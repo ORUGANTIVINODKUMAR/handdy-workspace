@@ -149,8 +149,15 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     const task = log.taskRecord || {};
     const project = log.projectRecord || {};
     const isBreak = task.taskType === "break";
-    const serviceType = isBreak ? null : task.serviceType || null;
+    const serviceType = isBreak ? null : project.serviceType || null;
     const chargeRate = isBreak ? null : getEmployeeChargeRate(employee, serviceType);
+    const billingWarning = isBreak
+      ? null
+      : !serviceType
+        ? "Service Type not configured."
+        : chargeRate === null
+          ? "Charge rate not configured."
+          : null;
     for (const segment of splitLogByDay(log, rangeStart, rangeEnd, timezone)) {
       if (isBreak) breakSeconds += segment.seconds;
       else taskSeconds += segment.seconds;
@@ -189,7 +196,7 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
         serviceType,
         chargeRate,
         billableAmount: isBreak ? null : calculateBillableAmount(segment.seconds, chargeRate),
-        billingWarning: !isBreak && chargeRate === null ? "Charge rate not configured." : null,
+        billingWarning,
         startedAt: segment.startedAt.toISOString(),
         stoppedAt: segment.stoppedAt.toISOString(),
         durationSeconds: segment.seconds,
@@ -202,7 +209,9 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     .map((task) => ({
       ...task,
       billableAmount: calculateBillableAmount(task.totalSeconds, task.chargeRate),
-      billingWarning: task.chargeRate === null ? "Charge rate not configured." : null,
+      billingWarning: task.serviceType
+        ? task.chargeRate === null ? "Charge rate not configured." : null
+        : "Service Type not configured.",
     }))
     .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.taskName.localeCompare(b.taskName));
   const projectsMap = new Map();
@@ -258,7 +267,7 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       taskId: task.taskId,
       taskName: task.taskName,
       serviceType: task.serviceType,
-      message: "Charge rate not configured.",
+      message: task.billingWarning,
     })),
     projects: [...projectsMap.values()],
     taskSummary,

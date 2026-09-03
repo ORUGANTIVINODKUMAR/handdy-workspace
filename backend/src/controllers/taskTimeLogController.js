@@ -334,7 +334,7 @@ const getMyTimeLogs = async (req, res) => {
         const totalRecords = await TaskTimeLog.countDocuments(filter);
 
         const timeLogs = await TaskTimeLog.find(filter)
-            .populate("project", "projectCode projectName")
+            .populate("project", "projectCode projectName serviceType")
             .populate("task", "taskCode taskName")
             .sort("-startedAt")
             .skip(skip)
@@ -365,7 +365,7 @@ const getActiveTimer = async (req, res) => {
             employee: employeeId,
             status: { $in: ["running", "paused"] },
         })
-            .populate("project", "projectCode projectName")
+            .populate("project", "projectCode projectName serviceType")
             .populate("task", "taskCode taskName");
 
         return res.status(200).json({
@@ -425,7 +425,7 @@ const getMyTeamTimeLogs = async (req, res) => {
                 "employee",
                 "employeeId fullName email department designation"
             )
-            .populate("project", "projectCode projectName")
+            .populate("project", "projectCode projectName serviceType")
             .populate("task", "taskCode taskName")
             .sort("-startedAt")
             .skip(skip)
@@ -477,7 +477,7 @@ const getAllTimeLogs = async (req, res) => {
         const totalRecords = await TaskTimeLog.countDocuments(filter);
         const timeLogs = await TaskTimeLog.find(filter)
             .populate("employee", "employeeId fullName email department designation")
-            .populate("project", "projectCode projectName")
+            .populate("project", "projectCode projectName serviceType")
             .populate("task", "taskCode taskName")
             .sort("-startedAt")
             .skip(skip)

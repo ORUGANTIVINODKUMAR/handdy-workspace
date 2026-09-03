@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { SERVICE_TYPES } = require("../utils/serviceRates");
 
 const projectSchema = new mongoose.Schema(
   {
@@ -13,6 +14,19 @@ const projectSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+
+    // Required for newly created projects while remaining compatible with
+    // legacy database records that predate this field.
+    serviceType: {
+      type: String,
+      required: [function requireServiceForNewProject() { return this.isNew; }, "Service Type is required"],
+      enum: {
+        values: [...SERVICE_TYPES, null],
+        message: "Select a valid service type",
+      },
+      trim: true,
+      default: null,
     },
 
     description: {

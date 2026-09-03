@@ -80,7 +80,7 @@ function TeamLeadLogin() {
           <h2>Team Lead Login</h2>
 
           <p>
-            Sign in using your Upsilon Services
+            Sign in using your Handdy
             company email.
           </p>
 

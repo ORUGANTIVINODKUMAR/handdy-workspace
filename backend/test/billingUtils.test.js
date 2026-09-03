@@ -15,10 +15,10 @@ const employee = {
     { serviceType: "Audit", chargeRate: 30 },
   ],
 };
-const workTask = { _id: "64b000000000000000000000011", taskName: "Tax Preparation", taskType: "work", serviceType: "Tax" };
-const secondTask = { _id: "64b000000000000000000000012", taskName: "Review", taskType: "work", serviceType: "Audit" };
+const workTask = { _id: "64b000000000000000000000011", taskName: "Tax Preparation", taskType: "work" };
+const secondTask = { _id: "64b000000000000000000000012", taskName: "Review", taskType: "work" };
 const breakTask = { _id: "64b000000000000000000000013", taskName: "Break", taskType: "break" };
-const project = { _id: "64b000000000000000000000021", projectName: "ABC CPA", clientName: "ABC" };
+const project = { _id: "64b000000000000000000000021", projectName: "ABC CPA", clientName: "ABC", serviceType: "Tax" };
 
 const log = (id, taskRecord, startedAt, seconds, projectRecord = project) => ({
   _id: id,
@@ -64,14 +64,26 @@ test("multiple work tasks and break tasks have separate totals", () => {
 test("billing applies the employee rate for each task service", () => {
   const report = reportFor([
     log("1", workTask, "2026-08-01T09:00:00Z", 7200),
-    log("2", secondTask, "2026-08-01T11:00:00Z", 1800),
+    log("2", secondTask, "2026-08-01T11:00:00Z", 1800, {
+      _id: "64b000000000000000000000023",
+      projectName: "Audit project",
+      serviceType: "Audit",
+    }),
   ]);
-  assert.equal(report.taskSummary[0].serviceType, "Audit");
-  assert.equal(report.taskSummary[0].billableAmount, 15);
-  assert.equal(report.taskSummary[1].serviceType, "Tax");
-  assert.equal(report.taskSummary[1].billableAmount, 50);
+  const auditSummary = report.taskSummary.find((task) => task.serviceType === "Audit");
+  const taxSummary = report.taskSummary.find((task) => task.serviceType === "Tax");
+  assert.equal(auditSummary.billableAmount, 15);
+  assert.equal(taxSummary.billableAmount, 50);
   assert.equal(report.summary.totalBillableAmount, 65);
   assert.equal(report.summary.missingRateCount, 0);
+});
+
+test("billing ignores a stale task service and uses the project's service", () => {
+  const taskWithStaleService = { ...workTask, serviceType: "Audit" };
+  const report = reportFor([log("1", taskWithStaleService, "2026-08-01T09:00:00Z", 3600)]);
+  assert.equal(report.taskSummary[0].serviceType, "Tax");
+  assert.equal(report.taskSummary[0].chargeRate, 25);
+  assert.equal(report.taskSummary[0].billableAmount, 25);
 });
 
 test("billing amount uses the displayed two-decimal billable hours", () => {
@@ -85,14 +97,29 @@ test("billing returns a warning and no amount when a service rate is missing", (
     _id: "64b000000000000000000000099",
     taskName: "Monthly books",
     taskType: "work",
+  };
+  const bookkeepingProject = {
+    _id: "64b000000000000000000000024",
+    projectName: "Books project",
     serviceType: "Bookkeeping",
   };
-  const report = reportFor([log("1", bookkeepingTask, "2026-08-01T09:00:00Z", 3600)]);
+  const report = reportFor([log("1", bookkeepingTask, "2026-08-01T09:00:00Z", 3600, bookkeepingProject)]);
   assert.equal(report.taskSummary[0].chargeRate, null);
   assert.equal(report.taskSummary[0].billableAmount, null);
   assert.equal(report.taskSummary[0].billingWarning, "Charge rate not configured.");
   assert.equal(report.summary.totalBillableAmount, 0);
   assert.equal(report.summary.missingRateCount, 1);
+});
+
+test("billing does not infer service type from a legacy project name", () => {
+  const legacyNamedProject = {
+    _id: "64b000000000000000000000025",
+    projectName: "TAX PREPARATION",
+  };
+  const report = reportFor([log("1", workTask, "2026-08-01T09:00:00Z", 3600, legacyNamedProject)]);
+  assert.equal(report.taskSummary[0].serviceType, null);
+  assert.equal(report.taskSummary[0].billableAmount, null);
+  assert.equal(report.taskSummary[0].billingWarning, "Service Type not configured.");
 });
 
 test("paused time is not added back into a completed timer session", () => {
@@ -105,7 +132,7 @@ test("paused time is not added back into a completed timer session", () => {
 });
 
 test("same task name in different projects is not combined", () => {
-  const otherProject = { _id: "64b000000000000000000000022", projectName: "XYZ CPA" };
+  const otherProject = { _id: "64b000000000000000000000022", projectName: "XYZ CPA", serviceType: "Tax" };
   const sameNameTask = { _id: "64b000000000000000000000014", taskName: "Tax Preparation", taskType: "work" };
   const report = reportFor([
     log("1", workTask, "2026-08-01T09:00:00Z", 3600),

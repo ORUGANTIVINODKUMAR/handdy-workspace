@@ -81,7 +81,7 @@ function TeamLeadTasks() {
                 {loading ? <tr><td colSpan="7">Loading tasks...</td></tr> : filteredTasks.length === 0 ? <tr><td colSpan="7">No tasks found.</td></tr> : filteredTasks.map((task) => (
                   <tr key={task._id}>
                     <td>{task.taskName} <small>{task.taskCode}</small></td>
-                    <td>{task.taskType}</td><td>{task.taskType === "break" ? "-" : task.serviceType || "Not configured"}</td><td>{task.project?.projectName || "-"}</td>
+                    <td>{task.taskType}</td><td>{task.taskType === "break" ? "-" : task.project?.serviceType || "Service Type not configured"}</td><td>{task.project?.projectName || "-"}</td>
                     <td>{task.assignToAllEmployees ? "Entire team" : (task.assignedTo || []).map((item) => item.fullName).join(", ") || "-"}</td>
                     <td><span className={`tl-task-status ${task.isActive ? "is-active" : "is-inactive"}`}>{task.isActive ? "Active" : "Inactive"}</span></td>
                     <td className="tl-task-actions">

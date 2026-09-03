@@ -68,8 +68,8 @@ const getBillingReport = async (req, res) => {
     const taskIds = [...new Set(logs.map((log) => String(log.task)))];
     const projectIds = [...new Set(logs.map((log) => String(log.project)))];
     const [tasks, projects] = await Promise.all([
-      Task.find({ _id: { $in: taskIds } }).select("taskCode taskName description taskType serviceType project isActive").lean(),
-      Project.find({ _id: { $in: projectIds } }).select("projectCode projectName clientName status").lean(),
+      Task.find({ _id: { $in: taskIds } }).select("taskCode taskName description taskType project isActive").lean(),
+      Project.find({ _id: { $in: projectIds } }).select("projectCode projectName clientName serviceType status").lean(),
     ]);
     const tasksById = new Map(tasks.map((task) => [String(task._id), task]));
     const projectsById = new Map(projects.map((project) => [String(project._id), project]));
