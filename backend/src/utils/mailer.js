@@ -24,6 +24,28 @@ const getTransporter = () => {
   return cachedTransporter;
 };
 
+const verifyEmailTransport = async () => {
+  const transporter = getTransporter();
+
+  if (!transporter) {
+    console.warn(
+      "[mailer] SMTP verification skipped: SMTP_HOST, SMTP_USER, or SMTP_PASS is missing."
+    );
+    return false;
+  }
+
+  try {
+    await transporter.verify();
+    console.log("[mailer] SMTP connection verified successfully.");
+    return true;
+  } catch (error) {
+    console.error(
+      `[mailer] SMTP verification failed: ${error.response || error.message}`
+    );
+    return false;
+  }
+};
+
 // Falls back to logging the link when SMTP isn't configured (local/dev use)
 // instead of failing the request, since forgot-password must not error out.
 const sendPasswordResetEmail = async ({ to, resetUrl }) => {
@@ -34,13 +56,17 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
     return;
   }
 
-  await transporter.sendMail({
+  const result = await transporter.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to,
     subject: "Reset your Handdy password",
     text: `We received a request to reset your password. This link expires in 1 hour.\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
     html: `<p>We received a request to reset your password. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can ignore this email.</p>`,
   });
+
+  console.log(
+    `[mailer] Password reset email accepted by SMTP. Message ID: ${result.messageId}`
+  );
 };
 
-module.exports = { sendPasswordResetEmail };
+module.exports = { sendPasswordResetEmail, verifyEmailTransport };

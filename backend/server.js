@@ -7,6 +7,7 @@ const express = require("express");
 const cors = require("cors");
 
 const connectDatabase = require("./src/config/db");
+const { verifyEmailTransport } = require("./src/utils/mailer");
 
 // ==============================
 // ROUTES
@@ -181,6 +182,7 @@ app.use((req, res) => {
 const startServer = async () => {
   try {
     validateProductionConfig();
+    await verifyEmailTransport();
     await connectDatabase();
 
     app.listen(
