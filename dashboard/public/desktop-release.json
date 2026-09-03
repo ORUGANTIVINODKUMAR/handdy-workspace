@@ -1,0 +1,18 @@
+{
+  "latestVersion": "1.2.0",
+  "minimumSupportedVersion": "1.1.0",
+  "mandatory": false,
+  "platform": "Windows",
+  "fileName": "Handdy-Setup.exe",
+  "fileSize": "106 MB",
+  "sha256": "D592C211B5C4A80B7C8BDCB9089F65AEE0AD7F68395DB60640C1BF3846AF58EB",
+  "downloadUrl": "https://github.com/ORUGANTIVINODKUMAR/handdy-workspace/releases/download/v1.2.0/Handdy-Setup.exe",
+  "releasePageUrl": "/employee/app",
+  "releaseDate": "2026-09-03",
+  "message": "A new Handdy desktop version is available. Open the dashboard to download and install it.",
+  "releaseNotes": [
+    "Checks for new Handdy desktop versions at startup and every six hours.",
+    "Opens the employee App page when an update is available.",
+    "Installs over the existing Handdy application without requiring an uninstall."
+  ]
+}

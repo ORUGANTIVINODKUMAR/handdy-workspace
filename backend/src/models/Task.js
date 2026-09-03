@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { SERVICE_TYPES } = require("../utils/serviceRates");
 
 const taskSchema = new mongoose.Schema(
   {
@@ -29,6 +30,16 @@ const taskSchema = new mongoose.Schema(
         message: "Task type must be work or break",
       },
       default: "work",
+    },
+
+    serviceType: {
+      type: String,
+      enum: {
+        values: [...SERVICE_TYPES, null],
+        message: "Select a valid service type",
+      },
+      trim: true,
+      default: null,
     },
 
     project: {

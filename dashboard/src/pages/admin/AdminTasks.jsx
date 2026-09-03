@@ -485,6 +485,8 @@ function AdminTasks() {
                     </button>
                   </th>
 
+                  <th>Service</th>
+
                   <th>
                     <button
                       type="button"
@@ -536,7 +538,7 @@ function AdminTasks() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="8"
                       className="tasks-empty"
                     >
                       Loading tasks...
@@ -546,7 +548,7 @@ function AdminTasks() {
                   0 ? (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="8"
                       className="tasks-empty"
                     >
                       No tasks found.
@@ -576,6 +578,8 @@ function AdminTasks() {
                           <td>
                             {task.taskType === "break" ? "Break time" : "Work time"}
                           </td>
+
+                          <td>{task.taskType === "break" ? "-" : task.serviceType || "Not configured"}</td>
 
                           <td>
                             {getAssignedName(

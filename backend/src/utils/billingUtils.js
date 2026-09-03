@@ -124,6 +124,21 @@ const splitLogByDay = (log, rangeStart, rangeEnd, timezone) => {
   return segments;
 };
 
+const roundCurrency = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const getEmployeeChargeRate = (employee, serviceType) => {
+  if (!serviceType || !Array.isArray(employee?.serviceRates)) return null;
+  const assignment = employee.serviceRates.find((item) => item.serviceType === serviceType);
+  const rate = Number(assignment?.chargeRate);
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+};
+
+const calculateBillableAmount = (seconds, chargeRate) => {
+  if (!Number.isFinite(chargeRate) || chargeRate <= 0) return null;
+  const billableHours = Math.round((Math.max(0, seconds) / 3600) * 100) / 100;
+  return roundCurrency(billableHours * chargeRate);
+};
+
 const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, rangeStart, rangeEnd }) => {
   const taskGroups = new Map();
   const dailyGroups = new Map();
@@ -134,6 +149,8 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     const task = log.taskRecord || {};
     const project = log.projectRecord || {};
     const isBreak = task.taskType === "break";
+    const serviceType = isBreak ? null : task.serviceType || null;
+    const chargeRate = isBreak ? null : getEmployeeChargeRate(employee, serviceType);
     for (const segment of splitLogByDay(log, rangeStart, rangeEnd, timezone)) {
       if (isBreak) breakSeconds += segment.seconds;
       else taskSeconds += segment.seconds;
@@ -149,6 +166,8 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
           taskCode: task.taskCode || "",
           taskName: task.taskName || "Deleted task",
           taskDescription: task.description || "",
+          serviceType,
+          chargeRate,
           totalSeconds: 0,
         };
         current.totalSeconds += segment.seconds;
@@ -167,6 +186,10 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
         taskId: String(task._id || log.task),
         taskName: task.taskName || "Deleted task",
         taskDescription: task.description || "",
+        serviceType,
+        chargeRate,
+        billableAmount: isBreak ? null : calculateBillableAmount(segment.seconds, chargeRate),
+        billingWarning: !isBreak && chargeRate === null ? "Charge rate not configured." : null,
         startedAt: segment.startedAt.toISOString(),
         stoppedAt: segment.stoppedAt.toISOString(),
         durationSeconds: segment.seconds,
@@ -175,8 +198,13 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     }
   }
 
-  const taskSummary = [...taskGroups.values()].sort((a, b) =>
-    a.projectName.localeCompare(b.projectName) || a.taskName.localeCompare(b.taskName));
+  const taskSummary = [...taskGroups.values()]
+    .map((task) => ({
+      ...task,
+      billableAmount: calculateBillableAmount(task.totalSeconds, task.chargeRate),
+      billingWarning: task.chargeRate === null ? "Charge rate not configured." : null,
+    }))
+    .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.taskName.localeCompare(b.taskName));
   const projectsMap = new Map();
   for (const task of taskSummary) {
     const project = projectsMap.get(task.projectId) || {
@@ -185,9 +213,13 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       projectName: task.projectName,
       clientName: task.clientName,
       totalSeconds: 0,
+      totalBillableAmount: 0,
+      hasMissingRates: false,
       tasks: [],
     };
     project.totalSeconds += task.totalSeconds;
+    if (task.billableAmount === null) project.hasMissingRates = true;
+    else project.totalBillableAmount = roundCurrency(project.totalBillableAmount + task.billableAmount);
     project.tasks.push(task);
     projectsMap.set(task.projectId, project);
   }
@@ -195,8 +227,19 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
   const dailyDetails = [...dailyGroups.values()].sort((a, b) => a.date.localeCompare(b.date));
   for (const day of dailyDetails) {
     day.totalSeconds = day.taskSeconds + day.breakSeconds;
+    day.totalBillableAmount = roundCurrency(day.entries.reduce(
+      (total, entry) => total + (entry.billableAmount ?? 0),
+      0,
+    ));
+    day.hasMissingRates = day.entries.some((entry) => entry.billingWarning);
     day.entries.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   }
+
+  const missingRateTasks = taskSummary.filter((task) => task.billingWarning);
+  const totalBillableAmount = roundCurrency(taskSummary.reduce(
+    (total, task) => total + (task.billableAmount ?? 0),
+    0,
+  ));
 
   return {
     employee,
@@ -208,7 +251,15 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       workingDays: dailyDetails.length,
       taskCount: new Set(taskSummary.map((task) => task.taskId)).size,
       projectCount: projectsMap.size,
+      totalBillableAmount,
+      missingRateCount: missingRateTasks.length,
     },
+    warnings: missingRateTasks.map((task) => ({
+      taskId: task.taskId,
+      taskName: task.taskName,
+      serviceType: task.serviceType,
+      message: "Charge rate not configured.",
+    })),
     projects: [...projectsMap.values()],
     taskSummary,
     dailyDetails,
@@ -222,4 +273,6 @@ module.exports = {
   getBillingDateRange,
   getBillingEmployeeAccess,
   getDateKeyInTimezone,
+  getEmployeeChargeRate,
+  calculateBillableAmount,
 };

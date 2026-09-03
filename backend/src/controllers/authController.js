@@ -3,6 +3,7 @@ const generateToken = require("../utils/generateToken");
 const Team = require("../models/Team");
 const { syncEmployeeTeam } = require("../services/teamAssignmentService");
 const { sendPasswordResetEmail } = require("../utils/mailer");
+const { normalizeServiceRates } = require("../utils/serviceRates");
 const {
   generatePasswordResetToken,
   hashResetToken,
@@ -41,6 +42,8 @@ const buildUserResponse = (employee) => {
 
     country: employee.country || "",
     phoneNumber: employee.phoneNumber || "",
+
+    serviceRates: employee.serviceRates || [],
 
     isActive: employee.isActive,
 
@@ -102,6 +105,7 @@ const register = async (req, res) => {
       department,
       designation,
       team,
+      serviceRates,
     } = req.body;
 
     if (
@@ -127,6 +131,7 @@ const register = async (req, res) => {
       fullName.trim();
 
     const normalizedRole = role || "employee";
+    const normalizedServiceRates = normalizeServiceRates(serviceRates);
     if (["employee", "team_lead"].includes(normalizedRole)) {
       const validTeam = team && await Team.exists({ _id: team, isActive: true });
       if (!validTeam) {
@@ -186,6 +191,8 @@ const register = async (req, res) => {
 
         designation:
           designation?.trim() || "",
+
+        serviceRates: normalizedServiceRates,
       });
 
     await syncEmployeeTeam(employee, team);

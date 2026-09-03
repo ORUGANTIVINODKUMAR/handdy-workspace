@@ -6,9 +6,17 @@ const {
   getBillingEmployeeAccess,
 } = require("../src/utils/billingUtils");
 
-const employee = { _id: "64b000000000000000000001", employeeId: "EMP-1", fullName: "Lee Thomas" };
-const workTask = { _id: "64b000000000000000000000011", taskName: "Tax Preparation", taskType: "work" };
-const secondTask = { _id: "64b000000000000000000000012", taskName: "Review", taskType: "work" };
+const employee = {
+  _id: "64b000000000000000000001",
+  employeeId: "EMP-1",
+  fullName: "Lee Thomas",
+  serviceRates: [
+    { serviceType: "Tax", chargeRate: 25 },
+    { serviceType: "Audit", chargeRate: 30 },
+  ],
+};
+const workTask = { _id: "64b000000000000000000000011", taskName: "Tax Preparation", taskType: "work", serviceType: "Tax" };
+const secondTask = { _id: "64b000000000000000000000012", taskName: "Review", taskType: "work", serviceType: "Audit" };
 const breakTask = { _id: "64b000000000000000000000013", taskName: "Break", taskType: "break" };
 const project = { _id: "64b000000000000000000000021", projectName: "ABC CPA", clientName: "ABC" };
 
@@ -51,6 +59,40 @@ test("multiple work tasks and break tasks have separate totals", () => {
   assert.equal(report.summary.breakSeconds, 3600);
   assert.equal(report.summary.totalSeconds, 21_600);
   assert.equal(report.taskSummary.length, 2);
+});
+
+test("billing applies the employee rate for each task service", () => {
+  const report = reportFor([
+    log("1", workTask, "2026-08-01T09:00:00Z", 7200),
+    log("2", secondTask, "2026-08-01T11:00:00Z", 1800),
+  ]);
+  assert.equal(report.taskSummary[0].serviceType, "Audit");
+  assert.equal(report.taskSummary[0].billableAmount, 15);
+  assert.equal(report.taskSummary[1].serviceType, "Tax");
+  assert.equal(report.taskSummary[1].billableAmount, 50);
+  assert.equal(report.summary.totalBillableAmount, 65);
+  assert.equal(report.summary.missingRateCount, 0);
+});
+
+test("billing amount uses the displayed two-decimal billable hours", () => {
+  const report = reportFor([log("1", workTask, "2026-08-01T09:00:00Z", 11_040)]);
+  assert.equal(report.taskSummary[0].totalSeconds, 11_040);
+  assert.equal(report.taskSummary[0].billableAmount, 76.75);
+});
+
+test("billing returns a warning and no amount when a service rate is missing", () => {
+  const bookkeepingTask = {
+    _id: "64b000000000000000000000099",
+    taskName: "Monthly books",
+    taskType: "work",
+    serviceType: "Bookkeeping",
+  };
+  const report = reportFor([log("1", bookkeepingTask, "2026-08-01T09:00:00Z", 3600)]);
+  assert.equal(report.taskSummary[0].chargeRate, null);
+  assert.equal(report.taskSummary[0].billableAmount, null);
+  assert.equal(report.taskSummary[0].billingWarning, "Charge rate not configured.");
+  assert.equal(report.summary.totalBillableAmount, 0);
+  assert.equal(report.summary.missingRateCount, 1);
 });
 
 test("paused time is not added back into a completed timer session", () => {

@@ -2,6 +2,7 @@ const Employee = require("../models/Employee");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const Team = require("../models/Team");
 const { syncEmployeeTeam } = require("../services/teamAssignmentService");
+const { normalizeServiceRates } = require("../utils/serviceRates");
 
 const handleEmployeeError = (res, error) => {
   if (error.code === 11000) {
@@ -132,6 +133,10 @@ const updateEmployee = async (req, res) => {
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) employee[field] = req.body[field];
+    }
+
+    if (req.body.serviceRates !== undefined) {
+      employee.serviceRates = normalizeServiceRates(req.body.serviceRates);
     }
 
     if (req.body.password !== undefined) {

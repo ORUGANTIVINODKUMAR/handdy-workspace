@@ -52,6 +52,9 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
   const transporter = getTransporter();
 
   if (!transporter) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SMTP is not configured.");
+    }
     console.warn(`[mailer] SMTP is not configured. Password reset link for ${to}: ${resetUrl}`);
     return;
   }

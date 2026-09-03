@@ -4,6 +4,8 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getEmployees, resetEmployeePassword } from "../../api/employeeApi";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import EmployeeForm from "../../components/employees/EmployeeForm";
+import { EMPTY_SERVICE_RATE, validateEmployeeForm } from "../../utils/employeeFormValidation";
 
 function AdminEmployees() {
   const location = useLocation();
@@ -33,6 +35,7 @@ function AdminEmployees() {
     password: "",
     role: "employee",
     team: "",
+    serviceRates: [{ ...EMPTY_SERVICE_RATE }],
   });
 
   // EDIT EMPLOYEE
@@ -48,6 +51,7 @@ function AdminEmployees() {
     role: "employee",
     team: "",
     isActive: true,
+    serviceRates: [{ ...EMPTY_SERVICE_RATE }],
   });
 
   // RESET PASSWORD
@@ -147,9 +151,7 @@ function AdminEmployees() {
   };
 
   // ADD FORM CHANGE
-  const handleFormChange = (event) => {
-    const { name, value } = event.target;
-
+  const handleFormChange = (name, value) => {
     setFormData((previous) => {
       const updatedData = {
         ...previous,
@@ -171,6 +173,7 @@ function AdminEmployees() {
       password: "",
       role: "employee",
       team: "",
+      serviceRates: [{ ...EMPTY_SERVICE_RATE }],
     });
 
     setFormError("");
@@ -186,17 +189,9 @@ function AdminEmployees() {
   const handleAddEmployee = async (event) => {
     event.preventDefault();
 
-    if (
-      !formData.employeeId.trim() ||
-      !formData.fullName.trim() ||
-      !formData.email.trim() ||
-      !formData.password ||
-      (["employee", "team_lead"].includes(formData.role) && !formData.team)
-    ) {
-      setFormError(
-        "Employee ID, Full Name, Email, Password and Team are required."
-      );
-
+    const validationError = validateEmployeeForm(formData, { passwordRequired: true });
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
 
@@ -211,6 +206,10 @@ function AdminEmployees() {
         password: formData.password,
         role: formData.role,
         team: ["admin", "hr", "manager"].includes(formData.role) ? null : formData.team,
+        serviceRates: formData.serviceRates.map((assignment) => ({
+          serviceType: assignment.serviceType,
+          chargeRate: Number(assignment.chargeRate),
+        })),
       });
 
       closeAddEmployeeModal();
@@ -239,6 +238,12 @@ function AdminEmployees() {
       role: employee.role || "employee",
       team: employee.team?._id || employee.team || "",
       isActive: employee.isActive ?? true,
+      serviceRates: employee.serviceRates?.length
+        ? employee.serviceRates.map((assignment) => ({
+            serviceType: assignment.serviceType || "",
+            chargeRate: assignment.chargeRate ?? "",
+          }))
+        : [{ ...EMPTY_SERVICE_RATE }],
     });
 
     setEditError("");
@@ -246,16 +251,11 @@ function AdminEmployees() {
   };
 
   // EDIT FORM CHANGE
-  const handleEditFormChange = (event) => {
-    const { name, value } = event.target;
-
+  const handleEditFormChange = (name, value) => {
     setEditFormData((previous) => {
       const updatedData = {
         ...previous,
-        [name]:
-          name === "isActive"
-            ? value === "true"
-            : value,
+        [name]: value,
       };
 
       if (name === "role" && ["admin", "hr", "manager"].includes(value)) updatedData.team = "";
@@ -275,16 +275,9 @@ function AdminEmployees() {
   const handleUpdateEmployee = async (event) => {
     event.preventDefault();
 
-    if (
-      !editFormData.employeeId.trim() ||
-      !editFormData.fullName.trim() ||
-      !editFormData.email.trim() ||
-      (["employee", "team_lead"].includes(editFormData.role) && !editFormData.team)
-    ) {
-      setEditError(
-        "Employee ID, Full Name, Email and Team are required."
-      );
-
+    const validationError = validateEmployeeForm(editFormData);
+    if (validationError) {
+      setEditError(validationError);
       return;
     }
 
@@ -311,6 +304,11 @@ function AdminEmployees() {
 
           isActive:
             editFormData.isActive,
+
+          serviceRates: editFormData.serviceRates.map((assignment) => ({
+            serviceType: assignment.serviceType,
+            chargeRate: Number(assignment.chargeRate),
+          })),
         }
       );
 
@@ -470,6 +468,7 @@ function AdminEmployees() {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Team</th>
+                <th>Service Rates</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -478,13 +477,13 @@ function AdminEmployees() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7">
+                  <td colSpan="8">
                     Loading employees...
                   </td>
                 </tr>
               ) : employees.length === 0 ? (
                 <tr>
-                  <td colSpan="7">
+                  <td colSpan="8">
                     No employees found.
                   </td>
                 </tr>
@@ -510,6 +509,12 @@ function AdminEmployees() {
                     </td>
 
                     <td>{employee.team?.teamName || "-"}</td>
+
+                    <td>
+                      {employee.serviceRates?.length
+                        ? employee.serviceRates.map((assignment) => `${assignment.serviceType}: $${Number(assignment.chargeRate).toFixed(2)}/hr`).join(", ")
+                        : "Not configured"}
+                    </td>
 
                     <td>
                       <span
@@ -603,7 +608,7 @@ function AdminEmployees() {
       {showAddEmployee && (
         <div className="employee-modal-overlay">
 
-          <div className="employee-modal">
+          <div className="employee-modal employee-editor-modal">
 
             <div className="employee-modal-header">
 
@@ -625,147 +630,16 @@ function AdminEmployees() {
 
             </div>
 
-            {formError && (
-              <div
-                className="admin-error-box"
-                role="alert"
-              >
-                {formError}
-              </div>
-            )}
-
-            <form
-              className="employee-form"
+            <EmployeeForm
+              mode="create"
+              formData={formData}
+              teams={teams}
+              saving={saving}
+              error={formError}
+              onFieldChange={handleFormChange}
               onSubmit={handleAddEmployee}
-            >
-
-              <div>
-                <label htmlFor="addEmployeeId">
-                  Employee ID
-                </label>
-
-                <input
-                  id="addEmployeeId"
-                  name="employeeId"
-                  type="text"
-                  placeholder="EMP001"
-                  value={formData.employeeId}
-                  onChange={handleFormChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="addFullName">
-                  Full Name
-                </label>
-
-                <input
-                  id="addFullName"
-                  name="fullName"
-                  type="text"
-                  placeholder="Employee name"
-                  value={formData.fullName}
-                  onChange={handleFormChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="addEmail">
-                  Email
-                </label>
-
-                <input
-                  id="addEmail"
-                  name="email"
-                  type="email"
-                  placeholder="name@company.com"
-                  value={formData.email}
-                  onChange={handleFormChange}
-                  autoComplete="email"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="addPassword">
-                  Password
-                </label>
-
-                <input
-                  id="addPassword"
-                  name="password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={formData.password}
-                  onChange={handleFormChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="addRole">
-                  Role
-                </label>
-
-                <select
-                  id="addRole"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleFormChange}
-                >
-                  <option value="employee">
-                    Employee
-                  </option>
-
-                  <option value="team_lead">
-                    Team Lead
-                  </option>
-
-                  <option value="hr">HR</option>
-
-                  <option value="manager">Manager</option>
-
-                  <option value="admin">
-                    Admin
-                  </option>
-                </select>
-              </div>
-
-              {["employee", "team_lead"].includes(formData.role) && (
-                <div>
-                  <label htmlFor="addTeam">Team</label>
-                  <select id="addTeam" name="team" value={formData.team} onChange={handleFormChange} required>
-                    <option value="">Select team</option>
-                    {teams.map((team) => (
-                      <option key={team._id} value={team._id}>{team.teamName}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="employee-form-actions">
-
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={closeAddEmployeeModal}
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  className="primary-button"
-                  type="submit"
-                  disabled={saving}
-                >
-                  {saving
-                    ? "Saving..."
-                    : "Save Employee"}
-                </button>
-
-              </div>
-
-            </form>
+              onCancel={closeAddEmployeeModal}
+            />
 
           </div>
         </div>
@@ -779,7 +653,7 @@ function AdminEmployees() {
       {showEditEmployee && (
         <div className="employee-modal-overlay">
 
-          <div className="employee-modal">
+          <div className="employee-modal employee-editor-modal">
 
             <div className="employee-modal-header">
 
@@ -801,150 +675,16 @@ function AdminEmployees() {
 
             </div>
 
-            {editError && (
-              <div
-                className="admin-error-box"
-                role="alert"
-              >
-                {editError}
-              </div>
-            )}
-
-            <form
-              className="employee-form"
+            <EmployeeForm
+              mode="edit"
+              formData={editFormData}
+              teams={teams}
+              saving={editSaving}
+              error={editError}
+              onFieldChange={handleEditFormChange}
               onSubmit={handleUpdateEmployee}
-            >
-
-              <div>
-                <label htmlFor="editEmployeeId">
-                  Employee ID
-                </label>
-
-                <input
-                  id="editEmployeeId"
-                  name="employeeId"
-                  type="text"
-                  value={editFormData.employeeId}
-                  onChange={handleEditFormChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="editFullName">
-                  Full Name
-                </label>
-
-                <input
-                  id="editFullName"
-                  name="fullName"
-                  type="text"
-                  value={editFormData.fullName}
-                  onChange={handleEditFormChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="editEmail">
-                  Email
-                </label>
-
-                <input
-                  id="editEmail"
-                  name="email"
-                  type="email"
-                  value={editFormData.email}
-                  onChange={handleEditFormChange}
-                  autoComplete="email"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="editRole">
-                  Role
-                </label>
-
-                <select
-                  id="editRole"
-                  name="role"
-                  value={editFormData.role}
-                  onChange={handleEditFormChange}
-                >
-                  <option value="employee">
-                    Employee
-                  </option>
-
-                  <option value="team_lead">
-                    Team Lead
-                  </option>
-
-                  <option value="hr">HR</option>
-
-                  <option value="manager">Manager</option>
-
-                  <option value="admin">
-                    Admin
-                  </option>
-                </select>
-              </div>
-
-              {["employee", "team_lead"].includes(editFormData.role) && (
-                <div>
-                  <label htmlFor="editTeam">Team</label>
-                  <select id="editTeam" name="team" value={editFormData.team} onChange={handleEditFormChange} required>
-                    <option value="">Select team</option>
-                    {teams.map((team) => (
-                      <option key={team._id} value={team._id}>{team.teamName}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label htmlFor="editStatus">
-                  Status
-                </label>
-
-                <select
-                  id="editStatus"
-                  name="isActive"
-                  value={String(editFormData.isActive)}
-                  onChange={handleEditFormChange}
-                >
-                  <option value="true">
-                    Active
-                  </option>
-
-                  <option value="false">
-                    Inactive
-                  </option>
-                </select>
-              </div>
-
-              <div className="employee-form-actions">
-
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={closeEditEmployeeModal}
-                  disabled={editSaving}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  className="primary-button"
-                  type="submit"
-                  disabled={editSaving}
-                >
-                  {editSaving
-                    ? "Updating..."
-                    : "Update Employee"}
-                </button>
-
-              </div>
-
-            </form>
+              onCancel={closeEditEmployeeModal}
+            />
 
           </div>
         </div>

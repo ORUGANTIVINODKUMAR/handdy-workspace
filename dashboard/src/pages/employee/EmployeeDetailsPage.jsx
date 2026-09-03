@@ -70,6 +70,22 @@ function EmployeeDetailsPage() {
               <div><BriefcaseBusiness size={18} /><span>Department</span><strong>{employee.department || "Not assigned"}</strong></div>
               <div><BadgeCheck size={18} /><span>Designation</span><strong>{employee.designation || "Not assigned"}</strong></div>
             </div>
+
+            <section className="employee-details-services">
+              <h3>Service charge rates</h3>
+              {employee.serviceRates?.length ? (
+                <div>
+                  {employee.serviceRates.map((assignment) => (
+                    <article key={assignment.serviceType}>
+                      <span>{assignment.serviceType}</span>
+                      <strong>${Number(assignment.chargeRate).toFixed(2)} / hour</strong>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p>Charge rates are not configured for this employee.</p>
+              )}
+            </section>
           </section>
         )}
       </div>

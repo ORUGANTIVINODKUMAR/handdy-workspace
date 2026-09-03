@@ -5,6 +5,7 @@ import { getMyTeam } from "../../api/employeeApi";
 import { resolveProjectForTeams } from "../../api/taskApi";
 import useAuth from "../../context/useAuth";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import { SERVICE_TYPES } from "../../constants/serviceTypes";
 
 import "../../styles/adminAddTask.css";
 
@@ -30,6 +31,7 @@ function TaskForm({
 
   const [taskName, setTaskName] = useState(initialTask?.taskName || "");
   const [taskType, setTaskType] = useState(initialTask?.taskType || "work");
+  const [serviceType, setServiceType] = useState(initialTask?.serviceType || "");
   const [idleLogout, setIdleLogout] = useState(initialTask?.idleLogout === true);
   const [isActive, setIsActive] = useState(initialTask ? initialTask.isActive !== false : true);
 
@@ -149,6 +151,10 @@ function TaskForm({
       setError("Task name is required.");
       return;
     }
+    if (taskType === "work" && !SERVICE_TYPES.includes(serviceType)) {
+      setError("Select a service type for this work task.");
+      return;
+    }
     if (scope === "admin" && teams.length === 0) {
       setError("Select at least one team.");
       return;
@@ -161,6 +167,7 @@ function TaskForm({
     const payload = {
       taskName: taskName.trim(),
       taskType,
+      serviceType: taskType === "work" ? serviceType : null,
       teams,
       project: resolvedProjectId || null,
       assignToAllEmployees: assignType === "team",
@@ -227,6 +234,19 @@ function TaskForm({
           Enable idle logout for this task
         </label>
       </div>
+
+      {taskType === "work" && (
+        <div className="admin-task-basics" style={{ gridTemplateColumns: "1fr" }}>
+          <label>
+            Service type
+            <select value={serviceType} onChange={(event) => setServiceType(event.target.value)} required>
+              <option value="">Select the billing service</option>
+              {SERVICE_TYPES.map((service) => <option key={service} value={service}>{service}</option>)}
+            </select>
+            <small>This service selects the employee-specific hourly rate used in Billing.</small>
+          </label>
+        </div>
+      )}
 
       {scope === "admin" ? (
         <div className="admin-task-access">

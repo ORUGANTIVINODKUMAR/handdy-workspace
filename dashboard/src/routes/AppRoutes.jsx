@@ -992,6 +992,15 @@ function AppRoutes() {
       />
 
       <Route
+        path="/employee/app"
+        element={
+          <EmployeeOnly>
+            <EmployeeApps />
+          </EmployeeOnly>
+        }
+      />
+
+      <Route
         path="/employee/apps"
         element={
           <EmployeeOnly>

@@ -24,7 +24,7 @@ function TeamLeadApps() {
   const handleWindowsDownload = () => {
     const link = document.createElement("a");
 
-    link.href = "/downloads/Handdy-Setup.exe";
+    link.href = "https://github.com/ORUGANTIVINODKUMAR/handdy-workspace/releases/download/v1.2.0/Handdy-Setup.exe";
     link.download = "Handdy-Setup.exe";
 
     document.body.appendChild(link);

@@ -17,7 +17,7 @@
 .billing-empty svg { color: var(--primary, #26785f); }
 .billing-empty h3, .billing-empty p { margin: 0; }
 .billing-empty p, .billing-history-note { color: var(--text-secondary, #62716b); }
-.billing-summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.billing-summary-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
 .billing-summary-grid article { position: relative; display: grid; gap: 5px; min-height: 140px; padding: 19px; overflow: hidden; }
 .billing-summary-grid article svg { color: var(--primary, #26785f); }
 .billing-summary-grid article span { color: var(--text-secondary, #62716b); font-size: 12px; font-weight: 700; }
@@ -25,6 +25,9 @@
 .billing-summary-grid article small { color: var(--text-secondary, #62716b); }
 .billing-summary-grid .break-card { border-color: color-mix(in srgb, #c8932c 35%, var(--border-color, #dbe5e1)); }
 .billing-summary-grid .total-card { background: color-mix(in srgb, var(--primary, #26785f) 8%, var(--card-bg, #fff)); }
+.billing-summary-grid .billing-amount-card { border-color: color-mix(in srgb, var(--primary, #26785f) 45%, var(--border-color, #dbe5e1)); background: color-mix(in srgb, var(--primary, #26785f) 11%, var(--card-bg, #fff)); }
+.billing-rate-warning { display: flex; align-items: flex-start; gap: 10px; padding: 13px 16px; border: 1px solid #f0c36b; border-radius: 10px; background: #fff8e7; color: #795400; }
+.billing-rate-warning span { color: #7a6740; }
 .billing-report, .billing-daily { padding: 0; overflow: hidden; }
 .billing-report > header, .billing-daily > header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 21px 22px; border-bottom: 1px solid var(--border-color, #e1e8e5); }
 .billing-report header h3, .billing-daily header h3 { margin: 4px 0 0; font-size: 20px; }
@@ -35,12 +38,15 @@
 .billing-project-heading svg { color: var(--primary, #26785f); }
 .billing-project-heading h4, .billing-project-heading p { margin: 0; }
 .billing-project-heading p { margin-top: 2px; color: var(--text-secondary, #62716b); font-size: 12px; }
+.billing-project-totals { display: grid; gap: 3px; text-align: right; }
+.billing-project-totals span { color: var(--text-secondary, #62716b); font-size: 12px; }
 .billing-table-wrap { max-width: 100%; overflow-x: auto; }
 .billing-table-wrap table { width: 100%; min-width: 650px; border-collapse: collapse; }
 .billing-table-wrap th, .billing-table-wrap td { border-bottom: 1px solid var(--border-color, #e1e8e5); padding: 13px 22px; text-align: left; vertical-align: top; }
 .billing-table-wrap th { color: var(--text-secondary, #62716b); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
 .billing-table-wrap td:last-child, .billing-table-wrap th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
 .billing-table-wrap td small { display: block; margin-top: 2px; color: var(--text-secondary, #62716b); }
+.billing-table-wrap .billing-missing-rate { color: #a05b00; font-size: 12px; font-weight: 700; }
 .billing-daily details + details { border-top: 1px solid var(--border-color, #e1e8e5); }
 .billing-daily summary { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(3, auto); gap: 22px; align-items: center; cursor: pointer; padding: 16px 22px; }
 .billing-daily summary:hover { background: color-mix(in srgb, var(--primary, #26785f) 5%, transparent); }

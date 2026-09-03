@@ -9,7 +9,7 @@ const { aggregateBillingLogs, DEFAULT_TIMEZONE, getBillingDateRange, getBillingE
 // Billing needs both relationships: `team` is the authoritative assignment
 // used by the Team filter, while `teamLead` is retained for access checks and
 // older employee records.
-const employeeFields = "employeeId fullName email department designation role isActive team teamLead";
+const employeeFields = "employeeId fullName email department designation role isActive team teamLead serviceRates";
 
 const getAuthorizedEmployee = async (user, requestedId) => {
   const access = getBillingEmployeeAccess(user, requestedId);
@@ -68,7 +68,7 @@ const getBillingReport = async (req, res) => {
     const taskIds = [...new Set(logs.map((log) => String(log.task)))];
     const projectIds = [...new Set(logs.map((log) => String(log.project)))];
     const [tasks, projects] = await Promise.all([
-      Task.find({ _id: { $in: taskIds } }).select("taskCode taskName description taskType project isActive").lean(),
+      Task.find({ _id: { $in: taskIds } }).select("taskCode taskName description taskType serviceType project isActive").lean(),
       Project.find({ _id: { $in: projectIds } }).select("projectCode projectName clientName status").lean(),
     ]);
     const tasksById = new Map(tasks.map((task) => [String(task._id), task]));

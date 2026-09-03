@@ -233,15 +233,15 @@ function EmployeeSidebar() {
             )}
 
             <NavLink
-              to="/employee/apps"
+              to="/employee/app"
               className={navClass}
-              title={collapsed ? "Apps" : ""}
+              title={collapsed ? "App" : ""}
             >
               <Box size={19} />
 
               {!collapsed && (
                 <span>
-                  Apps
+                  App
                 </span>
               )}
             </NavLink>

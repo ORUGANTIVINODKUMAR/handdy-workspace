@@ -59,11 +59,21 @@ const formatClockDuration = (seconds = 0) => {
 const toDecimalHours = (seconds = 0) =>
   Math.round((Math.max(0, Number(seconds) || 0) / 3600) * 100) / 100;
 
+const formatMoney = (amount) => amount === null || amount === undefined
+  ? "Charge rate not configured."
+  : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+
+const formatRate = (rate) => rate === null || rate === undefined
+  ? "Charge rate not configured."
+  : `${formatMoney(rate)} / hour`;
+
 const formatDecimalCells = (worksheet) => {
-  Object.values(worksheet).forEach((cell) => {
-    if (cell && typeof cell === "object" && cell.t === "n") {
-      cell.z = "0.0#";
-    }
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      if (typeof cell.value === "number") {
+        cell.numFmt = "0.0#";
+      }
+    });
   });
   return worksheet;
 };
@@ -166,7 +176,8 @@ function BillingContent() {
 
   const exportReport = async () => {
     if (!report) return;
-    const XLSX = await import("xlsx");
+    const ExcelJSModule = await import("exceljs");
+    const ExcelJS = ExcelJSModule.default || ExcelJSModule;
     const titleRows = [
       ["Billing Report"],
       ["Employee", report.employee.fullName],
@@ -174,14 +185,18 @@ function BillingContent() {
       ["Period", `${formatDate(report.period.startDate)} - ${formatDate(report.period.endDate)}`],
       [],
       ["Task Summary"],
-      ["Project", "Client", "Task", "Description", "Total Hours", "Decimal Hours"],
+      ["Project", "Client", "Service Type", "Task", "Description", "Total Hours", "Decimal Hours", "Hourly Rate", "Billable Amount", "Warning"],
       ...report.taskSummary.map((task) => [
         task.projectName,
         task.clientName,
+        task.serviceType || "Not assigned",
         task.taskName,
         task.taskDescription,
         formatClockDuration(task.totalSeconds),
         toDecimalHours(task.totalSeconds),
+        task.chargeRate,
+        task.billableAmount,
+        task.billingWarning || "",
       ]),
       [],
       ["Time Summary"],
@@ -189,29 +204,68 @@ function BillingContent() {
       ["Task Hours", formatClockDuration(report.summary.taskSeconds), toDecimalHours(report.summary.taskSeconds)],
       ["Break Hours", formatClockDuration(report.summary.breakSeconds), toDecimalHours(report.summary.breakSeconds)],
       ["Total Recorded Hours", formatClockDuration(report.summary.totalSeconds), toDecimalHours(report.summary.totalSeconds)],
+      ["Calculated Billable Amount", "", report.summary.totalBillableAmount],
+      ["Rate Warnings", "", report.summary.missingRateCount || 0],
     ];
     const dailyRows = [
-      ["Date", "Type", "Project", "Client", "Task", "Description", "Start", "End", "Duration", "Decimal Hours"],
+      ["Date", "Type", "Project", "Client", "Service Type", "Task", "Description", "Start", "End", "Duration", "Decimal Hours", "Hourly Rate", "Billable Amount", "Warning"],
       ...report.dailyDetails.flatMap((day) => day.entries.map((entry) => [
         day.date,
         entry.type === "break" ? "Break" : "Task",
         entry.projectName,
         entry.clientName,
+        entry.serviceType || (entry.type === "break" ? "-" : "Not assigned"),
         entry.taskName,
         entry.taskDescription,
         new Date(entry.startedAt).toLocaleString(undefined, { timeZone: report.period.timezone }),
         new Date(entry.stoppedAt).toLocaleString(undefined, { timeZone: report.period.timezone }),
         formatClockDuration(entry.durationSeconds),
         toDecimalHours(entry.durationSeconds),
+        entry.chargeRate,
+        entry.billableAmount,
+        entry.billingWarning || "",
       ])),
     ];
-    const workbook = XLSX.utils.book_new();
-    const summarySheet = formatDecimalCells(XLSX.utils.aoa_to_sheet(titleRows));
-    const dailySheet = formatDecimalCells(XLSX.utils.aoa_to_sheet(dailyRows));
-    XLSX.utils.book_append_sheet(workbook, summarySheet, "Billing Summary");
-    XLSX.utils.book_append_sheet(workbook, dailySheet, "Daily Details");
+    const workbook = new ExcelJS.Workbook();
+    const summarySheet = workbook.addWorksheet("Billing Summary");
+    const dailySheet = workbook.addWorksheet("Daily Details");
+    summarySheet.addRows(titleRows);
+    dailySheet.addRows(dailyRows);
+    formatDecimalCells(summarySheet);
+    formatDecimalCells(dailySheet);
+    for (let row = 8; row < 8 + report.taskSummary.length; row += 1) {
+      summarySheet.getCell(row, 8).numFmt = "$0.00";
+      summarySheet.getCell(row, 9).numFmt = "$0.00";
+    }
+    summarySheet.getCell(14 + report.taskSummary.length, 3).numFmt = "$0.00";
+    for (let row = 2; row < 2 + dailyRows.length - 1; row += 1) {
+      dailySheet.getCell(row, 12).numFmt = "$0.00";
+      dailySheet.getCell(row, 13).numFmt = "$0.00";
+    }
+    summarySheet.columns = [
+      { width: 24 }, { width: 22 }, { width: 22 }, { width: 24 },
+      { width: 36 }, { width: 16 }, { width: 16 }, { width: 16 },
+      { width: 18 }, { width: 28 },
+    ];
+    dailySheet.columns = [
+      { width: 14 }, { width: 12 }, { width: 24 }, { width: 22 },
+      { width: 22 }, { width: 24 }, { width: 36 }, { width: 24 },
+      { width: 24 }, { width: 14 }, { width: 16 }, { width: 16 },
+      { width: 18 }, { width: 28 },
+    ];
     const safeName = report.employee.fullName.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
-    XLSX.writeFile(workbook, `Billing-${safeName}-${report.period.startDate}-${report.period.endDate}.xlsx`);
+    const fileName = `Billing-${safeName}-${report.period.startDate}-${report.period.endDate}.xlsx`;
+    const buffer = await workbook.xlsx.writeBuffer();
+    const downloadUrl = URL.createObjectURL(new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }));
+    const downloadLink = document.createElement("a");
+    downloadLink.href = downloadUrl;
+    downloadLink.download = fileName;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
   };
 
   return (
@@ -241,14 +295,22 @@ function BillingContent() {
             <article className="card"><Clock3 size={20} /><span>Task hours</span><strong>{formatDuration(report.summary.taskSeconds)}</strong><small>{report.summary.taskCount} tasks</small></article>
             <article className="card break-card"><Clock3 size={20} /><span>Break hours</span><strong>{formatDuration(report.summary.breakSeconds)}</strong><small>Recorded break tasks</small></article>
             <article className="card total-card"><ReceiptText size={20} /><span>Total recorded</span><strong>{formatDuration(report.summary.totalSeconds)}</strong><small>{report.summary.projectCount} projects</small></article>
+            <article className="card billing-amount-card"><ReceiptText size={20} /><span>{report.summary.missingRateCount ? "Calculated subtotal" : "Billable amount"}</span><strong>{formatMoney(report.summary.totalBillableAmount)}</strong><small>{report.summary.missingRateCount ? `Excludes ${report.summary.missingRateCount} task(s) with missing rates` : "All rates configured"}</small></article>
           </section>
+
+          {report.warnings?.length > 0 && (
+            <section className="billing-rate-warning" role="alert">
+              <strong>Charge rate not configured.</strong>
+              <span>{report.warnings.map((warning) => `${warning.taskName} (${warning.serviceType || "service not assigned"})`).join(", ")}</span>
+            </section>
+          )}
 
           <section className="billing-report card">
             <header><div><span>Primary report</span><h3>Project-wise task summary</h3></div><strong>{formatDuration(report.summary.taskSeconds)}</strong></header>
             {report.projects.length === 0 ? <div className="billing-no-data">No completed task time was recorded in this period.</div> : report.projects.map((project) => (
               <article className="billing-project" key={project.projectId}>
-                <div className="billing-project-heading"><div><FolderKanban size={18} /><div><h4>{project.projectName}</h4><p>{project.clientName || project.projectCode || "No client assigned"}</p></div></div><strong>{formatDuration(project.totalSeconds)}</strong></div>
-                <div className="billing-table-wrap"><table><thead><tr><th>Task</th><th>Description</th><th>Total time</th></tr></thead><tbody>{project.tasks.map((task) => <tr key={task.taskId}><td><strong>{task.taskName}</strong>{task.taskCode && <small>{task.taskCode}</small>}</td><td>{task.taskDescription || "-"}</td><td>{formatClockDuration(task.totalSeconds)}</td></tr>)}</tbody></table></div>
+                <div className="billing-project-heading"><div><FolderKanban size={18} /><div><h4>{project.projectName}</h4><p>{project.clientName || project.projectCode || "No client assigned"}</p></div></div><div className="billing-project-totals"><strong>{formatDuration(project.totalSeconds)}</strong><span>{project.hasMissingRates ? "Known subtotal: " : ""}{formatMoney(project.totalBillableAmount)}{project.hasMissingRates ? " (missing rates excluded)" : ""}</span></div></div>
+                <div className="billing-table-wrap"><table><thead><tr><th>Service type</th><th>Task</th><th>Description</th><th>Total time</th><th>Hourly rate</th><th>Billable amount</th></tr></thead><tbody>{project.tasks.map((task) => <tr key={task.taskId}><td>{task.serviceType || "Not assigned"}</td><td><strong>{task.taskName}</strong>{task.taskCode && <small>{task.taskCode}</small>}</td><td>{task.taskDescription || "-"}</td><td>{formatClockDuration(task.totalSeconds)}</td><td className={task.billingWarning ? "billing-missing-rate" : ""}>{formatRate(task.chargeRate)}</td><td className={task.billingWarning ? "billing-missing-rate" : ""}>{formatMoney(task.billableAmount)}</td></tr>)}</tbody></table></div>
               </article>
             ))}
           </section>
@@ -258,7 +320,7 @@ function BillingContent() {
             {report.dailyDetails.length === 0 ? <div className="billing-no-data">No completed timer records were found.</div> : report.dailyDetails.map((day) => (
               <details key={day.date}>
                 <summary><span>{formatDate(day.date)}</span><span>Tasks {formatDuration(day.taskSeconds)}</span><span>Breaks {formatDuration(day.breakSeconds)}</span><strong>{formatDuration(day.totalSeconds)}</strong></summary>
-                <div className="billing-table-wrap"><table><thead><tr><th>Type</th><th>Project</th><th>Task</th><th>Start</th><th>End</th><th>Time</th></tr></thead><tbody>{day.entries.map((entry, index) => <tr key={`${entry.logId}-${index}`}><td><span className={`billing-type ${entry.type}`}>{entry.type === "break" ? "Break" : "Task"}</span></td><td>{entry.projectName}</td><td>{entry.taskName}</td><td>{new Date(entry.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: report.period.timezone })}</td><td>{new Date(entry.stoppedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: report.period.timezone })}</td><td>{formatDuration(entry.durationSeconds)}</td></tr>)}</tbody></table></div>
+                <div className="billing-table-wrap"><table><thead><tr><th>Type</th><th>Project</th><th>Service</th><th>Task</th><th>Start</th><th>End</th><th>Time</th><th>Rate</th><th>Amount</th></tr></thead><tbody>{day.entries.map((entry, index) => <tr key={`${entry.logId}-${index}`}><td><span className={`billing-type ${entry.type}`}>{entry.type === "break" ? "Break" : "Task"}</span></td><td>{entry.projectName}</td><td>{entry.serviceType || (entry.type === "break" ? "-" : "Not assigned")}</td><td>{entry.taskName}</td><td>{new Date(entry.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: report.period.timezone })}</td><td>{new Date(entry.stoppedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: report.period.timezone })}</td><td>{formatDuration(entry.durationSeconds)}</td><td className={entry.billingWarning ? "billing-missing-rate" : ""}>{entry.type === "break" ? "-" : formatRate(entry.chargeRate)}</td><td className={entry.billingWarning ? "billing-missing-rate" : ""}>{entry.type === "break" ? "-" : formatMoney(entry.billableAmount)}</td></tr>)}</tbody></table></div>
               </details>
             ))}
           </section>

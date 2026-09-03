@@ -76,12 +76,12 @@ function TeamLeadTasks() {
           </div>
           <div className="tl-tasks-table-wrapper">
             <table className="tl-tasks-table">
-              <thead><tr><th>Task</th><th>Type</th><th>Project</th><th>Assigned to</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Task</th><th>Type</th><th>Service</th><th>Project</th><th>Assigned to</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
-                {loading ? <tr><td colSpan="6">Loading tasks...</td></tr> : filteredTasks.length === 0 ? <tr><td colSpan="6">No tasks found.</td></tr> : filteredTasks.map((task) => (
+                {loading ? <tr><td colSpan="7">Loading tasks...</td></tr> : filteredTasks.length === 0 ? <tr><td colSpan="7">No tasks found.</td></tr> : filteredTasks.map((task) => (
                   <tr key={task._id}>
                     <td>{task.taskName} <small>{task.taskCode}</small></td>
-                    <td>{task.taskType}</td><td>{task.project?.projectName || "-"}</td>
+                    <td>{task.taskType}</td><td>{task.taskType === "break" ? "-" : task.serviceType || "Not configured"}</td><td>{task.project?.projectName || "-"}</td>
                     <td>{task.assignToAllEmployees ? "Entire team" : (task.assignedTo || []).map((item) => item.fullName).join(", ") || "-"}</td>
                     <td><span className={`tl-task-status ${task.isActive ? "is-active" : "is-inactive"}`}>{task.isActive ? "Active" : "Inactive"}</span></td>
                     <td className="tl-task-actions">

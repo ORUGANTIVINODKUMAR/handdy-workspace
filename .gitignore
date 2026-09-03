@@ -20,3 +20,6 @@ Thumbs.db
 
 # npm
 npm-debug.log*
+
+# Desktop installers are published as GitHub Release assets, not Git blobs.
+dashboard/public/downloads/*.exe

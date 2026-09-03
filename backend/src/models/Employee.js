@@ -1,5 +1,27 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const { SERVICE_TYPES } = require("../utils/serviceRates");
+
+const serviceRateSchema = new mongoose.Schema(
+  {
+    serviceType: {
+      type: String,
+      required: [true, "Service type is required"],
+      enum: {
+        values: SERVICE_TYPES,
+        message: "Select a valid service type",
+      },
+      trim: true,
+    },
+    chargeRate: {
+      type: Number,
+      required: [true, "Charge rate is required"],
+      min: [0.01, "Charge rate must be greater than zero"],
+      max: [1_000_000, "Charge rate is too large"],
+    },
+  },
+  { _id: false }
+);
 
 const employeeSchema = new mongoose.Schema(
   {
@@ -117,6 +139,18 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+    },
+
+    serviceRates: {
+      type: [serviceRateSchema],
+      default: [],
+      validate: {
+        validator(assignments) {
+          const serviceTypes = assignments.map((assignment) => assignment.serviceType);
+          return new Set(serviceTypes).size === serviceTypes.length;
+        },
+        message: "A service type cannot be assigned more than once",
+      },
     },
 
     isActive: {

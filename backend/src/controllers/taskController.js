@@ -4,6 +4,7 @@ const Project = require("../models/Project");
 const Team = require("../models/Team");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const { resolveTeamsProject } = require("../utils/taskProjectResolution");
+const { SERVICE_TYPES } = require("../utils/serviceRates");
 
 const normalizeAssignments = (assignedTo) => {
   const values = Array.isArray(assignedTo)
@@ -96,6 +97,7 @@ const createTask = async (req, res) => {
       taskName,
       description,
       taskType,
+      serviceType,
       project,
       team,
       teams,
@@ -110,6 +112,11 @@ const createTask = async (req, res) => {
         success: false,
         message: "Task name is required.",
       });
+    }
+
+    const normalizedTaskType = taskType || "work";
+    if (normalizedTaskType === "work" && !SERVICE_TYPES.includes(serviceType)) {
+      return res.status(400).json({ success: false, message: "Select a service type for this work task." });
     }
 
     const resolvedTaskCode = taskCode?.trim().toUpperCase() || await generateTaskCode();
@@ -156,7 +163,8 @@ const createTask = async (req, res) => {
       taskName: taskName.trim(),
       description: description?.trim() || "",
 
-      taskType: taskType || "work",
+      taskType: normalizedTaskType,
+      serviceType: normalizedTaskType === "work" ? serviceType : null,
 
       project: resolvedProject || null,
       team: teamResolution.teamIds[0],
@@ -386,6 +394,7 @@ const updateTask = async (req, res) => {
       taskName,
       description,
       taskType,
+      serviceType,
       project,
       team,
       teams,
@@ -434,6 +443,15 @@ const updateTask = async (req, res) => {
 
     if (taskType !== undefined) {
       task.taskType = taskType;
+    }
+
+    if (serviceType !== undefined) {
+      task.serviceType = serviceType || null;
+    }
+    if (task.taskType === "break") {
+      task.serviceType = null;
+    } else if (!SERVICE_TYPES.includes(task.serviceType)) {
+      return res.status(400).json({ success: false, message: "Select a service type for this work task." });
     }
 
     if (project !== undefined) {
