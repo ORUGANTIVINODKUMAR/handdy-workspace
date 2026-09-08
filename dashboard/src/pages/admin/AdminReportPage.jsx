@@ -13,6 +13,7 @@ import {
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 import "../../styles/adminReportPage.css";
+import ReportSummary from "../../components/dashboard/ReportSummary";
 
 const localDate = () => {
   const now = new Date();
@@ -209,6 +210,12 @@ function AdminReportPage({
   return (
     <DashboardLayout title={title}>
       <div className="admin-report-page">
+        <ReportSummary items={[
+          { label: "Records", value: hasRun ? records.length : "—" },
+          { label: "Worked time", value: hasRun && mode === "time" ? formatDuration(totalSeconds) : "—" },
+          { label: "Idle time", value: hasRun && mode === "time" ? formatDuration(totalIdleSeconds) : "—" },
+          { label: "Report scope", value: scope === "personal" ? "Personal" : "Company", help: "Access follows your role" },
+        ]} />
         <section className="admin-report-filter card">
           <div>
             <span className="admin-report-kicker">Report filters</span>
@@ -281,6 +288,7 @@ function AdminReportPage({
           {error && (
             <p className="admin-report-message error-message" role="alert">{error}</p>
           )}
+          {!error && !hasRun && mode !== "tracking" && <div className="admin-report-empty"><FileSearch size={26} /><strong>Your report starts here</strong><span>Choose your filters, then generate a report to see recorded activity.</span></div>}
           {!error && mode === "tracking" && hasRun && (
             <div className="admin-report-empty">
               <Activity size={26} />

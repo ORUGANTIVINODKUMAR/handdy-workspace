@@ -1,3 +1,4 @@
+@layer legacy {
 .settings-page {
   width: 100%;
 }
@@ -49,8 +50,8 @@
   border: 0;
   border-radius: 4px;
 
-  background: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  color: #ffffff ;
 
   font-size: 14px;
   font-weight: 700;
@@ -58,7 +59,7 @@
 }
 
 .settings-save-button:hover {
-  background: var(--primary-hover) !important;
+  background: var(--primary-hover) ;
 }
 
 .settings-save-button:disabled {
@@ -235,4 +236,6 @@
   .settings-inline {
     align-items: flex-start;
   }
+}
+
 }

@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    SHIFT LIST / ADD SHIFT
 ========================================= */
@@ -56,7 +57,7 @@
 
   background: var(--primary, #2563eb);
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-weight: 700;
   cursor: pointer;
@@ -64,7 +65,7 @@
 
 .shift-add-btn:hover {
   background: var(--primary-hover, #1d4ed8);
-  color: #ffffff !important;
+  color: #ffffff ;
 }
 
 /* =========================================
@@ -115,7 +116,7 @@
 }
 
 .shift-empty {
-  text-align: center !important;
+  text-align: center ;
 }
 
 /* =========================================
@@ -220,13 +221,13 @@
 
   background: var(--primary, #2563eb);
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-size: 16px;
   font-weight: 700;
 
   cursor: pointer;
-  text-decoration: none !important;
+  text-decoration: none ;
 
   transition: 0.2s ease;
 }
@@ -235,8 +236,8 @@
 .shift-back:focus,
 .shift-back:active {
   background: var(--primary-hover, #1d4ed8);
-  color: #ffffff !important;
-  text-decoration: none !important;
+  color: #ffffff ;
+  text-decoration: none ;
 }
 
 /* =========================================
@@ -379,12 +380,12 @@
 
   padding: 12px 20px;
 
-  border: none !important;
+  border: none ;
   border-radius: 10px;
 
-  background: var(--primary, #2563eb) !important;
+  background: var(--primary, #2563eb) ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-family: inherit;
   font-size: 16px;
@@ -394,18 +395,18 @@
 
   cursor: pointer;
 
-  text-decoration: none !important;
+  text-decoration: none ;
   -webkit-text-fill-color: #ffffff;
 }
 
 .shift-add-break-row .add-break-button:hover,
 .shift-add-break-row .add-break-button:focus,
 .shift-add-break-row .add-break-button:active {
-  background: var(--primary-hover, #1d4ed8) !important;
+  background: var(--primary-hover, #1d4ed8) ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
-  text-decoration: none !important;
+  text-decoration: none ;
 
   -webkit-text-fill-color: #ffffff;
 }
@@ -415,16 +416,16 @@
 ========================================= */
 
 .shift-remove-break {
-  width: auto !important;
+  width: auto ;
 
   margin-top: 8px;
   padding: 0;
 
   border: none;
 
-  background: transparent !important;
+  background: transparent ;
 
-  color: #dc2626 !important;
+  color: #dc2626 ;
 
   font-size: 12px;
   font-weight: 600;
@@ -493,14 +494,14 @@
 }
 
 .shift-cancel-btn {
-  width: auto !important;
+  width: auto ;
 
   padding: 12px 18px;
 
   border: 1px solid #cbd5e1;
   border-radius: 5px;
 
-  background: #ffffff !important;
+  background: #ffffff ;
 
   color: #111827;
 
@@ -510,16 +511,16 @@
 }
 
 .shift-save-btn {
-  width: auto !important;
+  width: auto ;
 
   padding: 12px 20px;
 
   border: none;
   border-radius: 5px;
 
-  background: var(--primary, #2563eb) !important;
+  background: var(--primary, #2563eb) ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-weight: 700;
 
@@ -527,8 +528,8 @@
 }
 
 .shift-save-btn:hover:not(:disabled) {
-  background: var(--primary-hover, #1d4ed8) !important;
-  color: #ffffff !important;
+  background: var(--primary-hover, #1d4ed8) ;
+  color: #ffffff ;
 }
 
 .shift-save-btn:disabled,
@@ -560,4 +561,5 @@
   .shift-table {
     min-width: 850px;
   }
+}
 }

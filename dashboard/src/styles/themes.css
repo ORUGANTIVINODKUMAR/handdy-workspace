@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================================
    GLOBAL THEME VARIABLES
    ========================================================= */
@@ -734,9 +735,9 @@ button {
 .team-timesheet-tab.active,
 .report-view-button.active,
 .view-button.active {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  border-color: var(--primary) ;
+  color: #ffffff ;
 }
 
 /* hover */
@@ -744,8 +745,8 @@ button {
 .team-timesheet-tab:hover,
 .report-view-button:hover,
 .view-button:hover {
-  border-color: var(--primary) !important;
-  color: var(--primary) !important;
+  border-color: var(--primary) ;
+  color: var(--primary) ;
 }
 
 /* active hover should stay filled */
@@ -753,8 +754,8 @@ button {
 .team-timesheet-tab.active:hover,
 .report-view-button.active:hover,
 .view-button.active:hover {
-  background: var(--primary-hover) !important;
-  color: #ffffff !important;
+  background: var(--primary-hover) ;
+  color: #ffffff ;
 }
 
 
@@ -763,28 +764,28 @@ button {
 .team-timesheet-report-header,
 .day-view-report-title,
 .day-report-header {
-  background: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  color: #ffffff ;
 }
 
 
 /* Go button */
 .team-timesheet-go-button {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  border-color: var(--primary) ;
+  color: #ffffff ;
 }
 
 .team-timesheet-go-button:hover {
-  background: var(--primary-hover) !important;
+  background: var(--primary-hover) ;
 }
 
 
 /* Active sidebar item */
 .sidebar-link.active,
 .sidebar-sublink.active {
-  background: var(--sidebar-active) !important;
-  color: #ffffff !important;
+  background: var(--sidebar-active) ;
+  color: #ffffff ;
 }
 
 
@@ -794,8 +795,8 @@ button {
 .team-timesheet-report-title,
 .working-today-report-title,
 .project-work-report-title {
-  background: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  color: #ffffff ;
 }
 /* ==========================================
    FORCE TEAM TIMESHEET TO FOLLOW THEME
@@ -804,14 +805,14 @@ button {
 .team-timesheet-tab.active,
 .team-timesheet-report-title,
 .team-timesheet-go-button {
-  background-color: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: #ffffff !important;
+  background-color: var(--primary) ;
+  border-color: var(--primary) ;
+  color: #ffffff ;
 }
 
 .team-timesheet-go-button:hover,
 .team-timesheet-tab.active:hover {
-  background-color: var(--primary-hover) !important;
+  background-color: var(--primary-hover) ;
 }
 /* =========================================================
    GLOBAL THEME VARIABLES
@@ -1013,23 +1014,23 @@ button {
 .admin-page,
 .admin-main,
 .admin-content {
-  background: var(--page-bg) !important;
-  color: var(--text-main) !important;
+  background: var(--page-bg) ;
+  color: var(--text-main) ;
 }
 
 .admin-topbar {
-  background: var(--card-bg) !important;
-  border-bottom: 1px solid var(--border-color) !important;
+  background: var(--card-bg) ;
+  border-bottom: 1px solid var(--border-color) ;
 }
 
 .admin-topbar h1,
 .admin-topbar strong,
 .admin-topbar span {
-  color: var(--text-main) !important;
+  color: var(--text-main) ;
 }
 
 .admin-eyebrow {
-  color: var(--text-secondary) !important;
+  color: var(--text-secondary) ;
 }
 
 
@@ -1038,12 +1039,12 @@ button {
 ========================================================= */
 
 .admin-sidebar {
-  background: var(--sidebar-bg) !important;
-  color: var(--sidebar-text) !important;
+  background: var(--sidebar-bg) ;
+  color: var(--sidebar-text) ;
 }
 
 .sidebar-brand {
-  border-bottom-color: rgba(255, 255, 255, 0.15) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.15) ;
 }
 
 .sidebar-brand h2,
@@ -1052,7 +1053,7 @@ button {
 .sidebar-link,
 .sidebar-sublink,
 .sidebar-parent-button {
-  color: var(--sidebar-text) !important;
+  color: var(--sidebar-text) ;
 }
 
 .sidebar-section {
@@ -1061,13 +1062,13 @@ button {
 
 .sidebar-link:hover,
 .sidebar-sublink:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.12) ;
 }
 
 .sidebar-link.active,
 .sidebar-sublink.active {
-  background: var(--sidebar-active) !important;
-  color: #ffffff !important;
+  background: var(--sidebar-active) ;
+  color: #ffffff ;
 }
 
 
@@ -1086,8 +1087,8 @@ button {
 .project-work-card,
 .task-tracker-card,
 .attendance-card {
-  background: var(--card-bg) !important;
-  border-color: var(--border-color) !important;
+  background: var(--card-bg) ;
+  border-color: var(--border-color) ;
 }
 
 
@@ -1112,9 +1113,9 @@ button {
 .team-timesheet-go-button,
 .detailed-team-go-button,
 .detailed-go-button {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: var(--button-text) !important;
+  background: var(--primary) ;
+  border-color: var(--primary) ;
+  color: var(--button-text) ;
 }
 
 .primary-button:hover,
@@ -1134,8 +1135,8 @@ button {
 .team-timesheet-go-button:hover,
 .detailed-team-go-button:hover,
 .detailed-go-button:hover {
-  background: var(--primary-hover) !important;
-  border-color: var(--primary-hover) !important;
+  background: var(--primary-hover) ;
+  border-color: var(--primary-hover) ;
 }
 
 
@@ -1147,18 +1148,18 @@ button {
 .team-timesheet-view-button,
 .report-view-button,
 .view-button {
-  background: var(--card-bg) !important;
-  color: var(--text-main) !important;
-  border: 1px solid var(--border-color) !important;
+  background: var(--card-bg) ;
+  color: var(--text-main) ;
+  border: 1px solid var(--border-color) ;
 }
 
 .team-timesheet-tab.active,
 .team-timesheet-view-button.active,
 .report-view-button.active,
 .view-button.active {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  border-color: var(--primary) ;
+  color: #ffffff ;
 }
 
 
@@ -1174,8 +1175,8 @@ button {
 .detailed-report-title,
 .working-today-report-title,
 .project-work-report-title {
-  background: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  color: #ffffff ;
 }
 
 
@@ -1192,9 +1193,9 @@ button {
 .working-today-table th,
 .task-tracker-table th,
 .project-work-table th {
-  background: var(--table-head-bg) !important;
-  color: var(--table-head-text) !important;
-  border-color: var(--border-color) !important;
+  background: var(--table-head-bg) ;
+  color: var(--table-head-text) ;
+  border-color: var(--border-color) ;
 }
 
 .tasks-table td,
@@ -1206,8 +1207,8 @@ button {
 .working-today-table td,
 .task-tracker-table td,
 .project-work-table td {
-  border-color: var(--border-color) !important;
-  color: var(--text-main) !important;
+  border-color: var(--border-color) ;
+  color: var(--text-main) ;
 }
 
 
@@ -1218,15 +1219,15 @@ button {
 input,
 select,
 textarea {
-  background: var(--card-bg) !important;
-  color: var(--text-main) !important;
-  border-color: var(--border-color) !important;
+  background: var(--card-bg) ;
+  color: var(--text-main) ;
+  border-color: var(--border-color) ;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--primary) !important;
+  border-color: var(--primary) ;
   outline: none;
 }
 
@@ -1239,9 +1240,9 @@ textarea:focus {
 .projects-pagination .current-page,
 .team-pagination button.active,
 .pagination button.active {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  border-color: var(--primary) ;
+  color: #ffffff ;
 }
 
 
@@ -1252,7 +1253,7 @@ textarea:focus {
 .task-icon-button,
 .edit-button,
 .icon-button {
-  color: var(--primary) !important;
+  color: var(--primary) ;
 }
 
 
@@ -1262,12 +1263,12 @@ textarea:focus {
 
 .task-status.active,
 .status-active {
-  color: var(--success) !important;
+  color: var(--success) ;
 }
 
 .task-status.inactive,
 .status-inactive {
-  color: var(--danger) !important;
+  color: var(--danger) ;
 }
 
 /* =========================================================
@@ -1423,17 +1424,17 @@ html[data-theme] .employee-page,
 html[data-theme] .employee-main,
 html[data-theme] .dashboard-main,
 html[data-theme] [class*="-page-content"] {
-  color: var(--text-main) !important;
-  background-color: var(--page-bg) !important;
+  color: var(--text-main) ;
+  background-color: var(--page-bg) ;
 }
 
 html[data-theme] .admin-topbar,
 html[data-theme] .tl-topbar,
 html[data-theme] .employee-topbar,
 html[data-theme] .dashboard-header {
-  color: var(--text-main) !important;
-  background: var(--topbar-bg) !important;
-  border-color: var(--border-light) !important;
+  color: var(--text-main) ;
+  background: var(--topbar-bg) ;
+  border-color: var(--border-light) ;
 }
 
 /* All role sidebars */
@@ -1441,9 +1442,9 @@ html[data-theme] .admin-sidebar,
 html[data-theme] .admin-handdy-sidebar,
 html[data-theme] .tl-sidebar,
 html[data-theme] .employee-sidebar {
-  color: var(--sidebar-text) !important;
-  background: var(--sidebar-bg) !important;
-  border-color: color-mix(in srgb, var(--sidebar-text) 12%, transparent) !important;
+  color: var(--sidebar-text) ;
+  background: var(--sidebar-bg) ;
+  border-color: color-mix(in srgb, var(--sidebar-text) 12%, transparent) ;
 }
 
 html[data-theme] .admin-sidebar *,
@@ -1460,8 +1461,8 @@ html[data-theme] .tl-sidebar-link,
 html[data-theme] .tl-sidebar-sublink,
 html[data-theme] .employee-sidebar-link,
 html[data-theme] .employee-sidebar-sublink {
-  color: var(--sidebar-text) !important;
-  background: transparent !important;
+  color: var(--sidebar-text) ;
+  background: transparent ;
 }
 
 html[data-theme] .admin-handdy-link:hover,
@@ -1471,7 +1472,7 @@ html[data-theme] .sidebar-sublink:hover,
 html[data-theme] .tl-sidebar-link:hover,
 html[data-theme] .tl-sidebar-sublink:hover,
 html[data-theme] .employee-sidebar-link:hover,
-html[data-theme] .employee-sidebar-sublink:hover { background: var(--sidebar-hover) !important; }
+html[data-theme] .employee-sidebar-sublink:hover { background: var(--sidebar-hover) ; }
 
 html[data-theme] .admin-handdy-link.active,
 html[data-theme] .admin-handdy-sublink.active,
@@ -1481,14 +1482,14 @@ html[data-theme] .tl-sidebar-link.active,
 html[data-theme] .tl-sidebar-sublink.active,
 html[data-theme] .employee-sidebar-link.active,
 html[data-theme] .employee-sidebar-sublink.active {
-  color: #fff !important;
-  background: var(--sidebar-active) !important;
+  color: #fff ;
+  background: var(--sidebar-active) ;
 }
 
 html[data-theme] .admin-handdy-section h3,
 html[data-theme] .sidebar-section,
 html[data-theme] .tl-menu-title,
-html[data-theme] .employee-menu-title { color: var(--sidebar-muted) !important; }
+html[data-theme] .employee-menu-title { color: var(--sidebar-muted) ; }
 
 /* Cards, panels, dialogs, and reports */
 html[data-theme] .card,
@@ -1497,9 +1498,9 @@ html[data-theme] [class$="-card"],
 html[data-theme] [class*="-card "],
 html[data-theme] [class$="-panel"],
 html[data-theme] [class*="-modal"]:not([class*="overlay"]):not([class*="backdrop"]) {
-  color: var(--text-main) !important;
-  background-color: var(--card-bg) !important;
-  border-color: var(--border-light) !important;
+  color: var(--text-main) ;
+  background-color: var(--card-bg) ;
+  border-color: var(--border-light) ;
   box-shadow: 0 8px 28px var(--shadow-color);
 }
 
@@ -1519,38 +1520,38 @@ html[data-theme] input:not([type="checkbox"]):not([type="radio"]),
 html[data-theme] select,
 html[data-theme] textarea {
   min-height: 42px;
-  color: var(--text-main) !important;
+  color: var(--text-main) ;
   caret-color: var(--primary);
-  background: var(--input-bg) !important;
-  border: 1px solid var(--input-border) !important;
-  border-radius: 10px !important;
+  background: var(--input-bg) ;
+  border: 1px solid var(--input-border) ;
+  border-radius: 10px ;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) inset;
 }
 
 html[data-theme] input::placeholder,
-html[data-theme] textarea::placeholder { color: var(--text-muted) !important; opacity: 0.84; }
+html[data-theme] textarea::placeholder { color: var(--text-muted) ; opacity: 0.84; }
 
 html[data-theme] input:focus,
 html[data-theme] select:focus,
 html[data-theme] textarea:focus {
-  border-color: var(--input-focus) !important;
-  outline: 3px solid color-mix(in srgb, var(--input-focus) 18%, transparent) !important;
+  border-color: var(--input-focus) ;
+  outline: 3px solid color-mix(in srgb, var(--input-focus) 18%, transparent) ;
   outline-offset: 1px;
-  box-shadow: 0 0 0 1px var(--input-focus) !important;
+  box-shadow: 0 0 0 1px var(--input-focus) ;
 }
 
 html[data-theme] input:disabled,
 html[data-theme] select:disabled,
-html[data-theme] textarea:disabled { color: var(--text-muted) !important; background: var(--surface-soft) !important; }
+html[data-theme] textarea:disabled { color: var(--text-muted) ; background: var(--surface-soft) ; }
 
 html[data-theme] input[type="checkbox"],
 html[data-theme] input[type="radio"] { accent-color: var(--primary); }
 
 /* Buttons */
 html[data-theme] button:not(.theme-card):not(.theme-modal-close):not(.theme-trigger):not(.admin-handdy-link):not(.tl-sidebar-link):not(.employee-sidebar-link):not(.sidebar-parent-button):not(.task-sort-button):not(.task-team-option):not(.project-client-option):not(.admin-task-team-option):not(.admin-task-assignment-option):not(.admin-task-employee-option):not(.tl-task-toggle):not(.admin-add-task-back):not(.admin-add-task-save):not(.admin-add-task-cancel):not(.tl-add-task-back):not([class*="icon"]):not([class*="close"]):not([class*="delete"]):not([class*="edit"]):not([class*="secondary"]):not([class*="cancel"]):not([class*="view"]) {
-  color: var(--button-text) !important;
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
+  color: var(--button-text) ;
+  background: var(--primary) ;
+  border-color: var(--primary) ;
 }
 
 html[data-theme] button:not(:disabled):hover { filter: brightness(0.96); }
@@ -1561,32 +1562,32 @@ html[data-theme] [class*="view-button"]:not(.active),
 html[data-theme] [class*="edit"],
 html[data-theme] [class*="icon-button"],
 html[data-theme] [class*="close-button"] {
-  color: var(--primary) !important;
-  background: var(--surface-soft) !important;
-  border-color: var(--border-color) !important;
+  color: var(--primary) ;
+  background: var(--surface-soft) ;
+  border-color: var(--border-color) ;
 }
 
 html[data-theme] [class*="delete"],
-html[data-theme] [class*="danger"] { color: var(--danger) !important; background: var(--danger-bg) !important; border-color: color-mix(in srgb, var(--danger) 28%, transparent) !important; }
+html[data-theme] [class*="danger"] { color: var(--danger) ; background: var(--danger-bg) ; border-color: color-mix(in srgb, var(--danger) 28%, transparent) ; }
 
-html[data-theme] button:disabled { color: var(--text-muted) !important; background: var(--surface-soft) !important; border-color: var(--border-light) !important; opacity: 0.68; }
+html[data-theme] button:disabled { color: var(--text-muted) ; background: var(--surface-soft) ; border-color: var(--border-light) ; opacity: 0.68; }
 
 /* Tables and pagination */
-html[data-theme] table { color: var(--text-main) !important; background: var(--card-bg) !important; }
-html[data-theme] table th { color: var(--table-head-text) !important; background: var(--table-head-bg) !important; border-color: var(--table-border) !important; }
-html[data-theme] table td { color: var(--text-main) !important; background: var(--card-bg) !important; border-color: var(--table-border) !important; }
-html[data-theme] table tbody tr:hover td { background: var(--surface-soft) !important; }
-html[data-theme] [class*="pagination"] button { color: var(--text-main) !important; background: var(--card-bg) !important; border-color: var(--border-color) !important; }
+html[data-theme] table { color: var(--text-main) ; background: var(--card-bg) ; }
+html[data-theme] table th { color: var(--table-head-text) ; background: var(--table-head-bg) ; border-color: var(--table-border) ; }
+html[data-theme] table td { color: var(--text-main) ; background: var(--card-bg) ; border-color: var(--table-border) ; }
+html[data-theme] table tbody tr:hover td { background: var(--surface-soft) ; }
+html[data-theme] [class*="pagination"] button { color: var(--text-main) ; background: var(--card-bg) ; border-color: var(--border-color) ; }
 html[data-theme] [class*="pagination"] button.active,
-html[data-theme] [class*="pagination"] .current-page { color: #fff !important; background: var(--primary) !important; border-color: var(--primary) !important; }
+html[data-theme] [class*="pagination"] .current-page { color: #fff ; background: var(--primary) ; border-color: var(--primary) ; }
 
 /* Semantic feedback */
 html[data-theme] .success-message,
-html[data-theme] [class*="status"][class*="active"] { color: var(--success) !important; background-color: var(--success-bg); }
+html[data-theme] [class*="status"][class*="active"] { color: var(--success) ; background-color: var(--success-bg); }
 html[data-theme] .error-message,
-html[data-theme] .admin-error-box { color: var(--danger) !important; background-color: var(--danger-bg) !important; border-color: color-mix(in srgb, var(--danger) 24%, transparent) !important; }
+html[data-theme] .admin-error-box { color: var(--danger) ; background-color: var(--danger-bg) ; border-color: color-mix(in srgb, var(--danger) 24%, transparent) ; }
 html[data-theme] .eyebrow,
-html[data-theme] .admin-eyebrow { color: var(--primary) !important; }
+html[data-theme] .admin-eyebrow { color: var(--primary) ; }
 
 html[data-theme] * { scrollbar-color: var(--primary-soft) var(--surface-soft); }
 
@@ -1605,53 +1606,55 @@ html[data-theme] .admin-handdy-brand {
   height: 64px;
   gap: 11px;
   padding-inline: 20px;
-  background: var(--sidebar-bg-secondary) !important;
-  border-bottom-color: color-mix(in srgb, var(--sidebar-text) 14%, transparent) !important;
+  background: var(--sidebar-bg-secondary) ;
+  border-bottom-color: color-mix(in srgb, var(--sidebar-text) 14%, transparent) ;
 }
 
 html[data-theme] .admin-handdy-logo {
   width: 36px;
   height: 36px;
-  color: var(--sidebar-text) !important;
-  background: color-mix(in srgb, var(--sidebar-active) 62%, transparent) !important;
-  border: 1px solid color-mix(in srgb, var(--sidebar-text) 22%, transparent) !important;
-  border-radius: 11px !important;
+  color: var(--sidebar-text) ;
+  background: color-mix(in srgb, var(--sidebar-active) 62%, transparent) ;
+  border: 1px solid color-mix(in srgb, var(--sidebar-text) 22%, transparent) ;
+  border-radius: 11px ;
 }
 
 html[data-theme] .admin-handdy-name {
-  color: var(--sidebar-text) !important;
+  color: var(--sidebar-text) ;
   font-size: 23px;
   font-weight: 760;
   letter-spacing: -0.025em;
 }
 
 html[data-theme] .admin-handdy-collapse {
-  color: var(--primary) !important;
-  background: var(--card-bg) !important;
-  border: 1px solid var(--border-light) !important;
+  color: var(--primary) ;
+  background: var(--card-bg) ;
+  border: 1px solid var(--border-light) ;
   box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 html[data-theme] .tl-brand,
 html[data-theme] .employee-brand {
-  background: var(--sidebar-bg-secondary) !important;
-  border-bottom-color: color-mix(in srgb, var(--sidebar-text) 14%, transparent) !important;
+  background: var(--sidebar-bg-secondary) ;
+  border-bottom-color: color-mix(in srgb, var(--sidebar-text) 14%, transparent) ;
 }
 
 html[data-theme] .tl-brand-circle,
 html[data-theme] .employee-brand-circle {
   width: 36px;
   height: 36px;
-  color: var(--sidebar-text) !important;
-  background: color-mix(in srgb, var(--sidebar-active) 62%, transparent) !important;
-  border: 1px solid color-mix(in srgb, var(--sidebar-text) 22%, transparent) !important;
-  border-radius: 11px !important;
+  color: var(--sidebar-text) ;
+  background: color-mix(in srgb, var(--sidebar-active) 62%, transparent) ;
+  border: 1px solid color-mix(in srgb, var(--sidebar-text) 22%, transparent) ;
+  border-radius: 11px ;
 }
 
 html[data-theme] .tl-brand-name,
 html[data-theme] .employee-brand-name {
-  color: var(--sidebar-text) !important;
+  color: var(--sidebar-text) ;
   font-size: 23px;
   font-weight: 760;
   letter-spacing: -0.025em;
+}
+
 }

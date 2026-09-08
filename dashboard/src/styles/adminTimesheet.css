@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    TIMESHEET BUTTONS / ACTIVE STATES
 ========================================= */
@@ -14,28 +15,28 @@
 }
 
 .timesheet-view-button.active {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  border-color: var(--primary) ;
+  color: #ffffff ;
 }
 
 .timesheet-go-button {
-  background: var(--primary) !important;
+  background: var(--primary) ;
   border: none;
   border-radius: 6px;
-  color: #ffffff !important;
+  color: #ffffff ;
   font-weight: 700;
   cursor: pointer;
 }
 
 .timesheet-report-title {
-  background: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  color: #ffffff ;
 }
 
 .timesheet-filter-option.active {
-  background: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  color: #ffffff ;
 }
 
 /* =========================================
@@ -50,21 +51,21 @@
 .summary-line.idle,
 .summary-line.idle span,
 .summary-line.idle strong {
-  color: #dc2626 !important;
+  color: #dc2626 ;
 }
 
 /* Work time - green */
 .summary-line.work,
 .summary-line.work span,
 .summary-line.work strong {
-  color: #16a34a !important;
+  color: #16a34a ;
 }
 
 /* Break time - red */
 .summary-line.break,
 .summary-line.break span,
 .summary-line.break strong {
-  color: #dc2626 !important;
+  color: #dc2626 ;
 }
 
 /* =========================================
@@ -74,10 +75,10 @@
 
 .detailed-total.light,
 .detailed-total.dark {
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: #ffffff ;
+  color: #111827 ;
 
-  border-top: 1px solid #e5e7eb !important;
+  border-top: 1px solid #e5e7eb ;
 
   display: flex;
   align-items: center;
@@ -93,7 +94,7 @@
 .detailed-total.light strong,
 .detailed-total.dark span,
 .detailed-total.dark strong {
-  color: #111827 !important;
+  color: #111827 ;
   font-weight: 700;
 }
 /* =========================================
@@ -119,15 +120,15 @@
     in srgb,
     var(--primary) 75%,
     white
-  ) !important;
+  ) ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 }
 
 /* Second total row - main theme color */
 .detailed-total.dark {
-  background: var(--primary) !important;
-  color: #ffffff !important;
+  background: var(--primary) ;
+  color: #ffffff ;
 }
 
 /* Keep text white */
@@ -135,6 +136,7 @@
 .detailed-total.light strong,
 .detailed-total.dark span,
 .detailed-total.dark strong {
-  color: #ffffff !important;
+  color: #ffffff ;
   font-weight: 700;
+}
 }

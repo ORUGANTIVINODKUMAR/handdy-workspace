@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    EMPLOYEE DASHBOARD
 ========================================= */
@@ -346,4 +347,6 @@
   .handdy-download-content { flex-direction: column; align-items: stretch; }
   .handdy-download-actions, .handdy-download-btn { width: 100%; }
   .handdy-download-card { padding: 20px; }
+}
+
 }

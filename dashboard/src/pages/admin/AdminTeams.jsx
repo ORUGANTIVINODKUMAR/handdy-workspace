@@ -1,3 +1,4 @@
+import ModalFrame from "../../components/layout/ModalFrame";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
@@ -146,7 +147,7 @@ function AdminTeams() {
 
             <input
               id="team-search"
-              type="search"
+              type="search" aria-label="Search records"
               value={search}
               onChange={(event) =>
                 setSearch(event.target.value)
@@ -202,7 +203,7 @@ function AdminTeams() {
               ) : filteredTeams.length === 0 ? (
                 <tr>
                   <td colSpan="4" className="team-empty">
-                    No teams found.
+                    No teams found. Create a team to organize your employees.
                   </td>
                 </tr>
               ) : (
@@ -294,7 +295,7 @@ function AdminTeams() {
       </section>
 
       {showAddTeam && (
-        <div className="team-modal-overlay">
+        <ModalFrame onClose={closeAddTeam} label="Teams details">
           <div className="team-modal">
             <div className="team-modal-header">
               <h2>Add New Team</h2>
@@ -346,11 +347,11 @@ function AdminTeams() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalFrame>
       )}
 
       {showEditTeam && (
-        <div className="team-modal-overlay">
+        <ModalFrame onClose={closeEditTeam} label="Teams details">
           <div className="team-modal">
             <div className="team-modal-header">
               <div><p className="admin-eyebrow">TEAM MANAGEMENT</p><h2>Edit Team</h2></div>
@@ -371,7 +372,7 @@ function AdminTeams() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalFrame>
       )}
     </DashboardLayout>
   );

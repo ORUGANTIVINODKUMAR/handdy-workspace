@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    TEAM LEAD TASKS PAGE
 ========================================= */
@@ -250,8 +251,8 @@
 }
 
 .tl-no-tasks {
-  height: 60px !important;
-  text-align: center !important;
+  height: 60px ;
+  text-align: center ;
 }
 
 /* =========================================
@@ -325,7 +326,7 @@
 }
 
 .tl-pagination-dots {
-  background: #eeeeee !important;
+  background: #eeeeee ;
 }
 
 /* =========================================
@@ -360,15 +361,15 @@
 }
 
 /* Current Team Lead Tasks screen: a compact, green enterprise table layout. */
-html[data-theme] .tl-page { min-height: 100vh; background: #f3f8f5 !important; }
-html[data-theme] .tl-page .tl-main { width: calc(100% - var(--tl-sidebar-width)); min-height: 100vh; margin-left: var(--tl-sidebar-width); padding: 36px 42px; background: #f3f8f5 !important; }
+html[data-theme] .tl-page { min-height: 100vh; background: #f3f8f5 ; }
+html[data-theme] .tl-page .tl-main { width: calc(100% - var(--tl-sidebar-width)); min-height: 100vh; margin-left: var(--tl-sidebar-width); padding: 36px 42px; background: #f3f8f5 ; }
 html[data-theme] .tl-tasks-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; max-width: 1280px; margin: 0 auto 24px; }
 html[data-theme] .tl-tasks-header p { margin: 0 0 6px; color: #18775c; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
 html[data-theme] .tl-tasks-header h1 { margin: 0; color: #173c31; font-size: 30px; line-height: 1.15; }
 html[data-theme] .tl-tasks-header span { display: block; margin-top: 7px; color: #6b8177; font-size: 14px; }
-html[data-theme] .tl-tasks-header > button { min-height: 44px; padding: 0 17px; border: 0 !important; border-radius: 9px; background: #18775c !important; color: #fff !important; font: inherit; font-weight: 750; box-shadow: 0 6px 16px rgba(24, 119, 92, .16); cursor: pointer; }
-html[data-theme] .tl-tasks-header > button:hover { background: #145b42 !important; }
-html[data-theme] .tl-tasks-card { max-width: 1280px; margin: 0 auto; padding: 26px; border: 1px solid #dbe8e1; border-radius: 15px; background: #fff !important; box-shadow: 0 16px 38px rgba(22, 65, 51, .06); }
+html[data-theme] .tl-tasks-header > button { min-height: 44px; padding: 0 17px; border: 0 ; border-radius: 9px; background: #18775c ; color: #fff ; font: inherit; font-weight: 750; box-shadow: 0 6px 16px rgba(24, 119, 92, .16); cursor: pointer; }
+html[data-theme] .tl-tasks-header > button:hover { background: #145b42 ; }
+html[data-theme] .tl-tasks-card { max-width: 1280px; margin: 0 auto; padding: 26px; border: 1px solid #dbe8e1; border-radius: 15px; background: #fff ; box-shadow: 0 16px 38px rgba(22, 65, 51, .06); }
 html[data-theme] .tl-tasks-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
 html[data-theme] .tl-tasks-toolbar label { display: grid; gap: 7px; color: #29463c; font-size: 13px; font-weight: 750; }
 html[data-theme] .tl-tasks-toolbar input,
@@ -389,8 +390,10 @@ html[data-theme] .tl-task-status.is-active { background: #e7f6ed; color: #167449
 html[data-theme] .tl-task-status.is-inactive { background: #fbecee; color: #b42318; }
 html[data-theme] .tl-task-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 html[data-theme] .tl-task-actions button { min-height: 34px; border-radius: 7px; font: inherit; font-weight: 750; cursor: pointer; }
-html[data-theme] .tl-task-toggle { padding: 0 10px; border: 1px solid #c8ddd3 !important; background: #fff !important; color: #176344 !important; }
-html[data-theme] .tl-task-toggle:hover { border-color: #18775c !important; background: #edf7f1 !important; }
-html[data-theme] .tl-task-delete { width: 34px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #f1c1c5 !important; background: #fff !important; color: #c33845 !important; }
-html[data-theme] .tl-task-delete:hover { background: #fff3f4 !important; }
+html[data-theme] .tl-task-toggle { padding: 0 10px; border: 1px solid #c8ddd3 ; background: #fff ; color: #176344 ; }
+html[data-theme] .tl-task-toggle:hover { border-color: #18775c ; background: #edf7f1 ; }
+html[data-theme] .tl-task-delete { width: 34px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #f1c1c5 ; background: #fff ; color: #c33845 ; }
+html[data-theme] .tl-task-delete:hover { background: #fff3f4 ; }
 @media (max-width: 800px) { html[data-theme] .tl-page .tl-main { width: 100%; margin-left: 0; padding: 86px 16px 24px; } html[data-theme] .tl-tasks-header { align-items: flex-start; flex-direction: column; } html[data-theme] .tl-tasks-toolbar { align-items: stretch; flex-direction: column; } html[data-theme] .tl-tasks-toolbar input, html[data-theme] .tl-tasks-toolbar select { width: 100%; min-width: 0; } html[data-theme] .tl-tasks-card { padding: 17px; } }
+
+}

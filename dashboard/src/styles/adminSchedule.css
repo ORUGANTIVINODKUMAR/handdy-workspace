@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    SCHEDULE PAGE
 ========================================= */
@@ -150,7 +151,7 @@
 
   background: var(--primary, #2563eb);
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-size: 15px;
 
@@ -184,7 +185,7 @@
 
   background: var(--primary, #2563eb);
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-size: 15px;
 
@@ -243,11 +244,11 @@
 }
 
 .schedule-empty {
-  text-align: center !important;
+  text-align: center ;
 
-  color: #10266f !important;
+  color: #10266f ;
 
-  padding: 18px !important;
+  padding: 18px ;
 }
 
 .schedule-action-btn {
@@ -348,13 +349,13 @@
 
   padding: 12px;
 
-  text-align: left !important;
+  text-align: left ;
 }
 
 .schedule-am-pm {
-  height: 45px !important;
+  height: 45px ;
 
-  font-size: 16px !important;
+  font-size: 16px ;
 }
 
 /* =========================================
@@ -495,9 +496,9 @@
   border: none;
   border-radius: 5px;
 
-  background: var(--primary) !important;
+  background: var(--primary) ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-size: 15px;
   font-weight: 700;
@@ -507,7 +508,7 @@
 
 .schedule-save-btn:hover:not(:disabled) {
   background:
-    var(--primary-hover) !important;
+    var(--primary-hover) ;
 }
 
 .schedule-save-btn:disabled {
@@ -529,4 +530,5 @@
   .schedule-extra-fields {
     grid-template-columns: 1fr;
   }
+}
 }

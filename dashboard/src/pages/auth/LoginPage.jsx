@@ -169,14 +169,15 @@ function LoginPage() {
   return (
     <div className="auth-page">
 
+      <aside className="crm-auth-story"><div className="crm-auth-wordmark">CRM <span>WORKSPACE</span></div><div><p className="crm-auth-kicker">ONE PLACE FOR YOUR WORKDAY</p><h2>Good work starts<br />with clarity.</h2><p>Your time, your team, and the work ahead.<br />Connected in one workspace.</p></div><footer>Employee time &amp; attendance</footer></aside>
       <div className="auth-card">
 
         <p className="auth-eyebrow">
-          EMPLOYEE TIME & ATTENDANCE
+          WELCOME TO CRM
         </p>
 
         <h1>
-          Welcome to CRM
+          Sign in to your workspace
         </h1>
 
         <p className="auth-description">
@@ -237,7 +238,7 @@ function LoginPage() {
           >
             {loading
               ? "Logging in..."
-              : "Login"}
+              : "Sign in"}
           </button>
 
         </form>

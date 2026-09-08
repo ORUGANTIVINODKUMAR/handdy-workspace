@@ -1,0 +1,504 @@
+{
+  "results": [
+    {
+      "route": "/admin/dashboard",
+      "role": "admin",
+      "title": "Welcome back, Review",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/billing",
+      "role": "admin",
+      "title": "Billing",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/attendance",
+      "role": "hr",
+      "title": "Attendance",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nHr\nTIME & ATTENDANCE\nAttendance\nCollapse na"
+    },
+    {
+      "route": "/admin/my-timesheet",
+      "role": "admin",
+      "title": "My timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/my-timesheet/details",
+      "role": "admin",
+      "title": "My detailed timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/my-timesheet/count",
+      "role": "admin",
+      "title": "My count report",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheet",
+      "role": "admin",
+      "title": "My timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheet/details",
+      "role": "admin",
+      "title": "My detailed timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/team",
+      "role": "admin",
+      "title": "Team timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/detailed",
+      "role": "admin",
+      "title": "Detailed timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/project-hours",
+      "role": "admin",
+      "title": "Project hours",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/attendance",
+      "role": "admin",
+      "title": "Attendance",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/count",
+      "role": "admin",
+      "title": "Count report",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/working-today",
+      "role": "admin",
+      "title": "Who is working today",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/task-tracker",
+      "role": "admin",
+      "title": "Task tracker",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/timesheets/project-work",
+      "role": "admin",
+      "title": "Project work details",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/clients",
+      "role": "admin",
+      "title": "Clients",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/projects",
+      "role": "admin",
+      "title": "Projects",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/tasks",
+      "role": "admin",
+      "title": "Tasks",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/tasks/new",
+      "role": "admin",
+      "title": "Add New Task",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/team",
+      "role": "admin",
+      "title": "Team",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/teams",
+      "role": "admin",
+      "title": "Team",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/employees",
+      "role": "admin",
+      "title": "Employees",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/scheduler/shift",
+      "role": "admin",
+      "title": "Shift",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/scheduler/shift/add",
+      "role": "admin",
+      "title": "Add Shift",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/scheduler/schedule",
+      "role": "admin",
+      "title": "Schedule",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/scheduler/shifts",
+      "role": "admin",
+      "title": "Shift",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/scheduler/shifts/add",
+      "role": "admin",
+      "title": "Add Shift",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/schedule",
+      "role": "admin",
+      "title": "Schedule",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/settings",
+      "role": "admin",
+      "title": "Idle & logout settings",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/team-lead/dashboard",
+      "role": "team_lead",
+      "title": "Team activity",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/employee-insights",
+      "role": "team_lead",
+      "title": "Employee insights",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheet",
+      "role": "team_lead",
+      "title": "My timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheet/details",
+      "role": "team_lead",
+      "title": "My detailed timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheet/count",
+      "role": "team_lead",
+      "title": "My count report",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/team",
+      "role": "team_lead",
+      "title": "Team timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/detailed",
+      "role": "team_lead",
+      "title": "Detailed team timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/project-hours",
+      "role": "team_lead",
+      "title": "Project hours",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/attendance",
+      "role": "team_lead",
+      "title": "Attendance",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/count",
+      "role": "team_lead",
+      "title": "Team count report",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/working-today",
+      "role": "team_lead",
+      "title": "Who is working today",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/task-tracker",
+      "role": "team_lead",
+      "title": "Task tracker",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/timesheets/project-work",
+      "role": "team_lead",
+      "title": "Project work details",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/tasks",
+      "role": "team_lead",
+      "title": "Tasks",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/tasks/add",
+      "role": "team_lead",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/apps",
+      "role": "team_lead",
+      "title": "CRM Desktop App",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/team-lead/help",
+      "role": "team_lead",
+      "title": "Help & support",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nTeam Lead\nWORKSPACE\nOverview\nEmployee Insig"
+    },
+    {
+      "route": "/employee/dashboard",
+      "role": "employee",
+      "title": "Welcome back, Review",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nEmployee\nWORKSPACE\nOverview\nTIME & ATTENDAN"
+    },
+    {
+      "route": "/employee/timesheet",
+      "role": "employee",
+      "title": "My timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nEmployee\nWORKSPACE\nOverview\nTIME & ATTENDAN"
+    },
+    {
+      "route": "/employee/timesheet/details",
+      "role": "employee",
+      "title": "My detailed timesheet",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nEmployee\nWORKSPACE\nOverview\nTIME & ATTENDAN"
+    },
+    {
+      "route": "/employee/timesheet/count",
+      "role": "employee",
+      "title": "My count report",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nEmployee\nWORKSPACE\nOverview\nTIME & ATTENDAN"
+    },
+    {
+      "route": "/employee/app",
+      "role": "employee",
+      "title": "CRM Desktop App",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nEmployee\nWORKSPACE\nOverview\nTIME & ATTENDAN"
+    },
+    {
+      "route": "/employee/apps",
+      "role": "employee",
+      "title": "CRM Desktop App",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nEmployee\nWORKSPACE\nOverview\nTIME & ATTENDAN"
+    },
+    {
+      "route": "/employee/help",
+      "role": "employee",
+      "title": "Help & support",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nEmployee\nWORKSPACE\nOverview\nTIME & ATTENDAN"
+    },
+    {
+      "route": "/profile",
+      "role": "admin",
+      "title": "Settings",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/employees",
+      "role": "admin",
+      "title": "Employee Management",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/employees/qa",
+      "role": "admin",
+      "title": "Employee details",
+      "shell": true,
+      "overflow": false,
+      "text": "Skip to content\nCRM\nEmployee workspace\nRa\nYour workspace\nAdmin\nWORKSPACE\nOverview\nClients\nProjects\nT"
+    },
+    {
+      "route": "/admin/employees",
+      "width": 390,
+      "overflow": false,
+      "shell": true
+    },
+    {
+      "route": "/employee/dashboard",
+      "width": 390,
+      "overflow": false,
+      "shell": true
+    },
+    {
+      "route": "/admin/settings",
+      "width": 390,
+      "overflow": false,
+      "shell": true
+    },
+    {
+      "route": "/employee/app",
+      "width": 390,
+      "overflow": false,
+      "shell": true
+    },
+    {
+      "interaction": "employee modal",
+      "opened": true,
+      "focusMovedInside": true,
+      "escapeClosed": true
+    },
+    {
+      "interaction": "theme persistence",
+      "selectedTheme": "CRMCRM workspace green",
+      "themeSelected": "upsilon",
+      "themePersisted": true,
+      "themeState": {
+        "stored": "upsilon",
+        "applied": "upsilon",
+        "primary": "#1e644e",
+        "sidebar": "#0d3b2e",
+        "navBackground": "rgb(13, 59, 46)",
+        "buttonBackground": "rgb(30, 100, 78)"
+      }
+    }
+  ],
+  "errors": []
+}

@@ -19,9 +19,6 @@ import AdminEmployees
 import AdminProjects
   from "../pages/admin/AdminProjects";
 
-import AdminPlaceholderPage
-  from "../pages/admin/AdminPlaceholderPage";
-
 import AdminClients
   from "../pages/admin/AdminClients";
 
@@ -226,17 +223,6 @@ function AppRoutes() {
           ADMIN ATTENDANCE
       ====================================== */}
 
-      <Route
-        path="/admin/attendance"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="My Attendance"
-              description="Admin attendance page."
-            />
-          </AdminOnly>
-        }
-      />
 
       <Route
         path="/attendance"
@@ -384,148 +370,22 @@ function AppRoutes() {
       />
 
 
-      {/* ======================================
-          ADMIN MONITORING
-      ====================================== */}
 
 
 
-      <Route
-        path="/admin/monitoring/keystrokes"
-        element={
-          <AdminOnly>
-            <AdminReportPage title="Keystrokes used" description="Keyboard activity received from employee desktop applications." mode="tracking" trackingLabel="keyboard activity" />
-          </AdminOnly>
-        }
-      />
-
-      <Route
-        path="/admin/monitoring/websites"
-        element={
-          <AdminOnly>
-            <AdminReportPage title="Websites used" description="Website activity received from employee desktop applications." mode="tracking" trackingLabel="website activity" />
-          </AdminOnly>
-        }
-      />
-
-      <Route
-        path="/admin/monitoring/screenshots"
-        element={
-          <AdminOnly>
-            <AdminReportPage title="Screenshots" description="Screenshots received from employee desktop applications." mode="tracking" trackingLabel="screenshots" />
-          </AdminOnly>
-        }
-      />
-
-      <Route
-        path="/admin/monitoring/application-usage"
-        element={
-          <AdminOnly>
-            <AdminReportPage title="Application usage details" description="Detailed application activity received from employee desktop applications." mode="tracking" trackingLabel="application usage" />
-          </AdminOnly>
-        }
-      />
-
-      <Route
-        path="/admin/monitoring/website-usage"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Website usage details"
-              description="Detailed website usage."
-            />
-          </AdminOnly>
-        }
-      />
 
 
-      {/* ======================================
-          ADMIN PRODUCTIVITY
-      ====================================== */}
 
-      <Route
-        path="/admin/productivity/report"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Productivity report"
-              description="Employee productivity report."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/productivity/hours"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Productive hours"
-              description="Productive hours report."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/productivity/projects"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Projects worked on"
-              description="Projects worked on report."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/productivity/employees"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Productive employees"
-              description="Productive employees report."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/productivity/categories"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Categories worked"
-              description="Categories worked report."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/productivity/websites"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Productive websites"
-              description="Productive websites report."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/productivity/applications"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Productive applications"
-              description="Productive applications report."
-            />
-          </AdminOnly>
-        }
-      />
+
+
+
+
 
 
       {/* ======================================
@@ -663,92 +523,26 @@ function AppRoutes() {
           ADMIN PERMISSIONS
       ====================================== */}
 
-      <Route
-        path="/admin/permissions"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Permissions"
-              description="Manage employee and team permissions."
-            />
-          </AdminOnly>
-        }
-      />
 
 
       {/* ======================================
           ADMIN SUBSCRIPTION
       ====================================== */}
 
-      <Route
-        path="/admin/subscription"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Subscription"
-              description="Manage subscription details."
-            />
-          </AdminOnly>
-        }
-      />
 
 
       {/* ======================================
           ADMIN CLASSIFICATION
       ====================================== */}
 
-      <Route
-        path="/admin/classification/websites"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Websites"
-              description="Website classification."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/classification/applications"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Applications"
-              description="Application classification."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/classification/category"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Category"
-              description="Manage productivity categories."
-            />
-          </AdminOnly>
-        }
-      />
 
 
       {/* ======================================
           ADMIN MY ACCOUNT
       ====================================== */}
 
-      <Route
-        path="/admin/integrations"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Integrations"
-              description="Manage integrations."
-            />
-          </AdminOnly>
-        }
-      />
 
       <Route
         path="/admin/settings"
@@ -759,38 +553,8 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/admin/apps"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Apps"
-              description="Download and manage desktop applications."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/getting-started"
-        element={
-          <AdminOnly>
-            <AdminPlaceholderPage
-              title="Getting started"
-              description="Getting started information."
-            />
-          </AdminOnly>
-        }
-      />
 
-      <Route
-        path="/admin/monitoring/applications"
-        element={
-          <AdminOnly>
-            <AdminReportPage title="Applications used" description="Application activity received from employee desktop applications." mode="tracking" trackingLabel="application activity" />
-          </AdminOnly>
-        }
-      />
 
 
       {/* ======================================

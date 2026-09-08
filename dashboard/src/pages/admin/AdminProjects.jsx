@@ -1,3 +1,4 @@
+import ModalFrame from "../../components/layout/ModalFrame";
 import { useCallback, useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
@@ -296,7 +297,7 @@ function AdminProjects() {
             <label>Search:</label>
 
             <input
-              type="search"
+              type="search" aria-label="Search records"
               value={search}
               onChange={(event) =>
                 setSearch(event.target.value)
@@ -350,7 +351,7 @@ function AdminProjects() {
               ) : projects.length === 0 ? (
                 <tr>
                   <td colSpan="4">
-                    No projects found.
+                    No projects match your filters. Try a different search or create a project.
                   </td>
                 </tr>
               ) : (
@@ -492,7 +493,7 @@ function AdminProjects() {
 
       {/* ADD PROJECT MODAL */}
       {showAddProject && (
-        <div className="employee-modal-overlay">
+        <ModalFrame onClose={closeAddProject} label="Projects details">
           <div className="employee-modal">
 
             <div className="employee-modal-header">
@@ -597,13 +598,13 @@ function AdminProjects() {
             </form>
 
           </div>
-        </div>
+        </ModalFrame>
       )}
 
 
       {/* EDIT PROJECT MODAL */}
       {showEditProject && (
-        <div className="employee-modal-overlay">
+        <ModalFrame onClose={closeEditProject} label="Projects details">
           <div className="employee-modal">
 
             <div className="employee-modal-header">
@@ -710,7 +711,7 @@ function AdminProjects() {
             </form>
 
           </div>
-        </div>
+        </ModalFrame>
       )}
 
     </DashboardLayout>

@@ -1,0 +1,6 @@
+import { LifeBuoy, Mail } from "lucide-react";
+import PageHeader from "../../components/layout/PageHeader";
+
+export default function SupportPage() {
+  return <div className="crm-support"><PageHeader title="Help & support" description="Answers for your everyday workspace." /><section className="card"><LifeBuoy size={24} /><h2>Working with CRM</h2><details open><summary>How do I sign in to the desktop app?</summary><p>Use the same employee email and password as this dashboard. Your organization provides your account.</p></details><details><summary>Why is my timer paused?</summary><p>Your timer may pause after inactivity. After an automatic sign-out, sign in again and click Resume to continue your existing timer.</p></details><details><summary>Where can I find my recorded hours?</summary><p>Open Timesheets, choose the period you need, then generate the report. Access to company and team reports depends on your role.</p></details><details><summary>Who can update my access?</summary><p>Contact your organization’s administrator for account, team and permission changes.</p></details></section><section className="card"><Mail size={22} /><h2>Need a hand?</h2><p>For account access and workspace configuration, contact your organization’s administrator.</p><a href="mailto:info@upsilonservices.com">Email support</a></section></div>;
+}

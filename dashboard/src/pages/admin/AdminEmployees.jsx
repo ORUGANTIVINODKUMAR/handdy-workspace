@@ -1,3 +1,4 @@
+import ModalFrame from "../../components/layout/ModalFrame";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
@@ -431,7 +432,7 @@ function AdminEmployees() {
             onSubmit={handleSearch}
           >
             <input
-              type="search"
+              type="search" aria-label="Search records"
               placeholder="Search employee..."
               value={search}
               onChange={(event) => { setSearch(event.target.value); setPage(1); }}
@@ -494,7 +495,7 @@ function AdminEmployees() {
               ) : employees.length === 0 ? (
                 <tr>
                   <td colSpan="8">
-                    No employees found.
+                    No employees match your filters. Try a different search or add an employee.
                   </td>
                 </tr>
               ) : (
@@ -616,7 +617,7 @@ function AdminEmployees() {
       ========================== */}
 
       {showAddEmployee && (
-        <div className="employee-modal-overlay">
+        <ModalFrame onClose={closeAddEmployeeModal} label="Employees details">
 
           <div className="employee-modal employee-editor-modal">
 
@@ -653,7 +654,7 @@ function AdminEmployees() {
             />
 
           </div>
-        </div>
+        </ModalFrame>
       )}
 
 
@@ -662,7 +663,7 @@ function AdminEmployees() {
       ========================== */}
 
       {showEditEmployee && (
-        <div className="employee-modal-overlay">
+        <ModalFrame onClose={closeEditEmployeeModal} label="Employees details">
 
           <div className="employee-modal employee-editor-modal">
 
@@ -699,7 +700,7 @@ function AdminEmployees() {
             />
 
           </div>
-        </div>
+        </ModalFrame>
       )}
 
 
@@ -708,7 +709,7 @@ function AdminEmployees() {
       ========================== */}
 
       {showResetPassword && (
-        <div className="employee-modal-overlay">
+        <ModalFrame onClose={closeResetPasswordModal} label="Employees details">
 
           <div className="employee-modal">
 
@@ -815,7 +816,7 @@ function AdminEmployees() {
             </form>
 
           </div>
-        </div>
+        </ModalFrame>
       )}
 
     </DashboardLayout>

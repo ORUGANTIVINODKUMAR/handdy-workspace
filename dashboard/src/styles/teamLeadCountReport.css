@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    TEAM LEAD COUNT REPORT
 ========================================= */
@@ -7,12 +8,12 @@
 }
 
 .tl-count-page h1 {
-  margin: 0 0 24px !important;
+  margin: 0 0 24px ;
 
-  color: #6b7280 !important;
+  color: #6b7280 ;
 
-  font-size: 30px !important;
-  font-weight: 500 !important;
+  font-size: 30px ;
+  font-weight: 500 ;
 }
 
 .tl-count-help {
@@ -77,17 +78,17 @@
 }
 
 .tl-count-go {
-  width: 56px !important;
-  height: 42px !important;
+  width: 56px ;
+  height: 42px ;
 
-  padding: 0 !important;
+  padding: 0 ;
 
-  border: none !important;
-  border-radius: 5px !important;
+  border: none ;
+  border-radius: 5px ;
 
-  background: #ff7800 !important;
+  background: #ff7800 ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-weight: 700;
 
@@ -95,7 +96,7 @@
 }
 
 .tl-count-go:hover {
-  background: #ea6d00 !important;
+  background: #ea6d00 ;
 }
 
 
@@ -143,11 +144,11 @@
 }
 
 .tl-count-empty {
-  text-align: center !important;
+  text-align: center ;
 
-  padding: 18px !important;
+  padding: 18px ;
 
-  color: #374151 !important;
+  color: #374151 ;
 }
 
 
@@ -173,4 +174,5 @@
 
     flex-direction: column;
   }
+}
 }

@@ -1,3 +1,4 @@
+@layer legacy {
 .employee-apps-page,
 .employee-apps-page *,
 .employee-apps-page *::before,
@@ -225,3 +226,5 @@
 .employee-windows-download { border: 0; font-family: inherit; padding: 12px 17px; }
 .employee-windows-download:disabled { opacity: 0.6; cursor: not-allowed; }
 .employee-windows-download:focus-visible { outline: 3px solid var(--input-focus); outline-offset: 3px; }
+
+}

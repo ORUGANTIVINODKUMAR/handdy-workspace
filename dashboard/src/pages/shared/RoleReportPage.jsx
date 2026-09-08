@@ -12,6 +12,8 @@ import {
 import TeamLeadSidebar from "../teamLead/TeamLeadSidebar";
 import EmployeeSidebar from "../employee/EmployeeSidebar";
 import HanddyDownloadCard from "../../components/dashboard/HanddyDownloadCard";
+import ReportSummary from "../../components/dashboard/ReportSummary";
+import PageHeader from "../../components/layout/PageHeader";
 
 import "../../styles/adminReportPage.css";
 import "../../styles/roleReportPage.css";
@@ -69,6 +71,12 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
 
   const report = (
     <div className="admin-report-page role-report-page">
+      <ReportSummary items={[
+        { label: "Recorded time", value: hasRun ? duration(totalSeconds) : "—" },
+        { label: "Timer records", value: hasRun ? records.length : "—" },
+        { label: "Projects in report", value: hasRun ? new Set(records.map(record => record.project?._id).filter(Boolean)).size : "—" },
+        { label: "Workspace", value: isTeamReport ? "Your team" : "Personal", help: user?.fullName || "Your employee account" },
+      ]} />
       <section className="admin-report-filter card">
         <div><span className="admin-report-kicker">{isTeamReport ? "Team report" : "My report"}</span><h2>{title}</h2><p>{description}</p></div>
         <div className="admin-report-controls">
@@ -80,6 +88,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       <section className="admin-report-results card">
         <header><div><span className="admin-report-kicker">Results</span><h2>{records.length} records</h2></div>{mode === "time" && <strong><Clock3 size={16} />{duration(totalSeconds)}</strong>}</header>
         {error && <p className="admin-report-message error-message" role="alert">{error}</p>}
+        {!error && !hasRun && <div className="admin-report-empty"><FileSearch size={26} /><strong>Your work, in one view</strong><span>Select a period and generate your timesheet to view recorded work.</span></div>}
         {!error && hasRun && records.length === 0 && <div className="admin-report-empty"><FileSearch size={26} /><strong>No records found</strong><span>No matching activity exists for the selected dates.</span></div>}
         {!error && mode === "time" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Worked</th><th>Idle</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{duration(record.totalWorkedSeconds)}</td><td>{duration(getIdleSeconds(record))}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
         {!error && mode === "attendance" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Hours</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "—"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "—"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
@@ -89,8 +98,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   );
 
   return isTeamLead
-    ? <div className="tl-page"><TeamLeadSidebar /><div className="tl-main"><main className="tl-content"><h1 className="role-report-title">{title}</h1>{report}</main></div></div>
-    : <div className="employee-page"><EmployeeSidebar /><div className="employee-main"><main className="employee-content"><h1 className="role-report-title">{title}</h1>{report}</main></div></div>;
+    ? <div className="tl-page"><TeamLeadSidebar /><div className="tl-main"><main className="tl-content"><PageHeader title={showDesktopDownload ? `Welcome back${user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}` : title} description={showDesktopDownload ? "Your work summary, timesheets and desktop workspace." : description} />{report}</main></div></div>
+    : <div className="employee-page"><EmployeeSidebar /><div className="employee-main"><main className="employee-content"><PageHeader title={showDesktopDownload ? `Welcome back${user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}` : title} description={showDesktopDownload ? "Your work summary, timesheets and desktop workspace." : description} />{report}</main></div></div>;
 }
 
 export default RoleReportPage;

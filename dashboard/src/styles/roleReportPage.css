@@ -1,4 +1,7 @@
+@layer legacy {
 .role-report-title { margin: 0 0 20px; color: var(--text-heading); font-size: 24px; letter-spacing: -.025em; }
 .role-report-page { min-width: 0; }
 .tl-content .role-report-page, .employee-content .role-report-page { width: 100%; }
 @media (max-width: 760px) { .role-report-title { font-size: 21px; } }
+
+}

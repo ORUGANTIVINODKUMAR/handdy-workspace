@@ -8,11 +8,8 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("app-theme");
 
-    // "upsilon" was the old automatic default, never a deliberate
-    // pick, so treat it the same as no saved theme and move
-    // everyone forward to the new default instead of stranding
-    // existing sessions on it.
-    if (!savedTheme || savedTheme === "upsilon") {
+    // Preserve every deliberate theme selection, including the original green palette.
+    if (!savedTheme) {
       return "console";
     }
 

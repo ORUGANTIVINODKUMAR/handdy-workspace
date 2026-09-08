@@ -1,3 +1,4 @@
+import ModalFrame from "../../components/layout/ModalFrame";
 import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
@@ -208,7 +209,7 @@ function AdminClients() {
 
       {/* ADD CLIENT MODAL */}
       {showAddClient && (
-        <div className="employee-modal-overlay">
+        <ModalFrame onClose={closeAddClient} label="Clients details">
 
           <div className="employee-modal">
 
@@ -271,7 +272,7 @@ function AdminClients() {
             </form>
 
           </div>
-        </div>
+        </ModalFrame>
       )}
     </DashboardLayout>
   );

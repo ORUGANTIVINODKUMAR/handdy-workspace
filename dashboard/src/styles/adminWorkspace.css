@@ -1,5 +1,6 @@
+@layer legacy {
 .admin-workspace-page { max-width: 920px; }
-.admin-workspace-card { padding: 26px !important; }
+.admin-workspace-card { padding: 26px ; }
 .admin-workspace-card h2 { margin: 0; color: var(--text-heading); font-size: 20px; }
 .admin-workspace-card > p { max-width: 680px; margin: 8px 0 22px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
 .admin-workspace-kicker { display: block; margin-bottom: 6px; color: var(--primary); font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
@@ -12,9 +13,11 @@
 .admin-workspace-ready { display: flex; align-items: center; gap: 8px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-light); color: var(--success); font-size: 12px; }
 .admin-workspace-add { display: flex; gap: 9px; margin-bottom: 20px; }
 .admin-workspace-add input { flex: 1; min-width: 180px; height: 40px; padding: 0 12px; }
-.admin-workspace-add button { border-color: var(--primary); background: var(--primary) !important; color: var(--button-text) !important; cursor: pointer; }
+.admin-workspace-add button { border-color: var(--primary); background: var(--primary) ; color: var(--button-text) ; cursor: pointer; }
 .admin-workspace-list { display: grid; border-top: 1px solid var(--border-light); }
 .admin-workspace-list > p { color: var(--text-muted); font-size: 12px; }
 .admin-workspace-list > div { display: flex; align-items: center; justify-content: space-between; min-height: 46px; border-bottom: 1px solid var(--border-light); color: var(--text-main); font-size: 13px; }
-.admin-workspace-list button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--danger-bg) !important; color: var(--danger) !important; cursor: pointer; }
+.admin-workspace-list button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--danger-bg) ; color: var(--danger) ; cursor: pointer; }
 @media (max-width: 600px) { .admin-workspace-add { flex-direction: column; } }
+
+}

@@ -1,3 +1,4 @@
+@layer legacy {
 :root {
   --admin-sidebar: #111827;
   --admin-primary: #2563EB;
@@ -346,7 +347,7 @@
   .employee-mobile-label { display: block; }
   .employee-remove-service { width: 100%; }
   .employee-editor-form > .employee-form-actions { flex-direction: column-reverse; }
-  .employee-editor-form > .employee-form-actions button { width: 100% !important; }
+  .employee-editor-form > .employee-form-actions button { width: 100% ; }
 }
 
 .team-modal-form label { display: block; margin: 0 0 7px; color: #29463c; font-size: 14px; font-weight: 650; }
@@ -354,8 +355,8 @@
 .team-modal-form select { width: 100%; height: 48px; margin: 0 0 18px; padding: 0 14px; border: 1px solid #c8ddd3; border-radius: 9px; background: #fff; color: #173c31; font: inherit; }
 .team-modal-form input:focus, .team-modal-form select:focus { outline: none; border-color: #18775c; box-shadow: 0 0 0 3px rgba(24,119,92,.13); }
 .team-form-help { margin: -3px 0 0; color: #6b8177; font-size: 13px; line-height: 1.45; }
-.team-save-button { background: #18775c !important; border-radius: 9px; }
-.team-save-button:hover { background: #126449 !important; }
+.team-save-button { background: #18775c ; border-radius: 9px; }
+.team-save-button:hover { background: #126449 ; }
 
 /* Keep the structured employee editor above all legacy modal rules. */
 .employee-modal.employee-editor-modal { width: min(920px, 100%); padding: 0; }
@@ -374,16 +375,16 @@
 .team-modal-form select { width: 100%; height: 48px; margin: 0 0 18px; padding: 0 14px; border: 1px solid #c8ddd3; border-radius: 9px; background: #fff; color: #173c31; font: inherit; }
 .team-modal-form input:focus, .team-modal-form select:focus { outline: none; border-color: #18775c; box-shadow: 0 0 0 3px rgba(24,119,92,.13); }
 .team-form-help { margin: -3px 0 0; color: #6b8177; font-size: 13px; line-height: 1.45; }
-.team-save-button { background: #18775c !important; border-radius: 9px; }
-.team-save-button:hover { background: #126449 !important; }
+.team-save-button { background: #18775c ; border-radius: 9px; }
+.team-save-button:hover { background: #126449 ; }
 
 .team-modal-form label { display: block; margin: 0 0 7px; color: #29463c; font-size: 14px; font-weight: 650; }
 .team-modal-form label span { color: #7a8d85; font-weight: 400; }
 .team-modal-form select { width: 100%; height: 48px; margin: 0 0 18px; padding: 0 14px; border: 1px solid #c8ddd3; border-radius: 9px; background: #fff; color: #173c31; font: inherit; }
 .team-modal-form input:focus, .team-modal-form select:focus { outline: none; border-color: #18775c; box-shadow: 0 0 0 3px rgba(24,119,92,.13); }
 .team-form-help { margin: -3px 0 0; color: #6b8177; font-size: 13px; line-height: 1.45; }
-.team-save-button { background: #18775c !important; border-radius: 9px; }
-.team-save-button:hover { background: #126449 !important; }
+.team-save-button { background: #18775c ; border-radius: 9px; }
+.team-save-button:hover { background: #126449 ; }
 
 /* =========================
    TOPBAR
@@ -504,7 +505,7 @@
 }
 
 .admin-content button:disabled {
-  background: #E5E7EB !important;
+  background: #E5E7EB ;
   color: #788398;
 }
 
@@ -542,7 +543,7 @@
 }
 
 .add-employee-button {
-  width: auto !important;
+  width: auto ;
 
   flex: 0 0 auto;
 
@@ -603,15 +604,15 @@
 
 .employees-team-filter {
   width: min(220px, 35vw);
-  margin-left: 0 !important;
+  margin-left: 0 ;
 }
 
 .employees-search button {
-  width: auto !important;
+  width: auto ;
 
   min-height: 42px;
 
-  margin: 0 !important;
+  margin: 0 ;
 
   padding: 0 18px;
 
@@ -726,13 +727,13 @@
 
 .edit-action-button,
 .delete-action-button {
-  width: auto !important;
+  width: auto ;
 
   padding: 7px 10px;
 
   border-radius: 6px;
 
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
 
   font-weight: 700;
 
@@ -752,11 +753,11 @@
 }
 
 .edit-action-button:hover {
-  background: #EFF6FF !important;
+  background: #EFF6FF ;
 }
 
 .delete-action-button:hover {
-  background: #FEF2F2 !important;
+  background: #FEF2F2 ;
 }
 
 .admin-error-box {
@@ -883,7 +884,7 @@
 
 .employee-form-actions .secondary-button,
 .employee-form-actions .primary-button {
-  width: auto !important;
+  width: auto ;
 
   padding: 10px 16px;
 
@@ -895,7 +896,7 @@
 .employee-form-actions .secondary-button {
   border: 1px solid #D1D5DB;
 
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
 
   color: var(--admin-text);
 }
@@ -990,7 +991,7 @@
 }
 
 .add-project-button {
-  width: auto !important;
+  width: auto ;
   padding: 10px 16px;
   border: 0;
   border-radius: 7px;
@@ -1027,7 +1028,7 @@
 }
 
 .projects-search button {
-  width: auto !important;
+  width: auto ;
   height: 42px;
   padding: 0 18px;
   border: 0;
@@ -1153,17 +1154,17 @@
 }
 
 .timesheet-view-tabs button {
-  width: auto !important;
+  width: auto ;
   padding: 8px 14px;
   border: 1px solid #CBD5E1;
   border-radius: 6px;
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
   color: #111827;
   cursor: pointer;
 }
 
 .timesheet-view-tabs button.active {
-  background: #2563EB !important;
+  background: #2563EB ;
   color: #FFFFFF;
   border-color: #2563EB;
 }
@@ -1191,7 +1192,7 @@
 }
 
 .timesheet-filters button {
-  width: auto !important;
+  width: auto ;
   height: 42px;
   padding: 0 18px;
   border: 0;
@@ -1226,8 +1227,8 @@
 }
 
 .timesheet-report-toolbar button {
-  width: auto !important;
-  background: transparent !important;
+  width: auto ;
+  background: transparent ;
   color: #2563EB;
   border: 0;
   cursor: pointer;
@@ -1302,7 +1303,7 @@
 }
 
 .timesheet-filter-button {
-  width: 100% !important;
+  width: 100% ;
   height: 38px;
 
   display: flex;
@@ -1314,7 +1315,7 @@
   border: 1px solid #CBD5E1;
   border-radius: 6px;
 
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
   color: #111827;
 
   font-size: 14px;
@@ -1355,7 +1356,7 @@
 }
 
 .timesheet-filter-option {
-  width: 100% !important;
+  width: 100% ;
 
   display: block;
 
@@ -1363,7 +1364,7 @@
 
   border: none;
 
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
 
   color: #111827;
 
@@ -1373,11 +1374,11 @@
 }
 
 .timesheet-filter-option:hover {
-  background: #F3F4F6 !important;
+  background: #F3F4F6 ;
 }
 
 .timesheet-filter-option.active {
-  background: #1E3A8A !important;
+  background: #1E3A8A ;
   color: #FFFFFF;
 }
 .timesheet-top-row {
@@ -1402,7 +1403,7 @@
 }
 
 .timesheet-filter-button {
-  width: 100% !important;
+  width: 100% ;
   height: 38px;
 
   display: flex;
@@ -1414,7 +1415,7 @@
   border: 1px solid #CBD5E1;
   border-radius: 6px;
 
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
   color: #111827;
 
   cursor: pointer;
@@ -1582,7 +1583,7 @@
 }
 
 .profile-save-button {
-  width: 160px !important;
+  width: 160px ;
   min-width: 160px;
   height: 48px;
 
@@ -1605,7 +1606,7 @@
 }
 
 .profile-save-button:disabled {
-  background: #93C5FD !important;
+  background: #93C5FD ;
   cursor: not-allowed;
 }
 .sidebar-submenu-group {
@@ -1712,7 +1713,7 @@
 }
 
 .detailed-go-button {
-  width: auto !important;
+  width: auto ;
   height: 42px;
 
   padding: 0 18px;
@@ -1764,11 +1765,11 @@
 }
 
 .detailed-report-toolbar button {
-  width: auto !important;
+  width: auto ;
 
   border: none;
 
-  background: transparent !important;
+  background: transparent ;
 
   color: #2563EB;
 
@@ -1815,7 +1816,7 @@
 }
 
 .timesheet-type-break {
-  color: #DC2626 !important;
+  color: #DC2626 ;
   font-weight: 600;
 }
 
@@ -2096,7 +2097,7 @@
 }
 
 .team-timesheet-go-button {
-  width: auto !important;
+  width: auto ;
   height: 42px;
 
   padding: 0 18px;
@@ -2229,7 +2230,7 @@
 }
 
 .detailed-team-go-button {
-  width: auto !important;
+  width: auto ;
 
   height: 42px;
 
@@ -2349,7 +2350,7 @@
 }
 
 .project-hours-go-button {
-  width: auto !important;
+  width: auto ;
   height: 42px;
 
   padding: 0 18px;
@@ -2448,7 +2449,7 @@
 }
 
 .timesheets-attendance-go {
-  width: auto !important;
+  width: auto ;
   height: 42px;
 
   padding: 0 18px;
@@ -2554,13 +2555,13 @@
 
 /* SMALL GO BUTTON */
 .working-today-go-button {
-  width: 60px !important;
+  width: 60px ;
   min-width: 60px;
   max-width: 60px;
 
   height: 44px;
 
-  padding: 0 !important;
+  padding: 0 ;
 
   border: none;
   border-radius: 6px;
@@ -2660,7 +2661,7 @@
   }
 
   .working-today-go-button {
-    width: 60px !important;
+    width: 60px ;
   }
 }
 /* =========================================
@@ -2705,12 +2706,12 @@
 }
 
 .task-tracker-go-button {
-  width: 62px !important;
+  width: 62px ;
   min-width: 62px;
 
   height: 44px;
 
-  padding: 0 !important;
+  padding: 0 ;
 
   border: none;
   border-radius: 6px;
@@ -2844,9 +2845,9 @@
 }
 
 .task-tracker-empty {
-  text-align: center !important;
+  text-align: center ;
 
-  color: #6B7280 !important;
+  color: #6B7280 ;
 }
 
 
@@ -2933,12 +2934,12 @@
 }
 
 .project-work-go-button {
-  width: 60px !important;
+  width: 60px ;
   min-width: 60px;
 
   height: 42px;
 
-  padding: 0 !important;
+  padding: 0 ;
 
   border: none;
   border-radius: 6px;
@@ -3020,9 +3021,9 @@
 }
 
 .project-work-empty {
-  text-align: center !important;
+  text-align: center ;
 
-  color: #6B7280 !important;
+  color: #6B7280 ;
 }
 
 @media (max-width: 1200px) {
@@ -3121,7 +3122,7 @@
 }
 
 .team-add-button {
-  width: auto !important;
+  width: auto ;
 
   padding: 11px 18px;
 
@@ -3200,13 +3201,13 @@
 
 .team-edit-button,
 .team-delete-button {
-  width: auto !important;
+  width: auto ;
 
   padding: 6px 10px;
 
   border-radius: 5px;
 
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
 
   font-size: 12px;
   font-weight: 700;
@@ -3250,9 +3251,9 @@
 }
 
 .team-empty {
-  text-align: center !important;
+  text-align: center ;
 
-  color: #6B7280 !important;
+  color: #6B7280 ;
 }
 
 
@@ -3293,21 +3294,21 @@
 }
 
 .team-pagination button {
-  width: 42px !important;
+  width: 42px ;
   height: 40px;
 
-  padding: 0 !important;
+  padding: 0 ;
 
   border: 1px solid #D1D5DB;
   border-radius: 0;
 
-  background: #F3F4F6 !important;
+  background: #F3F4F6 ;
 
   color: #6B7280;
 }
 
 .team-pagination button.active {
-  background: #2563EB !important;
+  background: #2563EB ;
 
   color: #FFFFFF;
 }
@@ -3373,14 +3374,14 @@
 }
 
 .team-modal-close {
-  width: 34px !important;
+  width: 34px ;
   height: 34px;
 
-  padding: 0 !important;
+  padding: 0 ;
 
   border: none;
 
-  background: transparent !important;
+  background: transparent ;
 
   color: #FFFFFF;
 
@@ -3422,7 +3423,7 @@
 
 .team-cancel-button,
 .team-save-button {
-  width: auto !important;
+  width: auto ;
 
   min-width: 80px;
 
@@ -3437,13 +3438,13 @@
 }
 
 .team-cancel-button {
-  background: #9CA3AF !important;
+  background: #9CA3AF ;
 
   color: #FFFFFF;
 }
 
 .team-save-button {
-  background: #2563EB !important;
+  background: #2563EB ;
 
   color: #FFFFFF;
 }
@@ -3561,7 +3562,7 @@
 ========================================= */
 
 .detailed-go-button {
-  width: auto !important;
+  width: auto ;
   height: 42px;
 
   padding: 0 18px;
@@ -3569,8 +3570,8 @@
   border: none;
   border-radius: 6px;
 
-  background: var(--primary) !important;
-  color: #FFFFFF !important;
+  background: var(--primary) ;
+  color: #FFFFFF ;
 
   font-weight: 700;
 
@@ -3578,7 +3579,7 @@
 }
 
 .detailed-go-button:hover:not(:disabled) {
-  background: var(--primary-hover) !important;
+  background: var(--primary-hover) ;
 }
 
 /* =========================================
@@ -3597,8 +3598,8 @@
 .detailed-report-title {
   padding: 13px 18px;
 
-  background: var(--primary) !important;
-  color: #FFFFFF !important;
+  background: var(--primary) ;
+  color: #FFFFFF ;
 
   font-size: 16px;
   font-weight: 700;
@@ -3624,14 +3625,14 @@
 }
 
 .detailed-report-toolbar button {
-  width: auto !important;
+  width: auto ;
 
   padding: 0;
 
   border: none;
 
-  background: transparent !important;
-  color: var(--primary) !important;
+  background: transparent ;
+  color: var(--primary) ;
 
   font-weight: 600;
 
@@ -3639,8 +3640,8 @@
 }
 
 .detailed-report-toolbar button:hover {
-  background: transparent !important;
-  color: var(--primary-hover) !important;
+  background: transparent ;
+  color: var(--primary-hover) ;
 }
 
 /* =========================================
@@ -3683,7 +3684,7 @@
 }
 
 .timesheet-type-break {
-  color: #DC2626 !important;
+  color: #DC2626 ;
   font-weight: 600;
 }
 
@@ -3729,21 +3730,21 @@
 .summary-line.idle,
 .summary-line.idle span,
 .summary-line.idle strong {
-  color: #DC2626 !important;
+  color: #DC2626 ;
 }
 
 /* Work time */
 .summary-line.work,
 .summary-line.work span,
 .summary-line.work strong {
-  color: #16A34A !important;
+  color: #16A34A ;
 }
 
 /* Break time */
 .summary-line.break,
 .summary-line.break span,
 .summary-line.break strong {
-  color: #DC2626 !important;
+  color: #DC2626 ;
 }
 
 /* =========================================
@@ -3762,7 +3763,7 @@
 
   font-weight: 700;
 
-  color: #FFFFFF !important;
+  color: #FFFFFF ;
 
   border-top: 1px solid #E5E7EB;
 }
@@ -3774,16 +3775,16 @@
       in srgb,
       var(--primary) 72%,
       white
-    ) !important;
+    ) ;
 
-  color: #FFFFFF !important;
+  color: #FFFFFF ;
 }
 
 /* Second row = exact selected theme */
 .detailed-total.dark {
-  background: var(--primary) !important;
+  background: var(--primary) ;
 
-  color: #FFFFFF !important;
+  color: #FFFFFF ;
 }
 
 /* Keep text white */
@@ -3791,7 +3792,7 @@
 .detailed-total.light strong,
 .detailed-total.dark span,
 .detailed-total.dark strong {
-  color: #FFFFFF !important;
+  color: #FFFFFF ;
 
   font-weight: 700;
 }
@@ -3809,7 +3810,7 @@
 }
 
 .timesheet-filter-button {
-  width: 100% !important;
+  width: 100% ;
   height: 38px;
 
   display: flex;
@@ -3821,8 +3822,8 @@
   border: 1px solid #CBD5E1;
   border-radius: 6px;
 
-  background: #FFFFFF !important;
-  color: #111827 !important;
+  background: #FFFFFF ;
+  color: #111827 ;
 
   font-size: 14px;
   font-weight: 600;
@@ -3831,7 +3832,7 @@
 }
 
 .timesheet-filter-button:hover {
-  background: #FFFFFF !important;
+  background: #FFFFFF ;
 
   border-color: var(--primary);
 }
@@ -3877,7 +3878,7 @@
 }
 
 .timesheet-filter-option {
-  width: 100% !important;
+  width: 100% ;
 
   display: block;
 
@@ -3885,8 +3886,8 @@
 
   border: none;
 
-  background: #FFFFFF !important;
-  color: #111827 !important;
+  background: #FFFFFF ;
+  color: #111827 ;
 
   text-align: left;
 
@@ -3899,13 +3900,13 @@
       in srgb,
       var(--primary) 10%,
       white
-    ) !important;
+    ) ;
 }
 
 .timesheet-filter-option.active {
-  background: var(--primary) !important;
+  background: var(--primary) ;
 
-  color: #FFFFFF !important;
+  color: #FFFFFF ;
 }
 
 /* =========================================
@@ -3943,8 +3944,8 @@
   gap: 18px;
   padding: 13px 18px;
 
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: #ffffff ;
+  color: #111827 ;
 
   font-weight: 700;
 
@@ -3954,8 +3955,8 @@
 /* Remove theme/background colors */
 .detailed-total.light,
 .detailed-total.dark {
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: #ffffff ;
+  color: #111827 ;
 }
 
 /* Make label and time dark */
@@ -3963,7 +3964,7 @@
 .detailed-total.light strong,
 .detailed-total.dark span,
 .detailed-total.dark strong {
-  color: #111827 !important;
+  color: #111827 ;
   font-weight: 700;
 }
 .timesheet-grand-total {
@@ -3973,8 +3974,8 @@
 
   padding: 12px 16px;
 
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: #ffffff ;
+  color: #111827 ;
 
   border-top: 1px solid #e5e7eb;
 
@@ -3983,7 +3984,7 @@
 
 .timesheet-grand-total span,
 .timesheet-grand-total strong {
-  color: #111827 !important;
+  color: #111827 ;
 }
 .sidebar-sublink {
   display: block;
@@ -4006,39 +4007,39 @@
 ========================================= */
 
 .admin-sidebar .sidebar-submenu {
-  padding-left: 0 !important;
-  margin-left: 0 !important;
+  padding-left: 0 ;
+  margin-left: 0 ;
 }
 
 .admin-sidebar .sidebar-sublink {
   width: 100%;
   box-sizing: border-box;
 
-  margin-left: 0 !important;
-  padding-left: 13px !important;
-  padding-right: 13px !important;
+  margin-left: 0 ;
+  padding-left: 13px ;
+  padding-right: 13px ;
 }
 
 .admin-sidebar .sidebar-link,
 .admin-sidebar .sidebar-parent-button {
-  margin-left: 0 !important;
-  padding-left: 13px !important;
-  padding-right: 13px !important;
+  margin-left: 0 ;
+  padding-left: 13px ;
+  padding-right: 13px ;
 }
 
 /* My Timesheet row */
 .admin-sidebar .sidebar-parent-row {
-  margin-left: 0 !important;
+  margin-left: 0 ;
 }
 
 /* Remove extra indentation from every submenu */
 .admin-sidebar .sidebar-submenu-group .sidebar-submenu {
-  padding-left: 0 !important;
+  padding-left: 0 ;
 }
 
 /* Keep submenu text aligned with normal menu text */
 .admin-sidebar .sidebar-submenu-group .sidebar-sublink {
-  padding-left: 13px !important;
+  padding-left: 13px ;
 }
 /* =========================================
    SIDEBAR ICON + TEXT FIX
@@ -4073,13 +4074,13 @@
 
 .client-modal-close,
 .client-modal-close-button {
-  color: #FFFFFF !important;
+  color: #FFFFFF ;
 }
 
 .client-modal-close svg,
 .client-modal-close-button svg {
-  color: #FFFFFF !important;
-  stroke: #FFFFFF !important;
+  color: #FFFFFF ;
+  stroke: #FFFFFF ;
 }
 /* Add Client Modal Close Button */
 .client-modal-close {
@@ -4096,7 +4097,7 @@
   background: #155e75;
 
   /* X SYMBOL */
-  color: #ffffff !important;
+  color: #ffffff ;
   font-size: 34px;
   font-weight: 700;
   line-height: 1;
@@ -4107,12 +4108,12 @@
 
 .client-modal-close:hover {
   background: #164e63;
-  color: #ffffff !important;
+  color: #ffffff ;
 }
 
 .client-modal-close:focus,
 .client-modal-close:active {
-  color: #ffffff !important;
+  color: #ffffff ;
 }
 /* =========================================
    HANDDY STYLE ADMIN SIDEBAR
@@ -4576,9 +4577,9 @@
 */
 
 .admin-main {
-  width: calc(100% - var(--admin-handdy-sidebar-width)) !important;
+  width: calc(100% - var(--admin-handdy-sidebar-width)) ;
 
-  margin-left: var(--admin-handdy-sidebar-width) !important;
+  margin-left: var(--admin-handdy-sidebar-width) ;
 
   min-height: 100vh;
 
@@ -4891,10 +4892,10 @@
   width:
     calc(
       100% - var(--admin-handdy-sidebar-width)
-    ) !important;
+    ) ;
 
   margin-left:
-    var(--admin-handdy-sidebar-width) !important;
+    var(--admin-handdy-sidebar-width) ;
 
   min-height: 100vh;
 
@@ -5012,10 +5013,10 @@
     calc(
       100% -
       var(--admin-handdy-current-width, 260px)
-    ) !important;
+    ) ;
 
   margin-left:
-    var(--admin-handdy-current-width, 260px) !important;
+    var(--admin-handdy-current-width, 260px) ;
 
   transition:
     width 0.22s ease,
@@ -5042,5 +5043,7 @@
 .team-modal-form select { width: 100%; height: 48px; margin: 0 0 18px; padding: 0 14px; border: 1px solid #c8ddd3; border-radius: 9px; background: #fff; color: #173c31; font: inherit; }
 .team-modal-form input:focus, .team-modal-form select:focus { outline: none; border-color: #18775c; box-shadow: 0 0 0 3px rgba(24,119,92,.13); }
 .team-form-help { margin: -3px 0 0; color: #6b8177; font-size: 13px; line-height: 1.45; }
-.team-save-button { background: #18775c !important; border-radius: 9px; }
-.team-save-button:hover { background: #126449 !important; }
+.team-save-button { background: #18775c ; border-radius: 9px; }
+.team-save-button:hover { background: #126449 ; }
+
+}

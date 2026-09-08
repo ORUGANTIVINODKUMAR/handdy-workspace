@@ -1,14 +1,15 @@
+@layer legacy {
 .tl-team-timesheet-page {
   width: 100%;
 }
 
 .tl-team-timesheet-page h1 {
-  margin: 0 0 18px !important;
+  margin: 0 0 18px ;
 
-  color: #6b7280 !important;
+  color: #6b7280 ;
 
-  font-size: 30px !important;
-  font-weight: 500 !important;
+  font-size: 30px ;
+  font-weight: 500 ;
 }
 
 .tl-team-top-row {
@@ -114,17 +115,17 @@
 }
 
 .tl-team-go {
-  width: 56px !important;
-  height: 44px !important;
+  width: 56px ;
+  height: 44px ;
 
-  padding: 0 !important;
+  padding: 0 ;
 
-  border: none !important;
-  border-radius: 5px !important;
+  border: none ;
+  border-radius: 5px ;
 
-  background: #ff7800 !important;
+  background: #ff7800 ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-weight: 700;
 
@@ -132,7 +133,7 @@
 }
 
 .tl-team-go:hover {
-  background: #e86d00 !important;
+  background: #e86d00 ;
 }
 
 .tl-team-result {
@@ -178,4 +179,5 @@
   .tl-team-controls {
     grid-template-columns: 1fr;
   }
+}
 }

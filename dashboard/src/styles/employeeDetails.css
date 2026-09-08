@@ -1,6 +1,7 @@
+@layer legacy {
 .employee-details-page { display: grid; gap: 18px; }
 .employee-details-back { display: inline-flex; align-items: center; gap: 7px; width: fit-content; color: var(--primary); font-size: 13px; font-weight: 650; text-decoration: none; }
-.employee-details-card { overflow: hidden; padding: 0 !important; }
+.employee-details-card { overflow: hidden; padding: 0 ; }
 .employee-details-state { padding: 24px; }
 .employee-details-header { display: flex; align-items: center; gap: 16px; padding: 24px; border-bottom: 1px solid var(--border-light); }
 .employee-details-avatar { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); font-size: 19px; font-weight: 800; }
@@ -24,3 +25,5 @@
 .employee-details-services article strong { color: var(--primary, #26785f); }
 .employee-details-services > p { margin: 0; color: var(--text-secondary, #62716b); }
 @media (max-width: 640px) { .employee-details-services > div { grid-template-columns: 1fr; } }
+
+}

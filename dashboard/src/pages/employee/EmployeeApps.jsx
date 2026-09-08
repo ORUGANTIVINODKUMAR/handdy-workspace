@@ -114,7 +114,7 @@ function EmployeeApps() {
                     {formattedReleaseDate && <span>Released {formattedReleaseDate}</span>}
                     <span>Windows 10 and 11 (64-bit)</span>
                   </div>
-                  <p>File: {release.fileName}{release.fileSize ? ` (${release.fileSize})` : ""}</p>
+                  <p>Windows installer{release.fileSize ? ` · ${release.fileSize}` : ""}</p>
                 </div>
 
                 {downloadUrl ? <a className="employee-windows-download" href={downloadUrl} download>

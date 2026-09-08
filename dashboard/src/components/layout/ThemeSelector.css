@@ -1,3 +1,4 @@
+@layer legacy {
 .theme-trigger {
   position: fixed;
   bottom: 22px;
@@ -8,10 +9,10 @@
   gap: 9px;
   min-height: 42px;
   padding: 7px 10px 7px 12px;
-  border: 1px solid var(--border-color) !important;
-  border-radius: 999px !important;
-  color: var(--text-main) !important;
-  background: color-mix(in srgb, var(--card-bg) 94%, transparent) !important;
+  border: 1px solid var(--border-color) ;
+  border-radius: 999px ;
+  color: var(--text-main) ;
+  background: color-mix(in srgb, var(--card-bg) 94%, transparent) ;
   box-shadow: 0 8px 24px var(--shadow-color);
   backdrop-filter: blur(14px);
   font-size: 13px;
@@ -19,9 +20,9 @@
 }
 
 .theme-trigger:hover:not(:disabled) {
-  color: var(--primary) !important;
-  border-color: var(--primary) !important;
-  background: var(--card-bg) !important;
+  color: var(--primary) ;
+  border-color: var(--primary) ;
+  background: var(--card-bg) ;
   transform: translateY(-1px);
 }
 
@@ -107,16 +108,16 @@
   height: 38px;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--border-light) !important;
-  border-radius: 12px !important;
-  color: var(--text-secondary) !important;
-  background: var(--surface-soft) !important;
+  border: 1px solid var(--border-light) ;
+  border-radius: 12px ;
+  color: var(--text-secondary) ;
+  background: var(--surface-soft) ;
 }
 
 .theme-modal-close:hover:not(:disabled) {
-  color: var(--text-main) !important;
-  border-color: var(--border-color) !important;
-  background: var(--card-bg) !important;
+  color: var(--text-main) ;
+  border-color: var(--border-color) ;
+  background: var(--card-bg) ;
 }
 
 .theme-current-preview {
@@ -160,23 +161,23 @@
   flex-direction: column;
   align-items: stretch;
   padding: 8px 8px 10px;
-  border: 1px solid var(--border-light) !important;
-  border-radius: 14px !important;
-  color: var(--text-main) !important;
-  background: var(--card-bg) !important;
+  border: 1px solid var(--border-light) ;
+  border-radius: 14px ;
+  color: var(--text-main) ;
+  background: var(--card-bg) ;
   text-align: left;
 }
 
 .theme-card:hover:not(:disabled) {
-  border-color: var(--primary-soft) !important;
-  background: var(--surface-soft) !important;
+  border-color: var(--primary-soft) ;
+  background: var(--surface-soft) ;
   transform: translateY(-2px);
   box-shadow: 0 10px 24px var(--shadow-color);
 }
 
 .theme-card.selected {
-  border-color: var(--primary) !important;
-  background: var(--surface-soft) !important;
+  border-color: var(--primary) ;
+  background: var(--surface-soft) ;
   box-shadow: 0 0 0 1px var(--primary);
 }
 
@@ -228,4 +229,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .theme-modal-backdrop, .theme-modal { animation: none; }
+}
+
 }

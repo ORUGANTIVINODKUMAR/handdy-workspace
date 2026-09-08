@@ -1,3 +1,4 @@
+@layer legacy {
 .billing-page { display: grid; gap: 22px; color: var(--text-primary, #15221d); }
 .billing-page-title { margin: 0 0 22px; color: var(--text-primary, #15221d); font-size: clamp(25px, 3vw, 34px); }
 .billing-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
@@ -59,3 +60,5 @@
 @media (max-width: 1200px) { .billing-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .billing-generate { grid-column: span 2; } .billing-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .billing-hero { align-items: stretch; flex-direction: column; } .billing-export { align-self: flex-start; } .billing-filters { grid-template-columns: 1fr; padding: 16px; } .billing-generate { grid-column: auto; } .billing-summary-grid { grid-template-columns: 1fr 1fr; } .billing-report > header, .billing-daily > header { align-items: flex-start; flex-direction: column; } .billing-daily summary { grid-template-columns: 1fr auto; gap: 7px 12px; } .billing-daily summary span:nth-child(2), .billing-daily summary span:nth-child(3) { display: none; } }
 @media (max-width: 480px) { .billing-summary-grid { grid-template-columns: 1fr; } .billing-summary-grid article { min-height: 115px; } }
+
+}

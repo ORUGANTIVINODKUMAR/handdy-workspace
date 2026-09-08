@@ -1,3 +1,4 @@
+@layer legacy {
 .tasks-page {
   width: 100%;
 }
@@ -193,9 +194,9 @@
 }
 
 .tasks-empty {
-  padding: 30px !important;
-  text-align: center !important;
-  color: #64748b !important;
+  padding: 30px ;
+  text-align: center ;
+  color: #64748b ;
 }
 
 .tasks-table-footer {
@@ -454,8 +455,8 @@
   border: none;
 
   /* IMPORTANT */
-  background: transparent !important;
-  background-color: transparent !important;
+  background: transparent ;
+  background-color: transparent ;
 
   display: flex;
   align-items: center;
@@ -466,7 +467,7 @@
   font-weight: 700;
   cursor: pointer;
 
-  box-shadow: none !important;
+  box-shadow: none ;
   outline: none;
 }
 
@@ -475,10 +476,10 @@
 .task-sort-button:hover,
 .task-sort-button:focus,
 .task-sort-button:active {
-  background: transparent !important;
-  background-color: transparent !important;
+  background: transparent ;
+  background-color: transparent ;
   color: #111827;
-  box-shadow: none !important;
+  box-shadow: none ;
   outline: none;
 }
 
@@ -495,8 +496,8 @@
 
 .task-icon-button {
   border: 0;
-  background: transparent !important;
-  background-color: transparent !important;
+  background: transparent ;
+  background-color: transparent ;
 
   color: #17327e;
 
@@ -505,7 +506,7 @@
   padding: 2px;
   cursor: pointer;
 
-  box-shadow: none !important;
+  box-shadow: none ;
   outline: none;
 }
 
@@ -514,9 +515,9 @@
 .task-icon-button:hover,
 .task-icon-button:focus,
 .task-icon-button:active {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
+  background: transparent ;
+  background-color: transparent ;
+  box-shadow: none ;
   outline: none;
 
   color: #2563eb;
@@ -539,7 +540,7 @@
 .tasks-table tbody tr:hover { background: #f8fbf9; }
 .task-sort-button, .task-sort-button:hover, .task-sort-button:focus, .task-sort-button:active { color: #245243; }
 .task-icon-button, .task-icon-button:hover, .task-icon-button:focus, .task-icon-button:active { color: #18775c; border: 1px solid #cfe1d8; border-radius: 7px; padding: 5px 8px; font-size: 17px; }
-.task-icon-button:hover { background: #e8f4ee !important; }
+.task-icon-button:hover { background: #e8f4ee ; }
 .task-status { display: inline-flex; padding: 5px 9px; border-radius: 999px; background: #e8f5ee; color: #176344; font-size: 12px; }
 .task-status.inactive { background: #fbecec; color: #a53f3f; }
 .tasks-pagination button, .tasks-pagination-dots { border-color: #d4e2dc; color: #27604e; }
@@ -576,22 +577,22 @@
 .tasks-page .task-sort-button:hover,
 .tasks-page .task-sort-button:focus,
 .tasks-page .task-sort-button:active {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: #245243 !important;
-  border: 0 !important;
-  box-shadow: none !important;
+  background: transparent ;
+  background-color: transparent ;
+  color: #245243 ;
+  border: 0 ;
+  box-shadow: none ;
 }
-.tasks-page .tasks-add-button { background: #18775c !important; }
-.tasks-page .tasks-add-button:hover { background: #126449 !important; }
+.tasks-page .tasks-add-button { background: #18775c ; }
+.tasks-page .tasks-add-button:hover { background: #126449 ; }
 html[data-theme] .tasks-page .task-sort-button,
 html[data-theme] .tasks-page .task-sort-button:hover,
 html[data-theme] .tasks-page .task-sort-button:focus,
 html[data-theme] .tasks-page .task-sort-button:active {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: #245243 !important;
-  border-color: transparent !important;
+  background: transparent ;
+  background-color: transparent ;
+  color: #245243 ;
+  border-color: transparent ;
 }
 
 /* Task creation workspace */
@@ -625,4 +626,6 @@ html[data-theme] .tasks-page .task-sort-button:active {
   .task-name-group, .task-team-picker, .task-employee-select, .task-modal-actions { grid-column: auto; }
   .task-modal-header { padding: 20px; }
   .task-team-options { grid-template-columns: 1fr; }
+}
+
 }

@@ -1,3 +1,4 @@
+import ModalFrame from "../../components/layout/ModalFrame";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
@@ -775,7 +776,7 @@ function AdminTasks() {
         {/* MODAL */}
 
         {showModal && (
-          <div className="task-modal-overlay">
+          <ModalFrame onClose={closeModal} label="Tasks details">
             <div className="task-modal">
 
               <div className="task-modal-header">
@@ -815,7 +816,7 @@ function AdminTasks() {
                 }}
               />
             </div>
-          </div>
+          </ModalFrame>
         )}
       </div>
     </DashboardLayout>

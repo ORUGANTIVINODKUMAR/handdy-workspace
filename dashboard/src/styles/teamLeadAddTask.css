@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    TEAM LEAD ADD TASK
 ========================================= */
@@ -395,7 +396,7 @@
 .tl-check-column {
   width: 65px;
 
-  text-align: center !important;
+  text-align: center ;
 }
 
 
@@ -408,19 +409,19 @@
 
 
 .tl-add-team-empty {
-  height: 55px !important;
+  height: 55px ;
 
-  text-align: center !important;
+  text-align: center ;
 }
 
 /* Clear, accessible employee selection for team leads. */
 html[data-theme] .tl-add-team-section {
-  width: min(640px, 100%) !important;
-  margin: 16px 0 0 22px !important;
+  width: min(640px, 100%) ;
+  margin: 16px 0 0 22px ;
   overflow: hidden;
   border: 1px solid #d6e6de;
   border-radius: 12px;
-  background: #ffffff !important;
+  background: #ffffff ;
   box-shadow: 0 8px 22px rgba(22, 65, 51, .06);
 }
 
@@ -431,8 +432,8 @@ html[data-theme] .tl-add-team-title {
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid #d6e6de;
-  background: #eff8f3 !important;
-  color: #174e3b !important;
+  background: #eff8f3 ;
+  color: #174e3b ;
   font-size: 15px;
   text-align: left;
 }
@@ -450,11 +451,11 @@ html[data-theme] .tl-add-team-search {
   gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid #edf2ef;
-  background: #fbfdfc !important;
+  background: #fbfdfc ;
 }
 
 html[data-theme] .tl-add-team-search label {
-  color: #29463c !important;
+  color: #29463c ;
   font-weight: 700;
 }
 
@@ -462,44 +463,44 @@ html[data-theme] .tl-add-team-search input {
   min-width: 0;
   flex: 1;
   height: 40px;
-  border: 1px solid #c8ddd3 !important;
+  border: 1px solid #c8ddd3 ;
   border-radius: 8px;
   color: #173c31;
 }
 
 html[data-theme] .tl-add-team-search input:focus {
-  border-color: #18775c !important;
+  border-color: #18775c ;
   box-shadow: 0 0 0 3px rgba(24, 119, 92, .13);
 }
 
 html[data-theme] .tl-add-team-search button {
   margin-left: 0;
-  color: #176344 !important;
+  color: #176344 ;
   font-weight: 750;
   text-decoration: none;
 }
 
-html[data-theme] .tl-add-team-search button:hover { color: #0e4a35 !important; text-decoration: underline; }
+html[data-theme] .tl-add-team-search button:hover { color: #0e4a35 ; text-decoration: underline; }
 
 html[data-theme] .tl-add-team-table th,
 html[data-theme] .tl-add-team-table td {
   height: 48px;
-  border-color: #e1ebe6 !important;
-  color: #29463c !important;
+  border-color: #e1ebe6 ;
+  color: #29463c ;
 }
 
 html[data-theme] .tl-add-team-table th {
-  background: #f5faf7 !important;
-  color: #176344 !important;
+  background: #f5faf7 ;
+  color: #176344 ;
   font-size: 12px;
   letter-spacing: .03em;
   text-transform: uppercase;
 }
 
 html[data-theme] .tl-add-team-table tbody tr { transition: background .15s ease; }
-html[data-theme] .tl-add-team-table tbody tr:hover td { background: #f7fbf9 !important; }
-html[data-theme] .tl-add-team-table tbody tr.is-selected td { background: #e8f5ee !important; color: #145b42 !important; font-weight: 700; }
-html[data-theme] .tl-check-column input { accent-color: #18775c !important; }
+html[data-theme] .tl-add-team-table tbody tr:hover td { background: #f7fbf9 ; }
+html[data-theme] .tl-add-team-table tbody tr.is-selected td { background: #e8f5ee ; color: #145b42 ; font-weight: 700; }
+html[data-theme] .tl-check-column input { accent-color: #18775c ; }
 
 
 /* =========================================
@@ -631,5 +632,7 @@ html[data-theme] .tl-check-column input { accent-color: #18775c !important; }
 
     align-self: flex-start;
   }
+
+}
 
 }

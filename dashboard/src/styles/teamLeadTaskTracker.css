@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    TEAM LEAD TASK TRACKER
 ========================================= */
@@ -13,12 +14,12 @@
 /* TITLE */
 
 .tl-task-tracker-page h1 {
-  margin: 0 0 20px !important;
+  margin: 0 0 20px ;
 
-  color: #6b7280 !important;
+  color: #6b7280 ;
 
-  font-size: 30px !important;
-  font-weight: 500 !important;
+  font-size: 30px ;
+  font-weight: 500 ;
 }
 
 
@@ -70,19 +71,19 @@
 
 
 .tl-task-tracker-go {
-  width: 56px !important;
-  min-width: 56px !important;
+  width: 56px ;
+  min-width: 56px ;
 
-  height: 42px !important;
+  height: 42px ;
 
-  padding: 0 !important;
+  padding: 0 ;
 
-  border: none !important;
-  border-radius: 5px !important;
+  border: none ;
+  border-radius: 5px ;
 
-  background: #ff7800 !important;
+  background: #ff7800 ;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   font-size: 14px;
   font-weight: 700;
@@ -92,7 +93,7 @@
 
 
 .tl-task-tracker-go:hover {
-  background: #ea6d00 !important;
+  background: #ea6d00 ;
 }
 
 
@@ -256,11 +257,11 @@
 
 
 .tl-task-empty {
-  text-align: center !important;
+  text-align: center ;
 
-  padding: 18px !important;
+  padding: 18px ;
 
-  color: #1f2a44 !important;
+  color: #1f2a44 ;
 }
 
 
@@ -318,4 +319,5 @@
     padding: 20px;
   }
 
+}
 }

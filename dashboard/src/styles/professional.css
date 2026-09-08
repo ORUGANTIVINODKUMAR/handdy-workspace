@@ -1,3 +1,4 @@
+@layer legacy {
 /* Shared visual polish loaded after legacy page styles and theme overrides. */
 
 html {
@@ -23,112 +24,112 @@ textarea {
 
 .admin-page {
   min-height: 100vh;
-  background: var(--page-bg) !important;
+  background: var(--page-bg) ;
 }
 
 .admin-handdy-sidebar {
-  width: var(--admin-handdy-current-width, 252px) !important;
+  width: var(--admin-handdy-current-width, 252px) ;
   border-right: 1px solid color-mix(in srgb, var(--sidebar-text) 9%, transparent);
-  background: var(--sidebar-bg) !important;
+  background: var(--sidebar-bg) ;
   box-shadow: 8px 0 28px color-mix(in srgb, var(--shadow-color) 8%, transparent);
 }
 
 .admin-main {
-  width: calc(100% - var(--admin-handdy-current-width, 252px)) !important;
-  margin-left: var(--admin-handdy-current-width, 252px) !important;
-  background: var(--page-bg) !important;
+  width: calc(100% - var(--admin-handdy-current-width, 252px)) ;
+  margin-left: var(--admin-handdy-current-width, 252px) ;
+  background: var(--page-bg) ;
 }
 
 .admin-handdy-brand {
-  height: 72px !important;
-  padding: 0 18px !important;
-  gap: 11px !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--sidebar-text) 10%, transparent) !important;
-  background: var(--sidebar-bg-secondary) !important;
+  height: 72px ;
+  padding: 0 18px ;
+  gap: 11px ;
+  border-bottom: 1px solid color-mix(in srgb, var(--sidebar-text) 10%, transparent) ;
+  background: var(--sidebar-bg-secondary) ;
 }
 
 .admin-handdy-logo {
-  width: 36px !important;
-  height: 36px !important;
-  border: 1px solid color-mix(in srgb, var(--sidebar-text) 18%, transparent) !important;
-  border-radius: 11px !important;
-  background: color-mix(in srgb, var(--sidebar-text) 7%, transparent) !important;
-  color: var(--accent) !important;
+  width: 36px ;
+  height: 36px ;
+  border: 1px solid color-mix(in srgb, var(--sidebar-text) 18%, transparent) ;
+  border-radius: 11px ;
+  background: color-mix(in srgb, var(--sidebar-text) 7%, transparent) ;
+  color: var(--accent) ;
 }
 
 .admin-handdy-name {
-  color: var(--sidebar-text) !important;
-  font-size: 21px !important;
-  font-weight: 750 !important;
+  color: var(--sidebar-text) ;
+  font-size: 21px ;
+  font-weight: 750 ;
   letter-spacing: -0.025em;
 }
 
 .admin-handdy-collapse {
-  right: 10px !important;
-  top: 23px !important;
-  width: 27px !important;
-  height: 27px !important;
-  border: 1px solid color-mix(in srgb, var(--sidebar-text) 13%, transparent) !important;
-  background: color-mix(in srgb, var(--sidebar-text) 7%, transparent) !important;
-  color: var(--sidebar-muted) !important;
-  box-shadow: none !important;
+  right: 10px ;
+  top: 23px ;
+  width: 27px ;
+  height: 27px ;
+  border: 1px solid color-mix(in srgb, var(--sidebar-text) 13%, transparent) ;
+  background: color-mix(in srgb, var(--sidebar-text) 7%, transparent) ;
+  color: var(--sidebar-muted) ;
+  box-shadow: none ;
 }
 
 .admin-handdy-collapse:hover {
-  background: color-mix(in srgb, var(--sidebar-text) 13%, transparent) !important;
-  color: var(--sidebar-text) !important;
+  background: color-mix(in srgb, var(--sidebar-text) 13%, transparent) ;
+  color: var(--sidebar-text) ;
 }
 
 .admin-handdy-nav {
-  padding: 16px 12px 30px !important;
+  padding: 16px 12px 30px ;
 }
 
 .admin-handdy-section {
-  margin-bottom: 24px !important;
+  margin-bottom: 24px ;
 }
 
 .admin-handdy-section h3 {
-  margin: 0 0 7px !important;
-  padding: 0 10px !important;
-  color: var(--sidebar-muted) !important;
-  font-size: 9px !important;
-  font-weight: 750 !important;
+  margin: 0 0 7px ;
+  padding: 0 10px ;
+  color: var(--sidebar-muted) ;
+  font-size: 9px ;
+  font-weight: 750 ;
   letter-spacing: 0.13em;
 }
 
 .admin-handdy-link {
-  min-height: 40px !important;
-  gap: 11px !important;
+  min-height: 40px ;
+  gap: 11px ;
   margin: 2px 0;
-  padding: 9px 11px !important;
-  border-radius: 9px !important;
-  color: var(--sidebar-text-muted) !important;
-  font-size: 12.5px !important;
-  font-weight: 520 !important;
+  padding: 9px 11px ;
+  border-radius: 9px ;
+  color: var(--sidebar-text-muted) ;
+  font-size: 12.5px ;
+  font-weight: 520 ;
   transition: background 150ms ease, color 150ms ease, transform 150ms ease;
 }
 
 .admin-handdy-link svg {
-  width: 17px !important;
-  height: 17px !important;
-  min-width: 17px !important;
-  color: var(--sidebar-muted) !important;
+  width: 17px ;
+  height: 17px ;
+  min-width: 17px ;
+  color: var(--sidebar-muted) ;
 }
 
 .admin-handdy-link:hover {
-  background: var(--sidebar-hover) !important;
-  color: var(--sidebar-text) !important;
+  background: var(--sidebar-hover) ;
+  color: var(--sidebar-text) ;
 }
 
 .admin-handdy-link.active {
-  background: var(--sidebar-active) !important;
-  color: var(--sidebar-text) !important;
-  font-weight: 680 !important;
+  background: var(--sidebar-active) ;
+  color: var(--sidebar-text) ;
+  font-weight: 680 ;
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .admin-handdy-link.active svg {
-  color: var(--accent) !important;
+  color: var(--accent) ;
 }
 
 /* Accordion controls expand a group; they are not selected pages. */
@@ -139,10 +140,10 @@ html[data-theme] body .tl-sidebar button.tl-sidebar-link.tl-parent-link,
 html[data-theme] body
   .employee-sidebar
   button.employee-sidebar-link.employee-parent-link {
-  border-color: transparent !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border-color: transparent ;
+  border-radius: 0 ;
+  background: transparent ;
+  box-shadow: none ;
 }
 
 html[data-theme] body
@@ -152,8 +153,8 @@ html[data-theme] body .tl-sidebar button.tl-sidebar-link.tl-parent-link:hover,
 html[data-theme] body
   .employee-sidebar
   button.employee-sidebar-link.employee-parent-link:hover {
-  background: transparent !important;
-  color: var(--sidebar-text) !important;
+  background: transparent ;
+  color: var(--sidebar-text) ;
 }
 
 html[data-theme] body
@@ -170,10 +171,10 @@ html[data-theme] body
 html[data-theme] body
   .employee-sidebar
   button.employee-sidebar-link.employee-parent-link:active {
-  border-color: transparent !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  outline: none !important;
+  border-color: transparent ;
+  background: transparent ;
+  box-shadow: none ;
+  outline: none ;
 }
 
 html[data-theme] body
@@ -183,89 +184,89 @@ html[data-theme] body .tl-sidebar button.tl-sidebar-link.tl-parent-link:focus-vi
 html[data-theme] body
   .employee-sidebar
   button.employee-sidebar-link.employee-parent-link:focus-visible {
-  color: var(--accent) !important;
+  color: var(--accent) ;
 }
 
 .admin-handdy-submenu {
   position: relative;
   gap: 1px;
   margin: 3px 0 7px 19px;
-  padding: 2px 0 2px 14px !important;
+  padding: 2px 0 2px 14px ;
   border-left: 1px solid color-mix(in srgb, var(--sidebar-text) 13%, transparent);
 }
 
 .admin-handdy-sublink {
-  min-height: 32px !important;
-  padding: 7px 10px !important;
+  min-height: 32px ;
+  padding: 7px 10px ;
   border-radius: 7px;
-  color: var(--sidebar-text-muted) !important;
-  font-size: 11.5px !important;
-  line-height: 1.35 !important;
+  color: var(--sidebar-text-muted) ;
+  font-size: 11.5px ;
+  line-height: 1.35 ;
 }
 
 .admin-handdy-sublink:hover,
 .admin-handdy-sublink.active {
-  background: var(--sidebar-hover) !important;
-  color: var(--sidebar-text) !important;
+  background: var(--sidebar-hover) ;
+  color: var(--sidebar-text) ;
 }
 
 .admin-handdy-sublink.active {
-  font-weight: 650 !important;
+  font-weight: 650 ;
 }
 
 .admin-handdy-sidebar.collapsed .admin-handdy-brand {
-  padding: 0 !important;
+  padding: 0 ;
 }
 
 .admin-handdy-sidebar.collapsed .admin-handdy-collapse {
-  right: 4px !important;
-  top: 52px !important;
-  width: 22px !important;
-  height: 22px !important;
-  background: var(--sidebar-bg-secondary) !important;
+  right: 4px ;
+  top: 52px ;
+  width: 22px ;
+  height: 22px ;
+  background: var(--sidebar-bg-secondary) ;
 }
 
 .admin-handdy-sidebar.collapsed .admin-handdy-nav {
-  padding: 16px 10px 30px !important;
+  padding: 16px 10px 30px ;
 }
 
 .admin-handdy-sidebar.collapsed .admin-handdy-link {
-  width: 52px !important;
-  min-height: 42px !important;
-  padding: 10px 0 !important;
+  width: 52px ;
+  min-height: 42px ;
+  padding: 10px 0 ;
 }
 
 .admin-topbar {
-  position: sticky !important;
+  position: sticky ;
   top: 0;
   z-index: 100;
-  min-height: 82px !important;
-  padding: 16px clamp(22px, 2.2vw, 36px) !important;
-  border-bottom: 1px solid var(--border-light) !important;
-  background: color-mix(in srgb, var(--topbar-bg) 94%, transparent) !important;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--shadow-color) 4%, transparent) !important;
+  min-height: 82px ;
+  padding: 16px clamp(22px, 2.2vw, 36px) ;
+  border-bottom: 1px solid var(--border-light) ;
+  background: color-mix(in srgb, var(--topbar-bg) 94%, transparent) ;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--shadow-color) 4%, transparent) ;
   backdrop-filter: blur(12px);
 }
 
 .admin-eyebrow {
-  margin: 0 0 5px !important;
-  color: var(--primary) !important;
-  font-size: 9.5px !important;
-  font-weight: 750 !important;
-  letter-spacing: 0.12em !important;
+  margin: 0 0 5px ;
+  color: var(--primary) ;
+  font-size: 9.5px ;
+  font-weight: 750 ;
+  letter-spacing: 0.12em ;
 }
 
 .admin-topbar h1 {
-  margin: 0 !important;
-  color: var(--text-heading) !important;
-  font-size: clamp(21px, 1.55vw, 27px) !important;
-  font-weight: 720 !important;
-  letter-spacing: -0.025em !important;
-  line-height: 1.15 !important;
+  margin: 0 ;
+  color: var(--text-heading) ;
+  font-size: clamp(21px, 1.55vw, 27px) ;
+  font-weight: 720 ;
+  letter-spacing: -0.025em ;
+  line-height: 1.15 ;
 }
 
 .admin-user {
-  gap: 11px !important;
+  gap: 11px ;
 }
 
 .admin-user-avatar {
@@ -284,58 +285,58 @@ html[data-theme] body
 }
 
 .admin-user-info {
-  gap: 2px !important;
+  gap: 2px ;
   min-width: 92px;
 }
 
 .admin-user-info strong {
-  color: var(--text-heading) !important;
-  font-size: 12.5px !important;
-  font-weight: 680 !important;
+  color: var(--text-heading) ;
+  font-size: 12.5px ;
+  font-weight: 680 ;
 }
 
 .admin-user-info span {
-  color: var(--text-muted) !important;
-  font-size: 10.5px !important;
+  color: var(--text-muted) ;
+  font-size: 10.5px ;
   text-transform: capitalize;
 }
 
 .admin-topbar .logout-button {
-  display: inline-flex !important;
+  display: inline-flex ;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: 36px !important;
-  padding: 0 12px !important;
-  border: 1px solid var(--border-color) !important;
-  border-radius: 9px !important;
-  background: var(--card-bg) !important;
-  color: var(--text-secondary) !important;
-  box-shadow: none !important;
-  font-size: 11.5px !important;
-  font-weight: 650 !important;
+  height: 36px ;
+  padding: 0 12px ;
+  border: 1px solid var(--border-color) ;
+  border-radius: 9px ;
+  background: var(--card-bg) ;
+  color: var(--text-secondary) ;
+  box-shadow: none ;
+  font-size: 11.5px ;
+  font-weight: 650 ;
 }
 
 .admin-topbar .logout-button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border-color)) !important;
-  background: var(--primary-soft) !important;
-  color: var(--primary) !important;
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border-color)) ;
+  background: var(--primary-soft) ;
+  color: var(--primary) ;
 }
 
 .admin-content {
   width: 100%;
   min-height: calc(100vh - 82px);
-  padding: clamp(22px, 2.25vw, 36px) !important;
-  background: var(--page-bg) !important;
+  padding: clamp(22px, 2.25vw, 36px) ;
+  background: var(--page-bg) ;
 }
 
 .admin-content .card,
 .admin-content .panel,
 .admin-content .personal-work-panel {
-  border: 1px solid var(--border-light) !important;
-  border-radius: 14px !important;
-  background: var(--card-bg) !important;
-  box-shadow: 0 8px 26px color-mix(in srgb, var(--shadow-color) 8%, transparent) !important;
+  border: 1px solid var(--border-light) ;
+  border-radius: 14px ;
+  background: var(--card-bg) ;
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--shadow-color) 8%, transparent) ;
 }
 
 /* Form and table consistency across the admin area. */
@@ -343,103 +344,103 @@ html[data-theme] body
 .admin-content input:not([type="checkbox"]):not([type="radio"]),
 .admin-content select,
 .admin-content textarea {
-  border-color: var(--input-border) !important;
-  border-radius: 9px !important;
-  background: var(--input-bg) !important;
-  color: var(--text-main) !important;
+  border-color: var(--input-border) ;
+  border-radius: 9px ;
+  background: var(--input-bg) ;
+  color: var(--text-main) ;
 }
 
 .admin-content input:not([type="checkbox"]):not([type="radio"]):focus,
 .admin-content select:focus,
 .admin-content textarea:focus {
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px var(--input-focus) !important;
-  outline: none !important;
+  border-color: var(--primary) ;
+  box-shadow: 0 0 0 3px var(--input-focus) ;
+  outline: none ;
 }
 
 .admin-content table {
-  border-color: var(--table-border) !important;
-  color: var(--text-main) !important;
+  border-color: var(--table-border) ;
+  color: var(--text-main) ;
 }
 
 .admin-content table th {
-  border-color: var(--table-border) !important;
-  background: var(--table-head-bg) !important;
-  color: var(--table-head-text) !important;
+  border-color: var(--table-border) ;
+  background: var(--table-head-bg) ;
+  color: var(--table-head-text) ;
 }
 
 .admin-content table td {
-  border-color: var(--table-border) !important;
-  background: var(--card-bg) !important;
-  color: var(--text-main) !important;
+  border-color: var(--table-border) ;
+  background: var(--card-bg) ;
+  color: var(--text-main) ;
 }
 
 /* Bring the other two role sidebars into the same design language. */
 
 .tl-sidebar,
 .employee-sidebar {
-  border-right: 1px solid color-mix(in srgb, var(--sidebar-text) 9%, transparent) !important;
-  background: var(--sidebar-bg) !important;
-  box-shadow: 8px 0 28px color-mix(in srgb, var(--shadow-color) 8%, transparent) !important;
+  border-right: 1px solid color-mix(in srgb, var(--sidebar-text) 9%, transparent) ;
+  background: var(--sidebar-bg) ;
+  box-shadow: 8px 0 28px color-mix(in srgb, var(--shadow-color) 8%, transparent) ;
 }
 
 .tl-brand,
 .employee-brand {
-  height: 72px !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--sidebar-text) 10%, transparent) !important;
-  background: var(--sidebar-bg-secondary) !important;
+  height: 72px ;
+  border-bottom: 1px solid color-mix(in srgb, var(--sidebar-text) 10%, transparent) ;
+  background: var(--sidebar-bg-secondary) ;
 }
 
 .tl-sidebar-nav,
 .employee-sidebar-nav {
-  padding-top: 16px !important;
+  padding-top: 16px ;
 }
 
 .tl-menu-title,
 .employee-menu-title {
-  color: var(--sidebar-muted) !important;
-  font-size: 9px !important;
-  letter-spacing: 0.13em !important;
+  color: var(--sidebar-muted) ;
+  font-size: 9px ;
+  letter-spacing: 0.13em ;
 }
 
 .tl-sidebar-link,
 .employee-sidebar-link {
-  border-radius: 9px !important;
-  color: var(--sidebar-text-muted) !important;
-  font-size: 12.5px !important;
+  border-radius: 9px ;
+  color: var(--sidebar-text-muted) ;
+  font-size: 12.5px ;
 }
 
 .tl-sidebar-link:hover,
 .employee-sidebar-link:hover {
-  background: var(--sidebar-hover) !important;
-  color: var(--sidebar-text) !important;
+  background: var(--sidebar-hover) ;
+  color: var(--sidebar-text) ;
 }
 
 .tl-sidebar-link.active,
 .employee-sidebar-link.active {
-  background: var(--sidebar-active) !important;
-  color: var(--sidebar-text) !important;
+  background: var(--sidebar-active) ;
+  color: var(--sidebar-text) ;
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
 @media (max-width: 760px) {
   .admin-topbar {
-    align-items: flex-start !important;
-    min-height: 74px !important;
+    align-items: flex-start ;
+    min-height: 74px ;
   }
 
   .admin-user-info,
   .admin-topbar .logout-button span {
-    display: none !important;
+    display: none ;
   }
 
   .admin-topbar .logout-button {
-    width: 36px !important;
-    padding: 0 !important;
+    width: 36px ;
+    padding: 0 ;
   }
 
   .admin-content {
-    padding: 18px !important;
+    padding: 18px ;
   }
 }
 
@@ -459,15 +460,15 @@ html[data-theme] body
 .tl-sidebar.collapsed .tl-parent-link,
 .employee-sidebar.collapsed .employee-sidebar-link,
 .employee-sidebar.collapsed .employee-parent-link {
-  justify-content: center !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  justify-content: center ;
+  padding-left: 0 ;
+  padding-right: 0 ;
 }
 
 .tl-sidebar.collapsed .tl-brand,
 .employee-sidebar.collapsed .employee-brand {
-  padding-left: 0 !important;
-  justify-content: center !important;
+  padding-left: 0 ;
+  justify-content: center ;
 }
 
 .tl-sidebar.collapsed .tl-menu-section,
@@ -478,7 +479,7 @@ html[data-theme] body
 
 .tl-sidebar.collapsed .tl-collapse-button,
 .employee-sidebar.collapsed .employee-collapse {
-  right: 6px !important;
+  right: 6px ;
 }
 
 @media (max-width: 900px) {
@@ -522,10 +523,10 @@ html[data-theme] body
   .admin-handdy-sidebar,
   .tl-sidebar,
   .employee-sidebar {
-    width: 265px !important;
+    width: 265px ;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
-    z-index: 1200 !important;
+    z-index: 1200 ;
   }
 
   .admin-handdy-sidebar.is-mobile-open,
@@ -539,15 +540,15 @@ html[data-theme] body
   .tl-sidebar.collapsed .tl-parent-link,
   .employee-sidebar.collapsed .employee-sidebar-link,
   .employee-sidebar.collapsed .employee-parent-link {
-    justify-content: flex-start !important;
-    padding-left: 11px !important;
+    justify-content: flex-start ;
+    padding-left: 11px ;
   }
 
   .admin-handdy-sidebar.collapsed .admin-handdy-brand,
   .tl-sidebar.collapsed .tl-brand,
   .employee-sidebar.collapsed .employee-brand {
-    padding-left: 18px !important;
-    justify-content: flex-start !important;
+    padding-left: 18px ;
+    justify-content: flex-start ;
   }
 
   .admin-main,
@@ -556,14 +557,16 @@ html[data-theme] body
   .employee-main,
   .employee-page,
   .tl-page {
-    width: 100% !important;
-    margin-left: 0 !important;
+    width: 100% ;
+    margin-left: 0 ;
   }
 
   .admin-topbar,
   .tl-topbar,
   .teamlead-topbar,
   .employee-topbar {
-    padding-left: 64px !important;
+    padding-left: 64px ;
   }
+}
+
 }

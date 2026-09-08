@@ -3,11 +3,13 @@ import { ThemeProvider } from "./context/ThemeContext";
 import ThemeSelector from "./components/layout/ThemeSelector";
 import "./styles/themes.css";
 import "./styles/professional.css";
+import AppShell from "./components/layout/AppShell";
+import "./styles/workspace.css";
 
 function App() {
   return (
     <ThemeProvider>
-      <AppRoutes />
+      <AppShell><AppRoutes /></AppShell>
       <ThemeSelector />
     </ThemeProvider>
   );

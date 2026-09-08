@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    TEAM LEAD SIDEBAR
 ========================================= */
@@ -114,15 +115,15 @@
   align-items: center;
   justify-content: center;
 
-  padding: 0 !important;
+  padding: 0 ;
 
-  border: none !important;
+  border: none ;
 
-  border-radius: 50% !important;
+  border-radius: 50% ;
 
-  background: #ffffff !important;
+  background: #ffffff ;
 
-  color: #7886b8 !important;
+  color: #7886b8 ;
 
   font-size: 18px;
   font-weight: 700;
@@ -131,7 +132,7 @@
 
   cursor: pointer;
 
-  box-shadow: none !important;
+  box-shadow: none ;
 }
 
 
@@ -207,11 +208,11 @@
 
   padding: 7px 0;
 
-  border: none !important;
+  border: none ;
 
-  border-radius: 0 !important;
+  border-radius: 0 ;
 
-  background: transparent !important;
+  background: transparent ;
 
   color: #dce4ff;
 
@@ -229,7 +230,7 @@
 
   cursor: pointer;
 
-  box-shadow: none !important;
+  box-shadow: none ;
 
   box-sizing: border-box;
 }
@@ -256,14 +257,14 @@
 
 
 .tl-sidebar-link:hover {
-  background: transparent !important;
+  background: transparent ;
 
   color: #ffffff;
 }
 
 
 .tl-sidebar-link.active {
-  background: transparent !important;
+  background: transparent ;
 
   color: #ffffff;
 
@@ -286,15 +287,15 @@
 
 
 .tl-arrow {
-  width: 14px !important;
+  width: 14px ;
 
-  height: 14px !important;
+  height: 14px ;
 
-  min-width: 14px !important;
+  min-width: 14px ;
 
   margin-left: auto;
 
-  color: #ffffff !important;
+  color: #ffffff ;
 
   stroke-width: 2;
 }
@@ -361,7 +362,7 @@
 
   border-radius: 0;
 
-  background: transparent !important;
+  background: transparent ;
 
   color: #d9e1ff;
 
@@ -377,21 +378,21 @@
 
   white-space: nowrap;
 
-  box-shadow: none !important;
+  box-shadow: none ;
 
   box-sizing: border-box;
 }
 
 
 .tl-sidebar-sublink:hover {
-  background: transparent !important;
+  background: transparent ;
 
   color: #ffffff;
 }
 
 
 .tl-sidebar-sublink.active {
-  background: transparent !important;
+  background: transparent ;
 
   color: #ffffff;
 
@@ -427,26 +428,26 @@
 .tl-sidebar button.tl-sidebar-link {
   appearance: none;
 
-  border: none !important;
+  border: none ;
 
-  outline: none !important;
+  outline: none ;
 
-  background: transparent !important;
+  background: transparent ;
 
-  border-radius: 0 !important;
+  border-radius: 0 ;
 
-  box-shadow: none !important;
+  box-shadow: none ;
 }
 
 
 .tl-sidebar button.tl-sidebar-link:hover,
 .tl-sidebar button.tl-sidebar-link:focus,
 .tl-sidebar button.tl-sidebar-link:active {
-  background: transparent !important;
+  background: transparent ;
 
-  outline: none !important;
+  outline: none ;
 
-  box-shadow: none !important;
+  box-shadow: none ;
 }
 
 
@@ -455,7 +456,7 @@
 ========================================= */
 
 .tl-sidebar a {
-  box-shadow: none !important;
+  box-shadow: none ;
 }
 
 
@@ -567,4 +568,5 @@
 
 .tl-sidebar-logout:hover {
   background: rgba(255, 255, 255, 0.08);
+}
 }

@@ -1,3 +1,4 @@
+@layer legacy {
 /* =========================================
    ADMIN LOGIN PAGE
 ========================================= */
@@ -407,10 +408,10 @@
   margin-top: 16px;
   padding: 0;
 
-  border: none !important;
-  outline: none !important;
+  border: none ;
+  outline: none ;
 
-  background: transparent !important;
+  background: transparent ;
   color: #2563eb;
 
   font-size: 15px;
@@ -419,7 +420,7 @@
 
   cursor: pointer;
 
-  box-shadow: none !important;
+  box-shadow: none ;
 }
 
 /* Do not show background after clicking */
@@ -427,10 +428,10 @@
 .admin-forgot-password:focus,
 .admin-forgot-password:focus-visible,
 .admin-forgot-password:active {
-  background: transparent !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
+  background: transparent ;
+  border: none ;
+  outline: none ;
+  box-shadow: none ;
   color: #2563eb;
 }
 /* =========================================
@@ -445,13 +446,13 @@ button.admin-forgot-password {
   margin-top: 16px;
   padding: 0;
 
-  border: none !important;
-  border-radius: 0 !important;
+  border: none ;
+  border-radius: 0 ;
 
-  background: transparent !important;
-  background-color: transparent !important;
+  background: transparent ;
+  background-color: transparent ;
 
-  color: #2563eb !important;
+  color: #2563eb ;
 
   font-size: 15px;
   font-weight: 600;
@@ -459,35 +460,36 @@ button.admin-forgot-password {
 
   text-decoration: underline;
 
-  box-shadow: none !important;
-  outline: none !important;
+  box-shadow: none ;
+  outline: none ;
 
   cursor: pointer;
 }
 
 /* HOVER */
 button.admin-forgot-password:hover {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: #1d4ed8 !important;
-  box-shadow: none !important;
+  background: transparent ;
+  background-color: transparent ;
+  color: #1d4ed8 ;
+  box-shadow: none ;
 }
 
 /* WHEN CLICKED */
 button.admin-forgot-password:active {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: #1d4ed8 !important;
-  box-shadow: none !important;
-  outline: none !important;
+  background: transparent ;
+  background-color: transparent ;
+  color: #1d4ed8 ;
+  box-shadow: none ;
+  outline: none ;
 }
 
 /* AFTER CLICKING / FOCUS */
 button.admin-forgot-password:focus,
 button.admin-forgot-password:focus-visible {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: #2563eb !important;
-  box-shadow: none !important;
-  outline: none !important;
+  background: transparent ;
+  background-color: transparent ;
+  color: #2563eb ;
+  box-shadow: none ;
+  outline: none ;
+}
 }
