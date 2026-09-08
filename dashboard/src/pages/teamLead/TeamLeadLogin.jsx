@@ -80,7 +80,7 @@ function TeamLeadLogin() {
           <h2>Team Lead Login</h2>
 
           <p>
-            Sign in using your Handdy
+            Sign in using your CRM
             company email.
           </p>
 

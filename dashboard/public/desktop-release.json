@@ -9,10 +9,10 @@
   "downloadUrl": "https://github.com/ORUGANTIVINODKUMAR/handdy-workspace/releases/download/v1.2.0/Handdy-Setup.exe",
   "releasePageUrl": "/employee/app",
   "releaseDate": "2026-09-03",
-  "message": "A new Handdy desktop version is available. Open the dashboard to download and install it.",
+  "message": "A new CRM desktop version is available. Open the dashboard to download and install it.",
   "releaseNotes": [
-    "Checks for new Handdy desktop versions at startup and every six hours.",
+    "Checks for new CRM desktop versions at startup and every six hours.",
     "Opens the employee App page when an update is available.",
-    "Installs over the existing Handdy application without requiring an uninstall."
+    "Installs over the existing CRM application without requiring an uninstall."
   ]
 }

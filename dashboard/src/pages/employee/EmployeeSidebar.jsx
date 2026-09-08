@@ -105,7 +105,7 @@ function EmployeeSidebar() {
 
           {!collapsed && (
             <div className="employee-brand-name">
-              Upsilon
+              CRM
             </div>
           )}
 

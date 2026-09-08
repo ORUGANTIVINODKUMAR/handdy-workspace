@@ -3,7 +3,7 @@ import { createContext } from "react";
 export const ThemeContext = createContext(null);
 
 export const themes = [
-  { id: "upsilon", name: "Handdy", description: "Handdy workspace green", colors: ["#0D3B2E", "#1E644E", "#369270", "#ABD8C5", "#EAF5EF"] },
+  { id: "upsilon", name: "CRM", description: "CRM workspace green", colors: ["#0D3B2E", "#1E644E", "#369270", "#ABD8C5", "#EAF5EF"] },
   { id: "periwinkle", name: "Periwinkle", description: "Calm blue and lavender", colors: ["#4056A1", "#6C8CE5", "#92A6DB", "#AEBBDA", "#E7E3F1"] },
   { id: "kozowood", name: "Kozowood", description: "Warm walnut and sand", colors: ["#3B342D", "#8B6238", "#A67C52", "#BC9775", "#A49386"] },
   { id: "moon", name: "Moon Phases", description: "Deep slate and ocean teal", colors: ["#1D252B", "#263845", "#25566A", "#7899A1", "#CFD5D1"] },

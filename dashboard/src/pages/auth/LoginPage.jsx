@@ -176,7 +176,7 @@ function LoginPage() {
         </p>
 
         <h1>
-          Welcome back
+          Welcome to CRM
         </h1>
 
         <p className="auth-description">

@@ -142,7 +142,7 @@ function TeamLeadTaskTracker() {
                       Offline
                     </strong>
                     {" - "}
-                    Not logged in the handdy timer
+                    Not logged in the CRM timer
                   </span>
                 </div>
 

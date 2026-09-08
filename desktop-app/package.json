@@ -4,6 +4,7 @@
   "description": "Employee Time & Attendance System Desktop App",
   "main": "main.js",
   "scripts": {
+    "test": "node --test --test-isolation=none test/*.test.js",
     "start": "set \"ELECTRON_RUN_AS_NODE=\" && electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win"
@@ -14,13 +15,14 @@
   "type": "commonjs",
   "build": {
     "appId": "com.handdy.timetracker",
-    "productName": "Handdy",
+    "productName": "CRM",
     "directories": {
       "output": "dist"
     },
     "files": [
       "main.js",
       "preload.js",
+      "idle-policy-defaults.json",
       "renderer.js",
       "index.html",
       "dashboard.html",
@@ -29,14 +31,14 @@
     ],
     "win": {
       "target": "nsis",
-      "artifactName": "Handdy-Setup.${ext}"
+      "artifactName": "CRM-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Handdy"
+      "shortcutName": "CRM"
     }
   },
   "devDependencies": {

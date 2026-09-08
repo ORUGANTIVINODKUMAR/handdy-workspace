@@ -6,6 +6,7 @@ import {
 } from "../../api/settingsApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import "../../styles/adminSettings.css";
+import idleDefaults from "../../../../desktop-app/idle-policy-defaults.json";
 
 function AdminSettings() {
   const [timezone, setTimezone] = useState("Asia/Kolkata");
@@ -18,10 +19,10 @@ function AdminSettings() {
     useState(true);
 
   const [breakInactiveMinutes, setBreakInactiveMinutes] =
-    useState(3);
+    useState(idleDefaults.idleThresholdMinutes);
 
   const [logoutInactiveMinutes, setLogoutInactiveMinutes] =
-    useState(50);
+    useState(idleDefaults.autoLogoutMinutes);
 
   const [manualTime, setManualTime] =
     useState(false);
@@ -77,6 +78,8 @@ function AdminSettings() {
           setBreakInactiveMinutes(
             response.idlePolicy.idleThresholdMinutes
           );
+          setLogoutInactiveMinutes(response.idlePolicy.autoLogoutMinutes ??
+            Math.max(idleDefaults.autoLogoutMinutes, response.idlePolicy.idleThresholdMinutes + 1));
         }
       } catch (error) {
         if (active) {
@@ -96,6 +99,7 @@ function AdminSettings() {
 
   const handleSave = async () => {
     const idleThresholdMinutes = Number(breakInactiveMinutes);
+    const autoLogoutMinutes = Number(logoutInactiveMinutes);
 
     if (
       !Number.isInteger(idleThresholdMinutes) ||
@@ -106,6 +110,12 @@ function AdminSettings() {
       setSettingsError(
         "Idle threshold must be a whole number from 1 to 240 minutes."
       );
+      return;
+    }
+
+    if (!Number.isInteger(autoLogoutMinutes) || autoLogoutMinutes < idleDefaults.minLogoutMinutes || autoLogoutMinutes > idleDefaults.maxLogoutMinutes || autoLogoutMinutes <= idleThresholdMinutes) {
+      setSettingsMessage("");
+      setSettingsError("Auto logout must be a whole number from 2 to 480 minutes and greater than the idle pause threshold.");
       return;
     }
 
@@ -137,10 +147,11 @@ function AdminSettings() {
     setSettingsError("");
 
     try {
-      const response = await updateIdlePolicy(idleThresholdMinutes);
+      const response = await updateIdlePolicy(idleThresholdMinutes, autoLogoutMinutes);
       setBreakInactiveMinutes(
         response.idlePolicy?.idleThresholdMinutes || idleThresholdMinutes
       );
+      setLogoutInactiveMinutes(response.idlePolicy?.autoLogoutMinutes ?? autoLogoutMinutes);
       setSettingsMessage("Settings saved successfully.");
     } catch (error) {
       setSettingsError(
@@ -369,13 +380,13 @@ function AdminSettings() {
 
             <div className="settings-inline">
               <span>
-                Automatically pause the desktop timer when there is no
-                mouse or keyboard activity for
+                Idle Pause After
               </span>
 
               <input
                 className="settings-small-input"
                 type="number"
+                aria-label="Idle Pause After"
                 min="1"
                 max="240"
                 step="1"
@@ -389,16 +400,20 @@ function AdminSettings() {
 
               <span>Minutes</span>
             </div>
+            <p>Automatically pause a running timer after this period of inactivity.</p>
 
             <div className="settings-inline">
               <span>
-                Logout of desktop timer if inactive for
+                Auto Logout After
               </span>
 
               <input
                 className="settings-small-input"
                 type="number"
-                min="1"
+                aria-label="Auto Logout After"
+                min="2"
+                max="480"
+                step="1"
                 value={logoutInactiveMinutes}
                 onChange={(event) =>
                   setLogoutInactiveMinutes(
@@ -409,6 +424,7 @@ function AdminSettings() {
 
               <span>Minutes</span>
             </div>
+            <p>Automatically sign the employee out after this total period of inactivity.</p>
           </div>
 
           {/* =====================================

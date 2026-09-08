@@ -74,6 +74,10 @@ let idleCheckInProgress = false;
 let idlePolicy = null;
 let currentTimeLog = null;
 let automaticIdlePause = false;
+let idleDefaults = null;
+let logoutPending = false;
+let logoutInProgress = false;
+let timerAction = null;
 
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const ACTIVE_AGAIN_SECONDS = 2;
@@ -129,85 +133,131 @@ function getOpenPauseReason(timeLog) {
   return openPause?.reason || "manual";
 }
 
+function normalizedDesktopPolicy(policy = {}) {
+  const idle = Number(policy.idleThresholdMinutes);
+  const thresholdMinutes = Number.isInteger(idle) && idle >= idleDefaults.minIdleMinutes && idle <= idleDefaults.maxIdleMinutes
+    ? idle : idleDefaults.idleThresholdMinutes;
+  const logout = Number(policy.autoLogoutMinutes);
+  return {
+    thresholdSeconds: thresholdMinutes * 60,
+    logoutSeconds: (Number.isInteger(logout) && logout > thresholdMinutes && logout <= idleDefaults.maxLogoutMinutes
+      ? logout : Math.max(idleDefaults.autoLogoutMinutes, thresholdMinutes + 1)) * 60,
+    exempt: Boolean(policy.idleTrackingExempt),
+  };
+}
+
 async function loadIdlePolicy() {
   const token = getToken();
-
-  if (!token || !window.electronAPI?.getSystemIdleTime) {
-    idlePolicy = null;
-    return;
-  }
-
+  if (!token || logoutPending || !window.electronAPI?.getSystemIdleTime) return;
+  if (!idleDefaults) idleDefaults = await window.electronAPI.getIdleDefaults();
+  // Retain the last known policy during an outage; use shared defaults on first load.
+  idlePolicy ||= normalizedDesktopPolicy();
   try {
-    const response = await fetch(`${API_BASE_URL}/settings/idle-policy`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await fetch(API_BASE_URL + "/settings/idle-policy", {
+      headers: { Authorization: "Bearer " + token },
+      signal: AbortSignal.timeout(10000),
     });
+    if (!response.ok) return;
     const data = await response.json();
+    if (getToken() === token && !logoutPending) idlePolicy = normalizedDesktopPolicy(data.idlePolicy);
+  } catch {
+    // OS-idle security monitoring continues with the last policy or safe defaults.
+  }
+}
 
-    if (!response.ok) {
-      throw new Error(data.message || "Unable to load idle settings.");
+function clearSessionLoops() {
+  clearInterval(idleMonitorInterval);
+  clearInterval(idlePolicyRefreshInterval);
+  clearInterval(timerInterval);
+  idleMonitorInterval = idlePolicyRefreshInterval = timerInterval = null;
+  automaticIdlePause = false;
+}
+
+async function runTimerAction(action) {
+  if (logoutPending || !getToken() || timerAction) return;
+  timerAction = action();
+  try { return await timerAction; } finally { timerAction = null; }
+}
+
+async function signOut(inactivity = false) {
+  if (logoutInProgress || !getToken()) return;
+  logoutInProgress = true;
+  logoutPending = true;
+  automaticIdlePause = false;
+  const token = getToken();
+  try {
+    // Finish an already submitted timer action before pausing for logout.
+    if (timerAction) await timerAction;
+    if (inactivity) {
+      [startTimerButton, pauseTimerButton, resumeTimerButton, stopTimerButton].forEach(button => {
+        if (button) button.disabled = true;
+      });
+      const response = await fetch(API_BASE_URL + "/time-logs/active", {
+        headers: { Authorization: "Bearer " + token },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        currentTimeLog = data.timeLog || null;
+        if (currentTimeLog?.status === "running") {
+          // Security logout applies even to employees exempt from ordinary idle tracking.
+          await pauseTimer("manual");
+          if (currentTimeLog?.status !== "paused") throw new Error("Pause pending");
+        }
+      } else if (response.status !== 401 && response.status !== 403) {
+        throw new Error("Pause status unavailable");
+      }
     }
-
-    idlePolicy = {
-      thresholdSeconds:
-        Number(data.idlePolicy?.idleThresholdMinutes || 0) * 60,
-      exempt: Boolean(data.idlePolicy?.idleTrackingExempt),
-    };
-  } catch (error) {
-    console.error("Idle policy could not be loaded:", error);
-    idlePolicy = null;
+    try {
+      await fetch(API_BASE_URL + "/auth/logout", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      // Once pause is confirmed, local sign-out completes even if logout is offline.
+    }
+    clearSessionLoops();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    if (inactivity) sessionStorage.setItem("inactivityLogout", "1");
+    window.location.replace("./index.html");
+  } catch {
+    // Never discard credentials needed to pause a potentially running backend timer.
+    // Keep timer controls locked and retry through the SAME idle loop after an outage.
+    if (timerMessage) timerMessage.textContent = "CRM is waiting for a connection to pause your timer and sign you out.";
+  } finally {
+    logoutInProgress = false;
   }
 }
 
 async function checkSystemIdleState() {
-  if (
-    idleCheckInProgress ||
-    !idlePolicy ||
-    idlePolicy.exempt ||
-    !currentTimeLog ||
-    !getToken()
-  ) {
-    return;
-  }
-
+  if (idleCheckInProgress || !idlePolicy || !getToken()) return;
   idleCheckInProgress = true;
-
   try {
     const idleSeconds = await window.electronAPI.getSystemIdleTime();
-
-    if (
-      currentTimeLog.status === "running" &&
-      idleSeconds >= idlePolicy.thresholdSeconds
-    ) {
-      await pauseTimer("idle");
-    } else if (
-      currentTimeLog.status === "paused" &&
-      automaticIdlePause &&
-      idleSeconds <= ACTIVE_AGAIN_SECONDS
-    ) {
-      await resumeTimer("idle");
+    if (!getToken()) return;
+    if (logoutPending || idleSeconds >= idlePolicy.logoutSeconds) {
+      await signOut(true);
+    } else if (!idlePolicy.exempt && currentTimeLog?.status === "running" && idleSeconds >= idlePolicy.thresholdSeconds) {
+      await runTimerAction(() => pauseTimer("idle"));
+    } else if (!idlePolicy.exempt && currentTimeLog?.status === "paused" && automaticIdlePause && idleSeconds <= ACTIVE_AGAIN_SECONDS) {
+      await runTimerAction(() => resumeTimer("idle"));
     }
-  } catch (error) {
-    console.error("Unable to check system idle time:", error);
+  } catch {
+    if (timerMessage) timerMessage.textContent = "CRM could not check inactivity. Please try again.";
   } finally {
     idleCheckInProgress = false;
   }
 }
 
 function startIdleMonitor() {
-  if (idleMonitorInterval) {
-    clearInterval(idleMonitorInterval);
-  }
-
-  if (!idlePolicy || idlePolicy.exempt) {
-    return;
-  }
-
-  idleMonitorInterval = setInterval(
-    checkSystemIdleState,
-    IDLE_CHECK_INTERVAL_MS
-  );
+  clearInterval(idleMonitorInterval);
+  idleMonitorInterval = null;
+  if (!idlePolicy || !getToken() || isLoginPage) return;
+  idleMonitorInterval = setInterval(checkSystemIdleState, IDLE_CHECK_INTERVAL_MS);
 }
+window.addEventListener("beforeunload", clearSessionLoops);
 function updateProfileUI(user) {
   profileFullName.textContent =
     user.fullName || "Not available";
@@ -646,14 +696,13 @@ async function loadActiveTimer() {
 
     const timeLog = data.timeLog;
     currentTimeLog = timeLog;
-    automaticIdlePause =
-      timeLog.status === "paused" &&
-      getOpenPauseReason(timeLog) === "idle";
+    // Restored timers require a manual Resume after authentication or app restart.
+    automaticIdlePause = false;
 
     timerStatus.textContent =
       timeLog.status === "paused"
-        ? automaticIdlePause
-          ? "Idle pause"
+        ? getOpenPauseReason(timeLog) === "idle"
+          ? "Paused due to inactivity"
           : "Paused"
         : "Running";
 
@@ -776,6 +825,7 @@ async function pauseTimer(reason = "manual") {
       `${API_BASE_URL}/time-logs/pause`,
       {
         method: "POST",
+        signal: AbortSignal.timeout(10000),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -814,7 +864,7 @@ async function pauseTimer(reason = "manual") {
       formatDuration(workedSeconds);
 
     timerStatus.textContent =
-      reason === "idle" ? "Idle pause" : "Paused";
+      reason === "idle" ? "Paused due to inactivity" : "Paused";
 
     timerMessage.textContent =
       data.message || "Timer paused successfully.";
@@ -1060,54 +1110,29 @@ refreshTimesheetButton?.addEventListener(
 
 startTimerButton?.addEventListener(
   "click",
-  startTimer
+  () => runTimerAction(startTimer)
 );
 stopTimerButton?.addEventListener(
   "click",
-  stopTimer
+  () => runTimerAction(stopTimer)
 );
 pauseTimerButton?.addEventListener(
   "click",
-  () => pauseTimer("manual")
+  () => runTimerAction(() => pauseTimer("manual"))
 );
 resumeTimerButton?.addEventListener(
   "click",
-  () => resumeTimer("manual")
+  () => runTimerAction(() => resumeTimer("manual"))
 );
-logoutButton?.addEventListener(
-  "click",
-  async () => {
-    const token = getToken();
-
-    if (token) {
-      try {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch {
-        // Local sign-out still completes when the backend is unavailable.
-      }
-    }
-
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    if (idleMonitorInterval) {
-      clearInterval(idleMonitorInterval);
-    }
-
-    if (idlePolicyRefreshInterval) {
-      clearInterval(idlePolicyRefreshInterval);
-    }
-
-    window.location.replace("./index.html");
-  }
-);
+logoutButton?.addEventListener("click", () => signOut(logoutPending));
 
 async function initializeApp() {
   const storedUser = getStoredUser();
   const token = getToken();
+  if (isLoginPage && sessionStorage.getItem("inactivityLogout")) {
+    message.textContent = "You were signed out due to inactivity.";
+    sessionStorage.removeItem("inactivityLogout");
+  }
 
   if (isLoginPage && storedUser && token) {
     window.location.replace("./dashboard.html");
@@ -1120,13 +1145,32 @@ async function initializeApp() {
   }
 
   if (storedUser && token) {
+    try {
+      const response = await fetch(API_BASE_URL + "/auth/me", {
+        headers: { Authorization: "Bearer " + token },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.replace("./index.html");
+        return;
+      }
+      if (!response.ok) throw new Error("Session unavailable");
+    } catch {
+      // Monitoring still starts with safe defaults while connectivity recovers.
+      timerMessage.textContent = "CRM could not refresh your session. Please check your connection.";
+    }
     showLoggedInView(storedUser);
 
     await loadIdlePolicy();
-    await loadProjects();
-    await loadActiveTimer();
-    await loadTodayTimesheet();
     startIdleMonitor();
+    await loadProjects();
+    if (logoutPending || !getToken()) return;
+    await loadActiveTimer();
+    if (logoutPending || !getToken()) return;
+    await loadTodayTimesheet();
+    if (logoutPending || !getToken()) return;
 
     idlePolicyRefreshInterval = setInterval(async () => {
       await loadIdlePolicy();

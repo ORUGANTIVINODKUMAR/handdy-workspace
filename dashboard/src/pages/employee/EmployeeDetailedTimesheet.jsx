@@ -427,7 +427,7 @@ function EmployeeDetailedTimesheet() {
           </span>
 
           <strong>
-            Handdy.com
+            CRM
           </strong>
 
           <span>

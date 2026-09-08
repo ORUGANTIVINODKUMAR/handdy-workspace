@@ -11,6 +11,7 @@ import {
 } from "../../api/reportApi";
 import TeamLeadSidebar from "../teamLead/TeamLeadSidebar";
 import EmployeeSidebar from "../employee/EmployeeSidebar";
+import HanddyDownloadCard from "../../components/dashboard/HanddyDownloadCard";
 
 import "../../styles/adminReportPage.css";
 import "../../styles/roleReportPage.css";
@@ -35,7 +36,7 @@ const getIdleSeconds = (record) => {
   }, 0);
 };
 
-function RoleReportPage({ title, description, mode = "time", scope = "team" }) {
+function RoleReportPage({ title, description, mode = "time", scope = "team", showDesktopDownload = false }) {
   const { user } = useAuth();
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
@@ -83,6 +84,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team" }) {
         {!error && mode === "time" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Worked</th><th>Idle</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{duration(record.totalWorkedSeconds)}</td><td>{duration(getIdleSeconds(record))}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
         {!error && mode === "attendance" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Hours</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "—"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "—"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
       </section>
+      {showDesktopDownload && user?.role === "employee" && <HanddyDownloadCard />}
     </div>
   );
 

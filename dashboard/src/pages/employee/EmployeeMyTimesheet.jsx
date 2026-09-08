@@ -351,7 +351,7 @@ function EmployeeMyTimesheet() {
           </span>
 
           <strong>
-            Handdy.com
+            CRM
           </strong>
 
           <span>

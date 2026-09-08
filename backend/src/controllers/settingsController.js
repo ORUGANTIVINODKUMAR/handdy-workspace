@@ -1,11 +1,11 @@
 const SystemSettings = require("../models/SystemSettings");
 
-const DEFAULT_IDLE_THRESHOLD_MINUTES = 5;
+const { defaults, normalizeIdlePolicy, validateIdlePolicy } = require("../utils/idlePolicy");
 
 const getSettings = () =>
   SystemSettings.findOneAndUpdate(
     { key: "global" },
-    { $setOnInsert: { idleThresholdMinutes: DEFAULT_IDLE_THRESHOLD_MINUTES } },
+    { $setOnInsert: { idleThresholdMinutes: defaults.idleThresholdMinutes, autoLogoutMinutes: defaults.autoLogoutMinutes } },
     { new: true, upsert: true, runValidators: true }
   );
 
@@ -16,7 +16,7 @@ const getIdlePolicy = async (req, res) => {
     return res.status(200).json({
       success: true,
       idlePolicy: {
-        idleThresholdMinutes: settings.idleThresholdMinutes,
+        ...normalizeIdlePolicy(settings),
         idleTrackingExempt: Boolean(req.user.idleTrackingExempt),
       },
     });
@@ -31,21 +31,27 @@ const getIdlePolicy = async (req, res) => {
 const updateIdlePolicy = async (req, res) => {
   try {
     const idleThresholdMinutes = Number(req.body.idleThresholdMinutes);
+    const existing = await getSettings();
+    const policy = {
+      idleThresholdMinutes,
+      autoLogoutMinutes: req.body.autoLogoutMinutes === undefined
+        ? Math.max(normalizeIdlePolicy(existing).autoLogoutMinutes, idleThresholdMinutes + 1)
+        : Number(req.body.autoLogoutMinutes),
+    };
+    const validationError = validateIdlePolicy(policy);
 
     if (
-      !Number.isInteger(idleThresholdMinutes) ||
-      idleThresholdMinutes < 1 ||
-      idleThresholdMinutes > 240
+      validationError
     ) {
       return res.status(400).json({
         success: false,
-        message: "Idle threshold must be a whole number from 1 to 240 minutes.",
+        message: validationError,
       });
     }
 
     const settings = await SystemSettings.findOneAndUpdate(
       { key: "global" },
-      { $set: { idleThresholdMinutes } },
+      { $set: policy },
       { new: true, upsert: true, runValidators: true }
     );
 
@@ -53,7 +59,7 @@ const updateIdlePolicy = async (req, res) => {
       success: true,
       message: "Idle settings saved successfully.",
       idlePolicy: {
-        idleThresholdMinutes: settings.idleThresholdMinutes,
+        ...normalizeIdlePolicy(settings),
       },
     });
   } catch (error) {
@@ -68,4 +74,3 @@ module.exports = {
   getIdlePolicy,
   updateIdlePolicy,
 };
-

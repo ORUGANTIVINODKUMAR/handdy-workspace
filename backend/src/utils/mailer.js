@@ -62,7 +62,7 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
   const result = await transporter.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to,
-    subject: "Reset your Handdy password",
+    subject: "Reset your CRM password",
     text: `We received a request to reset your password. This link expires in 1 hour.\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
     html: `<p>We received a request to reset your password. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can ignore this email.</p>`,
   });

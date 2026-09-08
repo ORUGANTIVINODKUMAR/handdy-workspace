@@ -37,7 +37,7 @@ const workspaceContent = {
     actions: [["Desktop applications", "/admin/apps"], ["System settings", "/admin/settings"]],
   },
   Apps: {
-    text: "The Handdy desktop timer is included in this project and connects to the same employee account and API.",
+    text: "The CRM desktop timer is included in this project and connects to the same employee account and API.",
     actions: [["Setup instructions", "/admin/getting-started"]],
   },
   "Getting started": {
@@ -106,7 +106,7 @@ function AdminPlaceholderPage({ title, description }) {
           <p>{content.text}</p>
 
           {title === "Apps" && (
-            <div className="admin-workspace-notice"><Download size={20} /><div><strong>Handdy desktop timer</strong><span>Source is available in the desktop-app folder. The installer will be prepared after the dashboard completion pass.</span></div></div>
+            <div className="admin-workspace-notice"><Download size={20} /><div><strong>CRM desktop timer</strong><span>Source is available in the desktop-app folder. The installer will be prepared after the dashboard completion pass.</span></div></div>
           )}
 
           <div className="admin-workspace-actions">

@@ -11,6 +11,11 @@ const {
 const path = require("path");
 const { fileURLToPath } = require("url");
 
+// Pin the existing package-derived profile before changing the display name.
+// This preserves saved employee sessions in both development and packaged builds.
+app.setPath("userData", app.getPath("userData"));
+app.setName("CRM");
+
 const APP_ORIGIN = "https://handdy-workspace.onrender.com";
 const UPDATE_MANIFEST_URL = `${APP_ORIGIN}/desktop-release.json`;
 const DEFAULT_RELEASE_PAGE_URL = `${APP_ORIGIN}/employee/app`;
@@ -67,7 +72,7 @@ async function checkForAppUpdate(mainWindow) {
       compareVersions(currentVersion, latestVersion) >= 0 ||
       lastPromptedVersion === latestVersion
     ) {
-      console.log(`[updater] Handdy ${currentVersion} is up to date.`);
+      console.log(`[updater] CRM ${currentVersion} is up to date.`);
       return;
     }
 
@@ -78,14 +83,14 @@ async function checkForAppUpdate(mainWindow) {
     );
     const releasePageUrl = getTrustedDashboardUrl(release.releasePageUrl);
     const buttons = mandatory
-      ? ["Open download page", "Exit Handdy"]
+      ? ["Open download page", "Exit CRM"]
       : ["Open download page", "Later"];
 
     const result = await dialog.showMessageBox(mainWindow, {
       type: "info",
-      title: "Handdy update available",
-      message: `Handdy ${latestVersion} is available`,
-      detail: release.message || "Open the Handdy dashboard to download and install the latest version.",
+      title: "CRM update available",
+      message: `CRM ${latestVersion} is available`,
+      detail: release.message || "Open the CRM dashboard to download and install the latest version.",
       buttons,
       defaultId: 0,
       cancelId: 1,
@@ -106,9 +111,11 @@ async function checkForAppUpdate(mainWindow) {
 ipcMain.handle("system:get-idle-time", () =>
   powerMonitor.getSystemIdleTime()
 );
+ipcMain.handle("system:idle-defaults", () => require("./idle-policy-defaults.json"));
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
+    title: "CRM",
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -162,7 +169,11 @@ function createWindow() {
   updateTimer.unref();
 }
 
+const ownsSession = app.requestSingleInstanceLock();
+if (!ownsSession) app.quit();
+
 app.whenReady().then(() => {
+  if (!ownsSession) return;
   Menu.setApplicationMenu(null);
   createWindow();
 

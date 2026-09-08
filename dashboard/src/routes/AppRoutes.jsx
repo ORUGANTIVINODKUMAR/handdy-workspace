@@ -959,7 +959,7 @@ function AppRoutes() {
         path="/employee/dashboard"
         element={
           <EmployeeOnly>
-            <RoleReportPage title="Employee insights" description="Your recorded project and task timer activity." />
+            <RoleReportPage title="Employee insights" description="Your recorded project and task timer activity." showDesktopDownload />
           </EmployeeOnly>
         }
       />

@@ -5,10 +5,10 @@ export const getIdlePolicy = async () => {
   return response.data;
 };
 
-export const updateIdlePolicy = async (idleThresholdMinutes) => {
+export const updateIdlePolicy = async (idleThresholdMinutes, autoLogoutMinutes) => {
   const response = await axiosInstance.put("/settings/idle-policy", {
     idleThresholdMinutes,
+    autoLogoutMinutes,
   });
   return response.data;
 };
-

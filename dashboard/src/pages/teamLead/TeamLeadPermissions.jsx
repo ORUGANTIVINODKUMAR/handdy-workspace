@@ -307,7 +307,7 @@ function TeamLeadPermissions() {
           </span>
 
           <strong>
-            Handdy.com
+            CRM
           </strong>
 
           <span>

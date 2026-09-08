@@ -4,6 +4,7 @@ import EmployeeSidebar from "./EmployeeSidebar";
 
 import "../../styles/employeeDashboard.css";
 import "../../styles/employeeSidebar.css";
+import HanddyDownloadCard from "../../components/dashboard/HanddyDownloadCard";
 
 function EmployeeDashboard() {
   const storedUser = JSON.parse(
@@ -92,6 +93,7 @@ function EmployeeDashboard() {
               </p>
 
             </section>
+            <HanddyDownloadCard />
 
           </div>
 
@@ -105,7 +107,7 @@ function EmployeeDashboard() {
           </span>
 
           <strong>
-            Handdy.com
+            CRM
           </strong>
 
           <span>

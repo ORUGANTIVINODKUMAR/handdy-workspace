@@ -1,4 +1,4 @@
-# Employee Time & Attendance System - Merged Project
+# CRM - Employee Time & Attendance System
 
 This folder merges the useful work from the two project copies in the uploaded ZIP into one clean project.
 
@@ -101,7 +101,7 @@ npm install
 npm start
 ```
 
-The packaged desktop timer uses the hosted Handdy API by default. Set
+The packaged desktop timer uses the hosted CRM API by default. Set
 `HANDDY_API_URL` before starting or packaging to use a different backend.
 
 ### Idle-time tracking
@@ -158,3 +158,32 @@ cd ../dashboard && npm run lint && npm run build
 - Backend tests pass.
 - Backend and Electron JavaScript syntax checks pass.
 - Backend and dashboard health checks return HTTP 200 in local development.
+
+## CRM branding and desktop release publishing
+
+The dashboard and desktop product display name is CRM. Technical identifiers,
+including `HANDDY_API_URL`, `com.handdy.timetracker`, the Render service name,
+and the existing GitHub repository and production URLs remain unchanged.
+The app pins its existing package-derived user-data folder before setting the CRM display name, preserving sessions in development and packaged builds.
+
+Build the Windows installer from `desktop-app` with `npm run build`.
+The configured output is `desktop-app/dist/CRM-Setup.exe`, with `CRM.exe`
+and CRM shortcuts. The old installer is retained.
+
+The current download manifest still describes the already hosted
+`Handdy-Setup.exe`. Do not rename that download URL before uploading the new
+asset. Publish the CRM installer to the existing GitHub release repository,
+then update `dashboard/public/desktop-release.json` with the actual download URL,
+filename, version, size, SHA-256, release date and notes. The Team Lead download
+in `dashboard/src/pages/teamLead/TeamLeadApps.jsx` also retains the old hosted
+asset and must be updated after publication. For automatic update prompts,
+choose a version higher than the currently published 1.2.0 and rebuild before
+publishing; this branding-only build keeps the existing version.
+
+No Render service or environment-variable changes are required. Deploy the
+updated dashboard through the existing process when ready.
+
+A CRM Windows icon still needs to be supplied. Existing icons remain untouched.
+The certificate `CN=Handdy Internal Code Signing` is not changed by rebranding.
+If CRM publisher branding is desired, obtain/use a separate certificate such as
+`CN=CRM Internal Code Signing`; verify trust and signing before distribution.

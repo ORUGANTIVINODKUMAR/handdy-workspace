@@ -50,18 +50,18 @@ function TeamLeadHelp() {
   const recentPosts = [
     "Settings: Idle and timeout",
     "What do I need to set up to get started with premium (employee monitoring) version?",
-    "What does Handdy monitor on my computer?",
+    "What does CRM monitor on my computer?",
     "How frequently does the desktop timer synchronize with the website?",
     "What can I track?",
   ];
 
   const commonQuestions = [
     "How do I subscribe to premium version?",
-    "What does Handdy monitor on my computer?",
-    "For how long will Handdy be free?",
-    "Why is Handdy free?",
+    "What does CRM monitor on my computer?",
+    "For how long will CRM be free?",
+    "Why is CRM free?",
     "How do I view what I am subscribed to?",
-    "Privacy and data security concerns for employees who use Handdy.",
+    "Privacy and data security concerns for employees who use CRM.",
   ];
 
   const searchableItems = [
@@ -112,7 +112,7 @@ function TeamLeadHelp() {
             </div>
 
             <span>
-              Handdy
+              CRM
             </span>
           </button>
 

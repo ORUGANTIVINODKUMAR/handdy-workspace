@@ -29,7 +29,7 @@ function DashboardLayout({ title, children }) {
           <header className="admin-topbar">
             <div>
               <p className="admin-eyebrow">
-                EMPLOYEE TIME &amp; ATTENDANCE
+                CRM - EMPLOYEE TIME &amp; ATTENDANCE
               </p>
 
               <h1>{title}</h1>
@@ -81,7 +81,7 @@ function DashboardLayout({ title, children }) {
       <header className="dashboard-header">
         <div>
           <p className="eyebrow">
-            Employee Time &amp; Attendance
+            CRM - Employee Time &amp; Attendance
           </p>
 
           <h1>{title}</h1>
