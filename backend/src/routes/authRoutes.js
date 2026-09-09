@@ -3,6 +3,7 @@ const express = require("express");
 const {
   register,
   login,
+  quickLogin,
   getProfile,
   updateProfile,
   forgotPassword,
@@ -44,6 +45,7 @@ router.post(
   register
 );
 router.post("/login", loginLimiter, login);
+router.post("/quick-login", loginLimiter, quickLogin);
 
 router.post("/forgot-password", passwordResetLimiter, forgotPassword);
 router.post("/reset-password", passwordResetLimiter, resetPassword);

@@ -8,6 +8,7 @@ import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import EmployeeForm from "../../components/employees/EmployeeForm";
 import { getAllActiveProjects } from "../../api/projectApi";
 import { EMPTY_PROJECT_RATE, validateEmployeeForm } from "../../utils/employeeFormValidation";
+import { Eye, EyeOff } from "lucide-react";
 
 function AdminEmployees() {
   const location = useLocation();
@@ -67,6 +68,8 @@ function AdminEmployees() {
     password: "",
     confirmPassword: "",
   });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // LOAD EMPLOYEES
   const fetchEmployees = useCallback(async () => {
@@ -617,7 +620,7 @@ function AdminEmployees() {
       ========================== */}
 
       {showAddEmployee && (
-        <ModalFrame onClose={closeAddEmployeeModal} label="Employees details">
+        <ModalFrame onClose={closeAddEmployeeModal} label="Add employee">
 
           <div className="employee-modal employee-editor-modal">
 
@@ -663,7 +666,7 @@ function AdminEmployees() {
       ========================== */}
 
       {showEditEmployee && (
-        <ModalFrame onClose={closeEditEmployeeModal} label="Employees details">
+        <ModalFrame onClose={closeEditEmployeeModal} label="Edit employee">
 
           <div className="employee-modal employee-editor-modal">
 
@@ -709,13 +712,13 @@ function AdminEmployees() {
       ========================== */}
 
       {showResetPassword && (
-        <ModalFrame onClose={closeResetPasswordModal} label="Employees details">
+        <ModalFrame onClose={closeResetPasswordModal} label="Reset employee password">
 
-          <div className="employee-modal">
+          <div className="employee-modal password-reset-modal">
 
             <div className="employee-modal-header">
 
-              <div>
+              <div className="password-field-group">
                 <p className="admin-eyebrow">
                   EMPLOYEE MANAGEMENT
                 </p>
@@ -758,36 +761,36 @@ function AdminEmployees() {
               onSubmit={handleResetPassword}
             >
 
-              <div>
+              <div className="password-field-group">
                 <label htmlFor="resetPassword">
                   New Password
                 </label>
 
-                <input
+                <div className="password-input-wrap"><input
                   id="resetPassword"
                   name="password"
-                  type="password"
+                  type={showNewPassword ? "text" : "password"}
                   placeholder="Enter new password"
                   value={resetPasswordFormData.password}
                   onChange={handleResetPasswordFormChange}
                   autoComplete="new-password"
-                />
+                /><button type="button" className="password-visibility" onClick={() => setShowNewPassword((value) => !value)} aria-label={showNewPassword ? "Hide new password" : "Show new password"}>{showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
               </div>
 
-              <div>
+              <div className="password-field-group">
                 <label htmlFor="resetConfirmPassword">
                   Confirm New Password
                 </label>
 
-                <input
+                <div className="password-input-wrap"><input
                   id="resetConfirmPassword"
                   name="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm new password"
                   value={resetPasswordFormData.confirmPassword}
                   onChange={handleResetPasswordFormChange}
                   autoComplete="new-password"
-                />
+                /><button type="button" className="password-visibility" onClick={() => setShowConfirmPassword((value) => !value)} aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}>{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
               </div>
 
               <div className="employee-form-actions">

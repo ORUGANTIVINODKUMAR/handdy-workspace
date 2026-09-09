@@ -33,6 +33,7 @@ function harness({ timer = "running", idle = 0, outage = false } = {}) {
         state.timer = { ...state.timer, status: "paused", pauses: [{ pausedAt: new Date().toISOString(), reason: JSON.parse(options.body).reason }] };
       }
       if (url.endsWith("/resume")) state.timer = { ...state.timer, status: "running" };
+      if (url.endsWith("/stop")) state.timer = { ...state.timer, status: "stopped", totalWorkedSeconds: 23 * 60 + 26 };
       return { ok: true, status: 200, json: async () => ({ timeLog: state.timer, idlePolicy: { idleThresholdMinutes: 10, autoLogoutMinutes: 30 } }) };
     },
   });
@@ -53,14 +54,14 @@ test("active employee takes no action; ten minutes pauses exactly once", async (
   assert.equal(h.state.timer.status, "paused");
 });
 
-test("thirty minutes pauses before one logout; never stops, even on concurrent checks", async () => {
+test("thirty minutes pauses, closes the timer, then logs out exactly once", async () => {
   const h = harness({ idle: 1800 });
   await Promise.all([h.check(), h.check()]); await h.check();
   assert.equal(h.calls.filter(url => url.endsWith("/auth/logout")).length, 1);
   assert.ok(h.calls.findIndex(url => url.endsWith("/pause")) < h.calls.findIndex(url => url.endsWith("/auth/logout")));
-  assert.equal(h.calls.some(url => url.endsWith("/stop")), false);
+  assert.ok(h.calls.findIndex(url => url.endsWith("/stop")) < h.calls.findIndex(url => url.endsWith("/auth/logout")));
   assert.equal(h.context.localStorage.getItem("token"), null);
-  assert.equal(h.state.timer.status, "paused");
+  assert.equal(h.state.timer.status, "stopped");
 });
 
 test("logout also applies without an active timer and for idle-exempt staff", async () => {
@@ -98,6 +99,6 @@ test("settings outage uses defaults; pause outage blocks logout until retry succ
   assert.equal(h.run("logoutPending"), true);
   h.state.outage = false; h.state.idle = 0;
   await h.check();
-  assert.equal(h.state.timer.status, "paused");
+  assert.equal(h.state.timer.status, "stopped");
   assert.equal(h.context.localStorage.getItem("token"), null);
 });

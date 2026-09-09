@@ -55,6 +55,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .crm-account small { display: block; font-size: 10px; color: var(--text-secondary); text-transform: capitalize; margin-top: 3px; }
 .crm-avatar { display: grid; place-items: center; width: 32px; height: 32px; background: var(--surface-muted); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; font-weight: 600; }
 .crm-signout { display: grid; place-items: center; border: 0; background: transparent; color: var(--text-secondary); padding: 8px; }
+.crm-signout-error { max-width:260px; color:var(--danger); font-size:11px; line-height:1.35; }
 .crm-content { padding: 24px 28px 40px; min-height: calc(100vh - 112px); }
 .crm-context-line { display: flex; justify-content: space-between; color: #8992a1; font-size: 10px; margin-bottom: 24px; }
 .crm-context-line > span:first-child { display: flex; align-items: center; gap: 6px; }
@@ -383,3 +384,63 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
 .crm-account:hover,.auth-eyebrow,.auth-forgot-link { color:var(--primary); }
 .crm-auth-story { background:var(--sidebar-bg); }
 .auth-card h1 { color:var(--text-heading); }
+
+/* Spacious management editors */
+.crm-content .employee-modal.project-editor-modal { width:min(760px,calc(100vw - 40px)); padding:0; overflow:hidden; }
+.crm-content .project-editor-modal .employee-modal-header,
+.crm-content .employee-editor-modal .employee-modal-header,
+.crm-content .password-reset-modal .employee-modal-header { margin:0; padding:24px 28px 20px; background:var(--surface-raised); }
+.crm-content .project-editor-modal .employee-form { display:grid; gap:24px; padding:28px; overflow-y:auto; max-height:calc(88vh - 94px); }
+.crm-content .project-editor-modal>.admin-error-box,.crm-content .password-reset-modal>.admin-error-box,.crm-content .password-reset-modal>.profile-success-box { margin:20px 28px 0; }
+.crm-content .project-editor-modal .employee-form>div:not(.employee-form-actions) { display:grid; gap:9px; }
+.crm-content .project-editor-modal .project-client-picker { padding:20px; border:1px solid var(--border-light); border-radius:12px; background:var(--surface-soft); }
+.crm-content .project-editor-modal .project-client-picker-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.crm-content .project-editor-modal .project-client-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.crm-content .project-editor-modal .project-client-option { justify-content:flex-start; min-height:42px; padding:10px 12px; background:var(--card-bg); color:var(--text-main); border:1px solid var(--border-color); }
+.crm-content .project-editor-modal .project-client-option.selected { color:var(--button-text); background:var(--primary); border-color:var(--primary); }
+.crm-content .employee-modal .employee-form-actions { display:flex; justify-content:flex-end; gap:12px; margin:4px -28px -28px; padding:20px 28px; border-top:1px solid var(--border-light); background:var(--surface-raised); }
+.crm-content .employee-modal .employee-form-actions button { min-width:130px; min-height:42px; }
+.crm-content .employee-modal.employee-editor-modal { width:min(960px,calc(100vw - 40px)); padding:0; overflow:hidden; }
+.crm-content .employee-editor-form { display:grid; gap:0; padding:0; overflow-y:auto; max-height:calc(90vh - 94px); }
+.crm-content .employee-editor-form>.admin-error-box { margin:20px 28px 0; }
+.crm-content .employee-form-section { padding:28px; }
+.crm-content .employee-form-section+.employee-form-section { border-top:1px solid var(--border-light); }
+.crm-content .employee-form-section-heading { display:flex; gap:14px; align-items:flex-start; margin-bottom:22px; }
+.crm-content .employee-form-section-heading>span { display:grid; place-items:center; width:32px; height:32px; flex:0 0 32px; border-radius:9px; color:var(--primary); background:var(--surface-soft); font-size:11px; font-weight:750; }
+.crm-content .employee-form-section-heading h3 { margin:0 0 4px; }
+.crm-content .employee-form-section-heading p { margin:0; }
+.crm-content .employee-editor-form .employee-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 22px; }
+.crm-content .employee-editor-form label { display:grid; gap:8px; margin:0; }
+.crm-content .employee-service-labels,.crm-content .employee-service-row { display:grid; grid-template-columns:minmax(220px,1fr) minmax(220px,.8fr) 100px; gap:14px; align-items:end; }
+.crm-content .employee-service-labels { padding:0 4px 8px; color:var(--text-secondary); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.crm-content .employee-service-rows { display:grid; gap:12px; }
+.crm-content .employee-service-row { padding:16px; border:1px solid var(--border-light); border-radius:12px; background:var(--surface-raised); }
+.crm-content .employee-rate-field { position:relative; }
+.crm-content .employee-rate-field input { padding-left:28px; padding-right:60px; }
+.crm-content .employee-currency-prefix { position:absolute; left:12px; bottom:12px; z-index:1; color:var(--text-secondary); }
+.crm-content .employee-rate-suffix { position:absolute; right:12px; bottom:12px; color:var(--text-secondary); font-size:11px; }
+.crm-content .employee-remove-service { min-height:40px; background:var(--danger-bg); color:var(--danger); border-color:color-mix(in srgb,var(--danger) 25%,transparent); }
+.crm-content .employee-add-service { margin-top:14px; background:var(--card-bg); color:var(--primary); border:1px dashed var(--input-border); }
+.crm-content .employee-editor-form>.employee-form-actions { margin:0; }
+.crm-content .employee-modal.password-reset-modal { width:min(560px,calc(100vw - 32px)); padding:0; overflow:hidden; }
+.crm-content .password-reset-modal .employee-form { gap:22px; padding:28px; }
+.crm-content .password-field-group { display:grid; gap:8px; }
+.crm-content .password-input-wrap { position:relative; }
+.crm-content .password-input-wrap input { width:100%; padding-right:48px; }
+.crm-content .password-input-wrap .password-visibility { position:absolute; top:50%; right:6px; width:36px; min-width:36px; min-height:34px; padding:0; transform:translateY(-50%); color:var(--text-secondary); background:transparent; border:0; }
+.remembered-login { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; margin:0 0 22px; padding:14px; border:1px solid var(--border-light); border-radius:12px; background:var(--surface-soft); }
+.remembered-login-avatar { display:grid; place-items:center; width:40px; height:40px; border-radius:50%; color:var(--button-text); background:var(--primary); font-weight:700; }
+.remembered-login strong,.remembered-login span { display:block; }
+.remembered-login span { margin-top:3px; color:var(--text-secondary); font-size:11px; }
+.remembered-login button { min-height:38px; padding:8px 16px; border:0; border-radius:9px; color:var(--button-text); background:var(--primary); font-weight:650; }
+.auth-divider { display:flex; align-items:center; gap:12px; margin:0 0 20px; color:var(--text-muted); font-size:11px; }
+.auth-divider::before,.auth-divider::after { content:""; height:1px; flex:1; background:var(--border-light); }
+@media(max-width:700px) {
+  .crm-content .project-editor-modal .project-client-options,.crm-content .employee-editor-form .employee-form-grid { grid-template-columns:1fr; }
+  .crm-content .employee-service-labels { display:none; }
+  .crm-content .employee-service-row { grid-template-columns:1fr; align-items:stretch; }
+  .crm-content .employee-form-section,.crm-content .project-editor-modal .employee-form,.crm-content .password-reset-modal .employee-form { padding:20px; }
+  .crm-content .employee-modal .employee-form-actions { margin:4px -20px -20px; padding:16px 20px; }
+  .crm-content .employee-editor-form>.employee-form-actions { margin:0; }
+  .crm-content .employee-modal .employee-form-actions button { flex:1; min-width:0; }
+}

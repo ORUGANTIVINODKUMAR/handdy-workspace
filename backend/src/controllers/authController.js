@@ -8,6 +8,14 @@ const {
   generatePasswordResetToken,
   hashResetToken,
 } = require("../utils/passwordResetUtils");
+const { createRememberedSession, hashRememberedSession } = require("../utils/rememberedSessionUtils");
+
+const issueRememberedSession = (employee) => {
+  const session = createRememberedSession();
+  employee.rememberedSessionTokenHash = session.tokenHash;
+  employee.rememberedSessionExpires = session.expiresAt;
+  return session.token;
+};
 
 // ======================================================
 // BUILD SAFE USER RESPONSE
@@ -244,7 +252,7 @@ const login = async (req, res) => {
     const employee =
       await Employee.findOne({
         email: normalizedEmail,
-      }).select("+password +tokenVersion");
+      }).select("+password +tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires");
 
     if (!employee) {
       return res.status(401).json({
@@ -281,6 +289,8 @@ const login = async (req, res) => {
     employee.lastLoginAt =
       new Date();
 
+    const rememberedSessionToken = issueRememberedSession(employee);
+
     await employee.save();
 
     const token =
@@ -294,6 +304,8 @@ const login = async (req, res) => {
 
       token,
 
+      rememberedSessionToken,
+
       user:
         buildUserResponse(employee),
     });
@@ -302,6 +314,36 @@ const login = async (req, res) => {
       res,
       error
     );
+  }
+};
+
+// Password-free return on a previously authenticated device. The opaque token
+// is stored only as a SHA-256 hash in MongoDB and rotates after every use.
+const quickLogin = async (req, res) => {
+  try {
+    const rememberedSessionToken = req.body?.rememberedSessionToken;
+    if (!rememberedSessionToken || typeof rememberedSessionToken !== "string") {
+      return res.status(401).json({ success: false, message: "Remembered session is required." });
+    }
+    const employee = await Employee.findOne({
+      rememberedSessionTokenHash: hashRememberedSession(rememberedSessionToken),
+      rememberedSessionExpires: { $gt: new Date() },
+    }).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires");
+    if (!employee || !employee.isActive) {
+      return res.status(employee && !employee.isActive ? 403 : 401).json({ success: false, message: "Your remembered session is no longer valid." });
+    }
+    const nextRememberedSessionToken = issueRememberedSession(employee);
+    employee.lastLoginAt = new Date();
+    await employee.save();
+    return res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      token: generateToken(employee._id, employee.tokenVersion),
+      rememberedSessionToken: nextRememberedSessionToken,
+      user: buildUserResponse(employee),
+    });
+  } catch (error) {
+    return handleControllerError(res, error);
   }
 };
 
@@ -602,7 +644,7 @@ const resetPassword = async (req, res) => {
     const employee = await Employee.findOne({
       passwordResetTokenHash: hashResetToken(token),
       passwordResetExpires: { $gt: new Date() },
-    }).select("+tokenVersion +passwordResetTokenHash +passwordResetExpires");
+    }).select("+tokenVersion +passwordResetTokenHash +passwordResetExpires +rememberedSessionTokenHash +rememberedSessionExpires");
 
     if (!employee) {
       return res.status(400).json({
@@ -615,6 +657,8 @@ const resetPassword = async (req, res) => {
     employee.passwordResetTokenHash = null;
     employee.passwordResetExpires = null;
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+    employee.rememberedSessionTokenHash = null;
+    employee.rememberedSessionExpires = null;
 
     await employee.save();
 
@@ -649,7 +693,7 @@ const changePassword = async (req, res) => {
     }
 
     const employee = await Employee.findById(req.user._id).select(
-      "+password +tokenVersion"
+      "+password +tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires"
     );
 
     const passwordMatches = await employee.comparePassword(currentPassword);
@@ -663,6 +707,8 @@ const changePassword = async (req, res) => {
 
     employee.password = newPassword;
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+    employee.rememberedSessionTokenHash = null;
+    employee.rememberedSessionExpires = null;
 
     await employee.save();
 
@@ -684,9 +730,9 @@ const changePassword = async (req, res) => {
 // LOGOUT EMPLOYEE
 // ======================================================
 const logout = async (req, res) => {
-  await Employee.findByIdAndUpdate(req.user._id, {
-    $inc: { tokenVersion: 1 },
-  });
+  // Revoke the current access token while retaining the independent,
+  // device-bound remembered session used for password-free return.
+  await Employee.findByIdAndUpdate(req.user._id, { $inc: { tokenVersion: 1 } });
 
   return res.status(200).json({
     success: true,
@@ -702,6 +748,7 @@ const logout = async (req, res) => {
 module.exports = {
   register,
   login,
+  quickLogin,
   getProfile,
   updateProfile,
   forgotPassword,

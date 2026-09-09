@@ -186,9 +186,9 @@ async function signOut(inactivity = false) {
   automaticIdlePause = false;
   const token = getToken();
   try {
-    // Finish an already submitted timer action before pausing for logout.
+    // Finish an already submitted timer action before closing the timer.
     if (timerAction) await timerAction;
-    if (inactivity) {
+    {
       [startTimerButton, pauseTimerButton, resumeTimerButton, stopTimerButton].forEach(button => {
         if (button) button.disabled = true;
       });
@@ -200,12 +200,20 @@ async function signOut(inactivity = false) {
         const data = await response.json();
         currentTimeLog = data.timeLog || null;
         if (currentTimeLog?.status === "running") {
-          // Security logout applies even to employees exempt from ordinary idle tracking.
           await pauseTimer("manual");
           if (currentTimeLog?.status !== "paused") throw new Error("Pause pending");
         }
+        if (currentTimeLog?.status === "paused") {
+          const stopResponse = await fetch(API_BASE_URL + "/time-logs/stop", {
+            method: "POST",
+            headers: { Authorization: "Bearer " + token },
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!stopResponse.ok && stopResponse.status !== 404) throw new Error("Timer close pending");
+          currentTimeLog = null;
+        }
       } else if (response.status !== 401 && response.status !== 403) {
-        throw new Error("Pause status unavailable");
+        throw new Error("Timer status unavailable");
       }
     }
     try {
@@ -218,12 +226,19 @@ async function signOut(inactivity = false) {
       // Once pause is confirmed, local sign-out completes even if logout is offline.
     }
     clearSessionLoops();
+    currentTimeLog = null;
+    if (timerDuration) timerDuration.textContent = "00:00:00";
+    if (timerStatus) timerStatus.textContent = "Idle";
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    ["activeTimer", "currentTimeLog", "timerState", "timerStartedAt", "timerElapsedSeconds"].forEach(key => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
     if (inactivity) sessionStorage.setItem("inactivityLogout", "1");
     window.location.replace("./index.html");
   } catch {
-    // Never discard credentials needed to pause a potentially running backend timer.
+    // Never discard the access token needed to close a potentially active backend timer.
     // Keep timer controls locked and retry through the SAME idle loop after an outage.
     if (timerMessage) timerMessage.textContent = "CRM is waiting for a connection to pause your timer and sign you out.";
   } finally {
@@ -408,6 +423,12 @@ function formatTime(value) {
     minute: "2-digit",
     second: "2-digit",
   }).format(new Date(value));
+}
+
+function getRememberedUser() {
+  const storedUser = localStorage.getItem("rememberedUser");
+  if (!storedUser) return null;
+  try { return JSON.parse(storedUser); } catch { return null; }
 }
 
 function showLoggedInView(user) {
@@ -1046,7 +1067,9 @@ loginForm?.addEventListener(
 
     message.textContent = "";
 
-    if (!email || !password) {
+    const rememberedSessionToken = localStorage.getItem("rememberedSessionToken");
+    const useRememberedSession = !email && !password && rememberedSessionToken;
+    if ((!email || !password) && !useRememberedSession) {
       message.textContent =
         "Email and password are required.";
 
@@ -1058,7 +1081,7 @@ loginForm?.addEventListener(
       loginButton.textContent = "Logging in...";
 
       const response = await fetch(
-        `${API_BASE_URL}/auth/login`,
+        `${API_BASE_URL}${useRememberedSession ? "/auth/quick-login" : "/auth/login"}`,
         {
           method: "POST",
 
@@ -1066,18 +1089,19 @@ loginForm?.addEventListener(
             "Content-Type": "application/json",
           },
 
-          body: JSON.stringify({
-            email,
-            password,
-          }),
+          body: JSON.stringify(useRememberedSession ? { rememberedSessionToken } : { email, password }),
         }
       );
 
       const data = await response.json();
 
       if (!response.ok) {
+        if (useRememberedSession && [401, 403].includes(response.status)) {
+          localStorage.removeItem("rememberedSessionToken");
+          localStorage.removeItem("rememberedUser");
+        }
         message.textContent =
-          data.message || "Login failed.";
+          data.message || (useRememberedSession ? "Your remembered session has expired. Enter your email and password." : "Login failed.");
 
         return;
       }
@@ -1091,6 +1115,11 @@ loginForm?.addEventListener(
         "user",
         JSON.stringify(data.user)
       );
+
+      if (data.rememberedSessionToken) {
+        localStorage.setItem("rememberedSessionToken", data.rememberedSessionToken);
+        localStorage.setItem("rememberedUser", JSON.stringify(data.user));
+      }
 
       window.location.replace("./dashboard.html");
     } catch (error) {
@@ -1132,6 +1161,13 @@ async function initializeApp() {
   if (isLoginPage && sessionStorage.getItem("inactivityLogout")) {
     message.textContent = "You were signed out due to inactivity.";
     sessionStorage.removeItem("inactivityLogout");
+  }
+
+  if (isLoginPage && !token && localStorage.getItem("rememberedSessionToken")) {
+    const rememberedUser = getRememberedUser();
+    message.textContent = rememberedUser
+      ? `Welcome back, ${rememberedUser.fullName}. Click Login to continue.`
+      : "Click Login to continue with the remembered session.";
   }
 
   if (isLoginPage && storedUser && token) {

@@ -14,6 +14,7 @@ export default function AppShell({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
 
   useEffect(() => { setMobileOpen(false); setSearch(""); }, [location.pathname]);
   if (!isAuthenticated || isAuthLoading || /login|password/.test(location.pathname)) return children;
@@ -31,7 +32,13 @@ export default function AppShell({ children }) {
   const closeNavigation = () => { setMobileOpen(false); setSearch(""); };
   const signOut = async () => {
     setSigningOut(true);
-    try { await logout(); } finally { navigate("/login", { replace: true }); setSigningOut(false); }
+    setSignOutError("");
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+    } catch {
+      setSignOutError("Unable to close the active timer. Check your connection and try again.");
+    } finally { setSigningOut(false); }
   };
 
   return (
@@ -62,6 +69,7 @@ export default function AppShell({ children }) {
           <div className="crm-breadcrumb"><span>Workspace</span><span>/</span><strong>{current?.title || "Details"}</strong></div>
           <div className="crm-route-search"><Search size={16} /><input aria-label="Find a page" placeholder="Find a page…" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setSearch(""); }} />{search && <div className="crm-search-results">{results.length ? results.map((item) => <Link key={item.path} to={item.path} onClick={closeNavigation}>{item.title}<span>Open</span></Link>) : <p>No matching pages</p>}</div>}</div>
           <div className="crm-account"><span className="crm-avatar">{initials}</span><span><strong>{name}</strong><small>{user?.role?.replaceAll("_", " ")}</small></span></div>
+          {signOutError && <span className="crm-signout-error" role="alert">{signOutError}</span>}
           <button className="crm-signout" aria-label="Sign out" title="Sign out" disabled={signingOut} onClick={signOut}><LogOut size={17} /></button>
         </header>
         <main id="workspace-content" className="crm-content" key={location.pathname}>

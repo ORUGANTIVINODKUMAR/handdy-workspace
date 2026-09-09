@@ -493,8 +493,8 @@ function AdminProjects() {
 
       {/* ADD PROJECT MODAL */}
       {showAddProject && (
-        <ModalFrame onClose={closeAddProject} label="Projects details">
-          <div className="employee-modal">
+        <ModalFrame onClose={closeAddProject} label="Add project">
+          <div className="employee-modal project-editor-modal">
 
             <div className="employee-modal-header">
               <div>
@@ -604,8 +604,8 @@ function AdminProjects() {
 
       {/* EDIT PROJECT MODAL */}
       {showEditProject && (
-        <ModalFrame onClose={closeEditProject} label="Projects details">
-          <div className="employee-modal">
+        <ModalFrame onClose={closeEditProject} label="Edit project">
+          <div className="employee-modal project-editor-modal">
 
             <div className="employee-modal-header">
               <div>

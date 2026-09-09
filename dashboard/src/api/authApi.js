@@ -5,6 +5,11 @@ export const loginUser = async (loginData) => {
   return response.data;
 };
 
+export const quickLoginUser = async (rememberedSessionToken) => {
+  const response = await axiosInstance.post("/auth/quick-login", { rememberedSessionToken });
+  return response.data;
+};
+
 export const getCurrentUser = async () => {
   const response = await axiosInstance.get("/auth/me");
   return response.data;

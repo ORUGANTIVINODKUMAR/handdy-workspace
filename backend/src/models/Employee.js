@@ -211,6 +211,18 @@ const employeeSchema = new mongoose.Schema(
       select: false,
     },
 
+    rememberedSessionTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    rememberedSessionExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
     // This operational exemption is intentionally backend-only. It is not
     // included in admin employee forms or ordinary employee API responses.
     idleTrackingExempt: {

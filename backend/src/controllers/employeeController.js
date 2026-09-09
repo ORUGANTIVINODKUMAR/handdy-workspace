@@ -121,7 +121,7 @@ const getEmployeeById = async (req, res) => {
 const updateEmployee = async (req, res) => {
   try {
   
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findById(req.params.id).select("+rememberedSessionTokenHash +rememberedSessionExpires");
 
     if (!employee) {
       return res.status(404).json({
@@ -153,6 +153,13 @@ const updateEmployee = async (req, res) => {
         });
       }
       employee.password = req.body.password;
+      employee.rememberedSessionTokenHash = null;
+      employee.rememberedSessionExpires = null;
+    }
+
+    if (req.body.isActive === false) {
+      employee.rememberedSessionTokenHash = null;
+      employee.rememberedSessionExpires = null;
     }
 
     const requestedTeam = req.body.team !== undefined ? req.body.team : employee.team;
@@ -182,7 +189,7 @@ const resetEmployeePassword = async (req, res) => {
       });
     }
 
-    const employee = await Employee.findById(req.params.id).select("+tokenVersion");
+    const employee = await Employee.findById(req.params.id).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires");
 
     if (!employee) {
       return res.status(404).json({
@@ -193,6 +200,8 @@ const resetEmployeePassword = async (req, res) => {
 
     employee.password = password;
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+    employee.rememberedSessionTokenHash = null;
+    employee.rememberedSessionExpires = null;
     await employee.save();
 
     return res.status(200).json({
@@ -271,7 +280,7 @@ const assignTeamLead = async (req, res) => {
 // Deactivate an employee instead of deleting linked historical records.
 const deleteEmployee = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findById(req.params.id).select("+rememberedSessionTokenHash +rememberedSessionExpires");
 
     if (!employee) {
       return res.status(404).json({
@@ -291,6 +300,8 @@ const deleteEmployee = async (req, res) => {
     employee.teamLead = null;
     employee.team = null;
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+    employee.rememberedSessionTokenHash = null;
+    employee.rememberedSessionExpires = null;
     await employee.save();
 
     await Employee.updateMany(

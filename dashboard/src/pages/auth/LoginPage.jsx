@@ -37,6 +37,8 @@ function LoginPage() {
 
   const {
     login,
+    quickLogin,
+    rememberedUser,
     user,
     isAuthenticated,
     isAuthLoading,
@@ -158,6 +160,21 @@ function LoginPage() {
     }
   };
 
+  const handleQuickLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const loggedInUser = await quickLogin();
+      const dashboard = getDashboardForRole(loggedInUser.role);
+      if (!dashboard) throw new Error("This user does not have a valid application role.");
+      navigate(dashboard, { replace: true });
+    } catch (quickLoginError) {
+      setError(quickLoginError?.response?.data?.message || quickLoginError?.message || "Your remembered session has expired. Please sign in again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (isAuthLoading) {
     return (
       <div className="auth-page">
@@ -190,6 +207,16 @@ function LoginPage() {
             {error}
           </div>
         )}
+
+        {rememberedUser && (
+          <div className="remembered-login">
+            <div className="remembered-login-avatar">{rememberedUser.fullName?.split(/\s+/).slice(0, 2).map((part) => part[0]).join("")}</div>
+            <div><strong>{rememberedUser.fullName}</strong><span>{rememberedUser.email}</span></div>
+            <button type="button" onClick={handleQuickLogin} disabled={loading}>{loading ? "Checking…" : "Login"}</button>
+          </div>
+        )}
+
+        {rememberedUser && <div className="auth-divider"><span>or sign in with another account</span></div>}
 
         <form
           onSubmit={handleSubmit}

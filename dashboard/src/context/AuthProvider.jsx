@@ -8,9 +8,11 @@ import AuthContext from "./authContextInstance";
 
 import {
   loginUser,
+  quickLoginUser,
   getCurrentUser,
   logoutUser,
 } from "../api/authApi";
+import { stopTimer } from "../api/timerApi";
 
 function normalizeRole(role = "") {
   const normalized = String(role)
@@ -68,6 +70,10 @@ function AuthProvider({ children }) {
   const [isAuthLoading, setIsAuthLoading] =
     useState(true);
 
+  const [rememberedUser, setRememberedUser] = useState(() => {
+    try { return normalizeUser(JSON.parse(localStorage.getItem("rememberedUser"))); } catch { return null; }
+  });
+
   // ==========================================
   // CLEAR AUTH
   // ==========================================
@@ -75,6 +81,10 @@ function AuthProvider({ children }) {
   const clearAuth = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    ["activeTimer", "currentTimeLog", "timerState", "timerStartedAt", "timerElapsedSeconds"].forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
 
     setToken(null);
     setUser(null);
@@ -186,10 +196,39 @@ function AuthProvider({ children }) {
       JSON.stringify(loggedInUser)
     );
 
+    if (response.rememberedSessionToken) {
+      localStorage.setItem("rememberedSessionToken", response.rememberedSessionToken);
+      localStorage.setItem("rememberedUser", JSON.stringify(loggedInUser));
+      setRememberedUser(loggedInUser);
+    }
+
     setToken(newToken);
     setUser(loggedInUser);
 
     return loggedInUser;
+  };
+
+  const quickLogin = async () => {
+    const rememberedSessionToken = localStorage.getItem("rememberedSessionToken");
+    if (!rememberedSessionToken) throw new Error("No remembered session is available.");
+    try {
+      const response = await quickLoginUser(rememberedSessionToken);
+      const loggedInUser = normalizeUser(response?.user);
+      if (!response?.token || !response?.rememberedSessionToken || !loggedInUser) throw new Error("Invalid quick login response from server.");
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
+      localStorage.setItem("rememberedSessionToken", response.rememberedSessionToken);
+      localStorage.setItem("rememberedUser", JSON.stringify(loggedInUser));
+      setToken(response.token);
+      setUser(loggedInUser);
+      setRememberedUser(loggedInUser);
+      return loggedInUser;
+    } catch (error) {
+      localStorage.removeItem("rememberedSessionToken");
+      localStorage.removeItem("rememberedUser");
+      setRememberedUser(null);
+      throw error;
+    }
   };
 
   // ==========================================
@@ -201,16 +240,20 @@ function AuthProvider({ children }) {
       if (
         localStorage.getItem("token")
       ) {
+        try { await stopTimer(); } catch (timerError) {
+          if (timerError?.response?.status !== 404) throw timerError;
+        }
         await logoutUser();
       }
     } catch (error) {
-      console.error(
-        "Backend logout failed:",
-        error
-      );
-    } finally {
-      clearAuth();
+      if ([401, 403].includes(error?.response?.status)) {
+        clearAuth();
+        return;
+      }
+      console.error("Logout was deferred until the timer can be finalized:", error);
+      throw error;
     }
+    clearAuth();
   };
 
   const value = {
@@ -224,6 +267,8 @@ function AuthProvider({ children }) {
     isAuthLoading,
 
     login,
+    quickLogin,
+    rememberedUser,
     logout,
     clearAuth,
   };

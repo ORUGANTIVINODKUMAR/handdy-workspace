@@ -486,6 +486,12 @@
       "escapeClosed": true
     },
     {
+      "interaction": "project modal",
+      "opened": true,
+      "dialogVisible": true,
+      "escapeClosed": true
+    },
+    {
       "interaction": "theme persistence",
       "selectedTheme": "CRMCRM workspace green",
       "themeSelected": "upsilon",
