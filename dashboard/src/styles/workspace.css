@@ -453,3 +453,59 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
   .crm-content .employee-editor-form>.employee-form-actions { flex-direction:column-reverse; }
   .crm-content .employee-editor-form>.employee-form-actions :is(.secondary-button,.primary-button) { flex:0 0 auto; width:100%; }
 }
+
+/* Shared workspace header search */
+.crm-topbar .crm-route-search {
+  display:flex;
+  flex:0 1 380px;
+  width:min(380px,32vw);
+  height:40px;
+  min-height:40px;
+  margin-left:auto;
+  padding:0 12px;
+  gap:9px;
+  align-items:center;
+  overflow:visible;
+  color:var(--text-secondary);
+  background:var(--surface-muted);
+  border:1px solid var(--input-border);
+  border-radius:8px;
+  transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease;
+}
+.crm-topbar .crm-route-search>svg { flex:0 0 auto; pointer-events:none; }
+.crm-topbar .crm-route-search input {
+  display:block;
+  flex:1 1 auto;
+  width:100%;
+  min-width:0;
+  height:38px;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  outline:0;
+  background:transparent;
+  color:var(--text-primary);
+  box-shadow:none;
+  line-height:38px;
+}
+.crm-topbar .crm-route-search input:focus,
+.crm-topbar .crm-route-search input:focus-visible { outline:0; box-shadow:none; }
+.crm-topbar .crm-route-search:focus-within {
+  border-color:var(--primary);
+  background:var(--surface);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 14%,transparent);
+}
+.crm-topbar .crm-route-search .crm-search-results { top:calc(100% + 8px); right:0; left:0; width:100%; }
+.crm-topbar .crm-account { flex:0 0 auto; min-width:0; gap:11px; }
+.crm-topbar .crm-account>span:last-child { min-width:0; }
+.crm-topbar .crm-account strong { display:block; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.crm-topbar .crm-signout { flex:0 0 auto; margin-left:2px; padding:8px 0 8px 18px; }
+@media(max-width:1280px) {
+  .crm-topbar .crm-route-search { flex-basis:300px; width:min(300px,27vw); }
+  .crm-topbar .crm-account strong { max-width:130px; }
+}
+@media(min-width:901px) and (max-width:1100px) {
+  .crm-topbar .crm-route-search { display:flex; flex-basis:220px; width:220px; }
+  .crm-topbar .crm-account strong { max-width:100px; }
+}
