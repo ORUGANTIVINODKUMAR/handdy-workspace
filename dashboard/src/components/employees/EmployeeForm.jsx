@@ -49,10 +49,11 @@ function EmployeeForm({
   };
 
   return (
-    <form className="employee-form employee-editor-form" onSubmit={onSubmit}>
-      {error && <div className="admin-error-box" role="alert">{error}</div>}
+    <form className={`employee-form employee-editor-form employee-editor-form--${mode}`} onSubmit={onSubmit}>
+      <div className="employee-form-body">
+        {error && <div className="admin-error-box" role="alert">{error}</div>}
 
-      <section className="employee-form-section">
+        <section className="employee-form-section">
         <div className="employee-form-section-heading">
           <span>01</span>
           <div><h3>Employee details</h3><p>Basic account and access information.</p></div>
@@ -105,9 +106,9 @@ function EmployeeForm({
             </label>
           )}
         </div>
-      </section>
+        </section>
 
-      <section className="employee-form-section employee-services-section">
+        <section className="employee-form-section employee-services-section">
         <div className="employee-form-section-heading">
           <span>02</span>
           <div><h3>Projects and charge rates</h3><p>Assign each project once and enter the employee's hourly rate.</p></div>
@@ -167,7 +168,8 @@ function EmployeeForm({
         >
           + Add Another Project
         </button>
-      </section>
+        </section>
+      </div>
 
       <div className="employee-form-actions">
         <button className="secondary-button" type="button" onClick={onCancel} disabled={saving}>Cancel</button>
