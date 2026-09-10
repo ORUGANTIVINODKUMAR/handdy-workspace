@@ -21,7 +21,13 @@
           <p class="section-eyebrow">WELCOME BACK</p>
           <h2 id="login-title">Sign in to your workspace</h2>
           <p class="login-copy">Manage your attendance and track your work in one place.</p>
-          <form id="loginForm">
+          <section id="rememberedLogin" class="remembered-login" hidden aria-label="Remembered account">
+            <div id="rememberedAvatar" class="remembered-avatar" aria-hidden="true">C</div>
+            <div class="remembered-details"><strong id="rememberedName">Employee</strong><span id="rememberedEmail"></span></div>
+            <button type="button" id="quickLoginButton">Continue</button>
+            <button type="button" id="differentAccountButton" class="different-account-button">Use another account</button>
+          </section>
+          <form id="loginForm" novalidate>
             <div class="form-field">
               <label for="email">Work email</label>
               <input type="email" id="email" name="email" autocomplete="email" placeholder="name@company.com" required />

@@ -3,6 +3,12 @@ const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("loginButton");
 const message = document.getElementById("message");
+const rememberedLogin = document.getElementById("rememberedLogin");
+const rememberedAvatar = document.getElementById("rememberedAvatar");
+const rememberedName = document.getElementById("rememberedName");
+const rememberedEmail = document.getElementById("rememberedEmail");
+const quickLoginButton = document.getElementById("quickLoginButton");
+const differentAccountButton = document.getElementById("differentAccountButton");
 
 const loginSection = document.getElementById("loginSection");
 const appSection = document.getElementById("appSection");
@@ -1099,6 +1105,8 @@ loginForm?.addEventListener(
         if (useRememberedSession && [401, 403].includes(response.status)) {
           localStorage.removeItem("rememberedSessionToken");
           localStorage.removeItem("rememberedUser");
+          if (rememberedLogin) rememberedLogin.hidden = true;
+          if (loginForm) loginForm.hidden = false;
         }
         message.textContent =
           data.message || (useRememberedSession ? "Your remembered session has expired. Enter your email and password." : "Login failed.");
@@ -1137,6 +1145,19 @@ refreshTimesheetButton?.addEventListener(
   loadTodayTimesheet
 );
 
+quickLoginButton?.addEventListener("click", () => {
+  emailInput.value = "";
+  passwordInput.value = "";
+  loginForm.requestSubmit();
+});
+
+differentAccountButton?.addEventListener("click", () => {
+  rememberedLogin.hidden = true;
+  loginForm.hidden = false;
+  message.textContent = "";
+  emailInput.focus();
+});
+
 startTimerButton?.addEventListener(
   "click",
   () => runTimerAction(startTimer)
@@ -1165,9 +1186,16 @@ async function initializeApp() {
 
   if (isLoginPage && !token && localStorage.getItem("rememberedSessionToken")) {
     const rememberedUser = getRememberedUser();
-    message.textContent = rememberedUser
-      ? `Welcome back, ${rememberedUser.fullName}. Click Login to continue.`
-      : "Click Login to continue with the remembered session.";
+    if (rememberedLogin && rememberedUser) {
+      const rememberedDisplayName = rememberedUser.fullName || rememberedUser.name || "Employee";
+      rememberedName.textContent = rememberedDisplayName;
+      rememberedEmail.textContent = rememberedUser.email || "Remembered CRM account";
+      rememberedAvatar.textContent = rememberedDisplayName.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase();
+      rememberedLogin.hidden = false;
+      loginForm.hidden = true;
+    } else {
+      message.textContent = "Click Login to continue with the remembered session.";
+    }
   }
 
   if (isLoginPage && storedUser && token) {
