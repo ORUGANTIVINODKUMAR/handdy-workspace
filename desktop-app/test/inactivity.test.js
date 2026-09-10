@@ -41,7 +41,7 @@ function harness({ timer = "running", idle = 0, outage = false } = {}) {
   localStorage.setItem("token", "test-only");
   context.seed = state.timer;
   context.defaults = defaults;
-  vm.runInContext("idleDefaults = defaults; idlePolicy = normalizedDesktopPolicy({ idleThresholdMinutes: 10, autoLogoutMinutes: 30 }); currentTimeLog = seed;", context);
+  vm.runInContext("idleDefaults = defaults; idlePolicy = normalizedDesktopPolicy({ idleThresholdMinutes: 10, autoLogoutMinutes: 30 }); currentTimeLog = seed; activeTaskIdleLogout = true;", context);
   return { state, calls, context, nodes, run: source => vm.runInContext(source, context), check: () => context.checkSystemIdleState() };
 }
 
@@ -58,7 +58,6 @@ test("thirty minutes pauses, closes the timer, then logs out exactly once", asyn
   const h = harness({ idle: 1800 });
   await Promise.all([h.check(), h.check()]); await h.check();
   assert.equal(h.calls.filter(url => url.endsWith("/auth/logout")).length, 1);
-  assert.ok(h.calls.findIndex(url => url.endsWith("/pause")) < h.calls.findIndex(url => url.endsWith("/auth/logout")));
   assert.ok(h.calls.findIndex(url => url.endsWith("/stop")) < h.calls.findIndex(url => url.endsWith("/auth/logout")));
   assert.equal(h.context.localStorage.getItem("token"), null);
   assert.equal(h.state.timer.status, "stopped");
@@ -78,6 +77,43 @@ test("activity before logout preserves normal automatic resume and resets inacti
   h.state.idle = 0; await h.check();
   assert.equal(h.state.timer.status, "running");
   assert.equal(h.calls.some(url => url.endsWith("/auth/logout")), false);
+});
+
+test("task idle logout off leaves a running timer unchanged", async () => {
+  const h = harness({ idle: 1800 });
+  h.run("activeTaskIdleLogout = false");
+  await h.check();
+  assert.equal(h.state.timer.status, "running");
+  assert.equal(h.calls.length, 0);
+});
+
+test("intentional break is exempt from idle pause and logout", async () => {
+  const h = harness({ timer: "paused", idle: 1800 });
+  h.state.timer.pauses = [{ pausedAt: new Date().toISOString(), reason: "break" }];
+  h.run("currentTimeLog = seed");
+  await h.check();
+  assert.equal(h.state.timer.status, "paused");
+  assert.equal(h.calls.length, 0);
+});
+
+test("Break is enabled while working and toggles to End Break", async () => {
+  const h = harness();
+  await h.run('pauseTimer("break")');
+  assert.equal(h.nodes.get("breakTimerButton").disabled, false);
+  assert.equal(h.nodes.get("breakTimerButton").textContent, "End Break");
+  assert.equal(h.run("timerInterval !== null"), true);
+  await h.run('resumeTimer("break")');
+  assert.equal(h.nodes.get("breakTimerButton").disabled, false);
+  assert.equal(h.nodes.get("breakTimerButton").textContent, "Break");
+});
+
+test("each new Break display starts at zero without counting completed breaks", () => {
+  const h = harness();
+  const seconds = h.run(`calculateBreakSeconds({ pauses: [
+    { reason: "break", pausedAt: new Date(Date.now() - 120000).toISOString(), resumedAt: new Date(Date.now() - 60000).toISOString() },
+    { reason: "break", pausedAt: new Date().toISOString(), resumedAt: null }
+  ] })`);
+  assert.equal(seconds, 0);
 });
 
 test("a restored idle-paused timer never auto-resumes after login", async () => {

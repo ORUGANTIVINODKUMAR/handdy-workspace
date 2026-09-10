@@ -541,6 +541,19 @@
 .task-sort-button, .task-sort-button:hover, .task-sort-button:focus, .task-sort-button:active { color: #245243; }
 .task-icon-button, .task-icon-button:hover, .task-icon-button:focus, .task-icon-button:active { color: #18775c; border: 1px solid #cfe1d8; border-radius: 7px; padding: 5px 8px; font-size: 17px; }
 .task-icon-button:hover { background: #e8f4ee ; }
+.task-icon-button { display:inline-grid; width:34px; height:34px; place-items:center; padding:0; font-size:0; }
+.task-delete-button,.task-delete-button:hover,.task-delete-button:focus { color:#dc2626; border-color:#fecaca; background:#fff; }
+.task-delete-button:hover { background:#fef2f2; }
+.tasks-table-footer { margin-top:0; padding:16px 20px; border-top:1px solid #e1ebe6; }
+.tasks-page-size label { font-size:12px; color:#64748b; }
+.tasks-page-size select { height:38px; border-radius:8px; font-size:12px; }
+.tasks-pagination { gap:6px; overflow:visible; }
+.tasks-pagination button,.tasks-pagination-dots { min-width:36px; width:36px; height:36px; border-radius:8px; font-size:12px; }
+.tasks-pagination button+button,.tasks-pagination span+button,.tasks-pagination button+span { margin-left:0; }
+@media(max-width:700px) {
+  .tasks-table-footer { align-items:flex-start; }
+  .tasks-pagination { max-width:100%; overflow-x:auto; padding-bottom:3px; }
+}
 .task-status { display: inline-flex; padding: 5px 9px; border-radius: 999px; background: #e8f5ee; color: #176344; font-size: 12px; }
 .task-status.inactive { background: #fbecec; color: #a53f3f; }
 .tasks-pagination button, .tasks-pagination-dots { border-color: #d4e2dc; color: #27604e; }

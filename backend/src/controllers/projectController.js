@@ -1,5 +1,6 @@
 const Project = require("../models/Project");
 const Client = require("../models/Client");
+const Team = require("../models/Team");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 
 const handleProjectError = (res, error) => {
@@ -33,6 +34,32 @@ const resolveProjectClients = async (value) => {
     : { error: "One or more selected clients are invalid or inactive." };
 };
 
+const normalizeTeamIds = (value) => [...new Set((Array.isArray(value) ? value : value ? [value] : [])
+  .map(String)
+  .filter(Boolean))];
+
+const resolveProjectTeams = async (value) => {
+  const ids = normalizeTeamIds(value);
+  if (!ids.length) return { error: "Select at least one active team." };
+  const teams = await Team.find({ _id: { $in: ids }, isActive: true }).select("teamName");
+  return teams.length === ids.length
+    ? { teams, ids }
+    : { error: "One or more selected teams are invalid or inactive." };
+};
+
+const applyProjectVisibility = (filter, user) => {
+  if (!["employee", "team_lead"].includes(user.role)) return filter;
+  const teamId = user.team;
+  const visibility = teamId
+    ? { $or: [{ teams: teamId }, { teams: { $exists: false } }, { teams: { $size: 0 } }] }
+    : { $or: [{ teams: { $exists: false } }, { teams: { $size: 0 } }] };
+
+  if (!filter.$or) return { ...filter, ...visibility };
+  const searchConditions = filter.$or;
+  const { $or, ...rest } = filter;
+  return { ...rest, $and: [{ $or: searchConditions }, visibility] };
+};
+
 // Create Project
 const createProject = async (req, res) => {
   try {
@@ -43,6 +70,9 @@ const createProject = async (req, res) => {
     payload.clients = clientResolution.ids;
     payload.client = clientResolution.ids[0];
     payload.clientName = clientResolution.clients.map((client) => client.clientName).join(", ");
+    const teamResolution = await resolveProjectTeams(payload.teams);
+    if (teamResolution.error) return res.status(400).json({ success: false, message: teamResolution.error });
+    payload.teams = teamResolution.ids;
     const project = await Project.create({
       ...payload,
       createdBy: req.user._id,
@@ -81,12 +111,14 @@ const getAllProjects = async (req, res) => {
       filter.status = status;
     }
 
-    const totalProjects = await Project.countDocuments(filter);
+    const visibleFilter = applyProjectVisibility(filter, req.user);
+    const totalProjects = await Project.countDocuments(visibleFilter);
 
-    const projects = await Project.find(filter)
+    const projects = await Project.find(visibleFilter)
       .populate("createdBy", "fullName email")
       .populate("client", "clientName status")
       .populate("clients", "clientName status")
+      .populate("teams", "teamName isActive")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -111,10 +143,11 @@ const getAllProjects = async (req, res) => {
 // Get Project By ID
 const getProjectById = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id)
+    const project = await Project.findOne(applyProjectVisibility({ _id: req.params.id }, req.user))
       .populate("createdBy", "fullName email")
       .populate("client", "clientName status")
-      .populate("clients", "clientName status");
+      .populate("clients", "clientName status")
+      .populate("teams", "teamName isActive");
 
     if (!project) {
       return res.status(404).json({
@@ -154,6 +187,11 @@ const updateProject = async (req, res) => {
       updates.clients = clientResolution.ids;
       updates.client = clientResolution.ids[0];
       updates.clientName = clientResolution.clients.map((client) => client.clientName).join(", ");
+    }
+    if (updates.teams !== undefined) {
+      const teamResolution = await resolveProjectTeams(updates.teams);
+      if (teamResolution.error) return res.status(400).json({ success: false, message: teamResolution.error });
+      updates.teams = teamResolution.ids;
     }
     const updatedProject = await Project.findByIdAndUpdate(
       req.params.id,

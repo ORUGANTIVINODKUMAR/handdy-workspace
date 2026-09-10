@@ -20,6 +20,13 @@ function TaskTimer({ selectedProject, selectedTask }) {
   const accumulatedSecondsRef = useRef(0);
 
   const hasSelection = Boolean(selectedProject && selectedTask);
+  const statusLabel = {
+    idle: "Not Started",
+    running: "Working",
+    break: "On Break",
+    paused: "Idle",
+    stopped: "Stopped",
+  }[status] || status;
 
   const clearTimerInterval = () => {
     if (intervalRef.current) {
@@ -56,7 +63,8 @@ function TaskTimer({ selectedProject, selectedTask }) {
 
       const timeLog = data.timeLog;
 
-      setStatus(timeLog.status);
+      const openPause = [...(timeLog.pauses || [])].reverse().find((pause) => !pause.resumedAt);
+      setStatus(timeLog.status === "paused" && ["break", "manual"].includes(openPause?.reason) ? "break" : timeLog.status);
 
       if (timeLog.status === "running") {
         const startedAt = new Date(timeLog.startedAt).getTime();
@@ -181,7 +189,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
       setMessage("");
       setError("");
 
-      const data = await pauseTimer();
+      const data = await pauseTimer("break");
 
       clearTimerInterval();
 
@@ -196,7 +204,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
 
       startedAtRef.current = null;
 
-      setStatus("paused");
+      setStatus("break");
       setMessage(data.message);
     } catch (requestError) {
       setError(
@@ -213,7 +221,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
       setMessage("");
       setError("");
 
-      const data = await resumeTimer();
+      const data = await resumeTimer("break");
 
       startedAtRef.current = Date.now();
 
@@ -277,7 +285,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
           <h2 id="timer-heading">Task Timer</h2>
         </div>
 
-        <span className="status-badge">{status}</span>
+        <span className="status-badge">{statusLabel}</span>
       </div>
 
       <p className="timer-duration" aria-label="Elapsed time">
@@ -305,6 +313,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
             !hasSelection ||
             status === "running" ||
             status === "paused" ||
+            status === "break" ||
             isActionLoading
           }
         >
@@ -315,20 +324,11 @@ function TaskTimer({ selectedProject, selectedTask }) {
 
         <button
           type="button"
-          aria-label="Pause task timer"
-          onClick={handlePause}
-          disabled={status !== "running" || isActionLoading}
+          aria-label={status === "break" ? "End task break" : "Start task break"}
+          onClick={status === "break" ? handleResume : handlePause}
+          disabled={!['running', 'break'].includes(status) || isActionLoading}
         >
-          Pause
-        </button>
-
-        <button
-          type="button"
-          aria-label="Resume task timer"
-          onClick={handleResume}
-          disabled={status !== "paused" || isActionLoading}
-        >
-          Resume
+          {status === "break" ? "End Break" : "Break"}
         </button>
 
         <button
@@ -336,7 +336,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
           aria-label="Stop task timer"
           onClick={handleStop}
           disabled={
-            !["running", "paused"].includes(status) ||
+            !["running", "paused", "break"].includes(status) ||
             isActionLoading
           }
         >

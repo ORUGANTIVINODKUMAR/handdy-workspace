@@ -49,13 +49,11 @@ const startTimerButton = document.getElementById(
   "startTimerButton"
 );
 
-const pauseTimerButton = document.getElementById(
-  "pauseTimerButton"
-);
-
-const resumeTimerButton = document.getElementById(
-  "resumeTimerButton"
-);
+const breakTimerButton = document.getElementById("breakTimerButton");
+const pauseTimerButton = breakTimerButton;
+const resumeTimerButton = null;
+const breakClock = document.getElementById("breakClock");
+const breakDuration = document.getElementById("breakDuration");
 
 const stopTimerButton = document.getElementById(
   "stopTimerButton"
@@ -84,6 +82,7 @@ let idleDefaults = null;
 let logoutPending = false;
 let logoutInProgress = false;
 let timerAction = null;
+let activeTaskIdleLogout = false;
 
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const ACTIVE_AGAIN_SECONDS = 2;
@@ -137,6 +136,10 @@ function getOpenPauseReason(timeLog) {
     .find((pause) => !pause.resumedAt);
 
   return openPause?.reason || "manual";
+}
+
+function isIntentionalBreak(timeLog = currentTimeLog) {
+  return timeLog?.status === "paused" && ["break", "manual"].includes(getOpenPauseReason(timeLog));
 }
 
 function normalizedDesktopPolicy(policy = {}) {
@@ -205,14 +208,11 @@ async function signOut(inactivity = false) {
       if (response.ok) {
         const data = await response.json();
         currentTimeLog = data.timeLog || null;
-        if (currentTimeLog?.status === "running") {
-          await pauseTimer("manual");
-          if (currentTimeLog?.status !== "paused") throw new Error("Pause pending");
-        }
-        if (currentTimeLog?.status === "paused") {
+        if (["running", "paused"].includes(currentTimeLog?.status)) {
           const stopResponse = await fetch(API_BASE_URL + "/time-logs/stop", {
             method: "POST",
-            headers: { Authorization: "Bearer " + token },
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+            body: JSON.stringify({ logoutReason: inactivity ? "inactivity" : "manual" }),
             signal: AbortSignal.timeout(10000),
           });
           if (!stopResponse.ok && stopResponse.status !== 404) throw new Error("Timer close pending");
@@ -257,7 +257,7 @@ async function checkSystemIdleState() {
   idleCheckInProgress = true;
   try {
     const idleSeconds = await window.electronAPI.getSystemIdleTime();
-    if (!getToken()) return;
+    if (!getToken() || isIntentionalBreak() || !activeTaskIdleLogout) return;
     if (logoutPending || idleSeconds >= idlePolicy.logoutSeconds) {
       await signOut(true);
     } else if (!idlePolicy.exempt && currentTimeLog?.status === "running" && idleSeconds >= idlePolicy.thresholdSeconds) {
@@ -377,9 +377,10 @@ async function loadTasks(projectId) {
 
   try {
     const response = await fetch(
-      `${API_BASE_URL}/tasks?project=${encodeURIComponent(projectId)}&limit=100`,
+      `${API_BASE_URL}/tasks?project=${encodeURIComponent(projectId)}&active=true&limit=100`,
       {
         method: "GET",
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -406,6 +407,7 @@ async function loadTasks(projectId) {
       const option = document.createElement("option");
 
       option.value = task._id;
+      option.dataset.idleLogout = String(task.idleLogout === true);
 
       option.textContent = task.taskName;
 
@@ -660,6 +662,22 @@ function calculateWorkedSeconds(timeLog) {
   );
 }
 
+function calculateBreakSeconds(timeLog) {
+  const now = Date.now();
+  const currentBreak = [...(timeLog?.pauses || [])]
+    .reverse()
+    .find((pause) => ["break", "manual"].includes(pause.reason) && pause.pausedAt && !pause.resumedAt);
+  if (!currentBreak) return 0;
+  return Math.max(0, Math.floor((now - new Date(currentBreak.pausedAt).getTime()) / 1000));
+}
+
+function updateBreakUI(timeLog = currentTimeLog) {
+  const onBreak = isIntentionalBreak(timeLog);
+  if (breakClock) breakClock.hidden = !onBreak;
+  if (breakDuration) breakDuration.textContent = formatDuration(calculateBreakSeconds(timeLog));
+  if (breakTimerButton) breakTimerButton.textContent = onBreak ? "End Break" : "Break";
+}
+
 function startLiveDuration(timeLog) {
   if (timerInterval) {
     clearInterval(timerInterval);
@@ -671,6 +689,7 @@ function startLiveDuration(timeLog) {
 
     timerDuration.textContent =
       formatDuration(workedSeconds);
+    updateBreakUI(timeLog);
   };
 
   updateDuration();
@@ -710,12 +729,14 @@ async function loadActiveTimer() {
     if (!data.timeLog) {
       currentTimeLog = null;
       automaticIdlePause = false;
-      timerStatus.textContent = "Idle";
+      activeTaskIdleLogout = false;
+      timerStatus.textContent = "Not Started";
       timerDuration.textContent = "00:00:00";
+      updateBreakUI(null);
 
       startTimerButton.disabled = false;
       pauseTimerButton.disabled = true;
-      resumeTimerButton.disabled = true;
+      if (resumeTimerButton) resumeTimerButton.disabled = true;
       stopTimerButton.disabled = true;
 
       return;
@@ -723,6 +744,7 @@ async function loadActiveTimer() {
 
     const timeLog = data.timeLog;
     currentTimeLog = timeLog;
+    activeTaskIdleLogout = timeLog.task?.idleLogout === true;
     // Restored timers require a manual Resume after authentication or app restart.
     automaticIdlePause = false;
 
@@ -730,8 +752,9 @@ async function loadActiveTimer() {
       timeLog.status === "paused"
         ? getOpenPauseReason(timeLog) === "idle"
           ? "Paused due to inactivity"
-          : "Paused"
-        : "Running";
+          : "On Break"
+        : "Working";
+    updateBreakUI(timeLog);
 
     if (timeLog.project) {
       projectSelect.value = timeLog.project._id;
@@ -750,18 +773,18 @@ async function loadActiveTimer() {
 
     if (timeLog.status === "running") {
       pauseTimerButton.disabled = false;
-      resumeTimerButton.disabled = true;
+      if (resumeTimerButton) resumeTimerButton.disabled = true;
 
       startLiveDuration(timeLog);
     } else {
-      pauseTimerButton.disabled = true;
-      resumeTimerButton.disabled = false;
+      pauseTimerButton.disabled = getOpenPauseReason(timeLog) === "idle";
 
       const workedSeconds =
         calculateWorkedSeconds(timeLog);
 
       timerDuration.textContent =
         formatDuration(workedSeconds);
+      if (isIntentionalBreak(timeLog)) startLiveDuration(timeLog);
     }
 
     stopTimerButton.disabled = false;
@@ -810,7 +833,9 @@ async function stopTimer() {
 
     currentTimeLog = null;
     automaticIdlePause = false;
-    timerStatus.textContent = "Idle";
+    activeTaskIdleLogout = false;
+    timerStatus.textContent = "Stopped";
+    updateBreakUI(null);
 
     timerDuration.textContent = formatDuration(
       data.timeLog.totalWorkedSeconds || 0
@@ -821,7 +846,7 @@ async function stopTimer() {
 
     startTimerButton.disabled = false;
     pauseTimerButton.disabled = true;
-    resumeTimerButton.disabled = true;
+    if (resumeTimerButton) resumeTimerButton.disabled = true;
     stopTimerButton.disabled = true;
 
     projectSelect.disabled = false;
@@ -890,15 +915,15 @@ async function pauseTimer(reason = "manual") {
     timerDuration.textContent =
       formatDuration(workedSeconds);
 
-    timerStatus.textContent =
-      reason === "idle" ? "Paused due to inactivity" : "Paused";
+    timerStatus.textContent = reason === "idle" ? "Idle" : "On Break";
+    updateBreakUI(data.timeLog);
+    if (reason === "break") startLiveDuration(data.timeLog);
 
     timerMessage.textContent =
       data.message || "Timer paused successfully.";
 
     startTimerButton.disabled = true;
-    pauseTimerButton.disabled = true;
-    resumeTimerButton.disabled = false;
+    pauseTimerButton.disabled = reason === "idle";
     stopTimerButton.disabled = false;
 
     projectSelect.disabled = true;
@@ -921,7 +946,7 @@ async function resumeTimer(reason = "manual") {
   }
 
   try {
-    resumeTimerButton.disabled = true;
+    pauseTimerButton.disabled = true;
 
     const response = await fetch(
       `${API_BASE_URL}/time-logs/resume`,
@@ -946,20 +971,21 @@ async function resumeTimer(reason = "manual") {
       timerMessage.textContent =
         data.message || "Unable to resume timer.";
 
-      resumeTimerButton.disabled = false;
+      pauseTimerButton.disabled = false;
       return;
     }
 
     currentTimeLog = data.timeLog;
     automaticIdlePause = false;
-    timerStatus.textContent = "Running";
+    timerStatus.textContent = "Working";
+    updateBreakUI(data.timeLog);
 
     timerMessage.textContent =
       data.message || "Timer resumed successfully.";
 
     startTimerButton.disabled = true;
     pauseTimerButton.disabled = false;
-    resumeTimerButton.disabled = true;
+    if (resumeTimerButton) resumeTimerButton.disabled = true;
     stopTimerButton.disabled = false;
 
     projectSelect.disabled = true;
@@ -970,7 +996,7 @@ async function resumeTimer(reason = "manual") {
     timerMessage.textContent =
       "Unable to reach the backend server.";
 
-    resumeTimerButton.disabled = false;
+    pauseTimerButton.disabled = false;
   }
 }
 async function startTimer() {
@@ -1027,10 +1053,13 @@ async function startTimer() {
       return;
     }
 
-    timerStatus.textContent = "Running";
+    timerStatus.textContent = "Working";
 
     currentTimeLog = data.timeLog;
+    activeTaskIdleLogout = data.timeLog.task?.idleLogout === true
+      || taskSelect.selectedOptions[0]?.dataset.idleLogout === "true";
     automaticIdlePause = false;
+    updateBreakUI(data.timeLog);
     startLiveDuration(data.timeLog);
 
     timerMessage.textContent =
@@ -1039,7 +1068,7 @@ async function startTimer() {
 
     startTimerButton.disabled = true;
     pauseTimerButton.disabled = false;
-    resumeTimerButton.disabled = true;
+    if (resumeTimerButton) resumeTimerButton.disabled = true;
     stopTimerButton.disabled = false;
 
     projectSelect.disabled = true;
@@ -1062,6 +1091,15 @@ projectSelect?.addEventListener(
     await loadTasks(projectId);
   }
 );
+
+window.addEventListener("focus", async () => {
+  if (isLoginPage || !getToken() || currentTimeLog || !projectSelect?.value) return;
+  const selectedTaskId = taskSelect.value;
+  await loadTasks(projectSelect.value);
+  if ([...taskSelect.options].some((option) => option.value === selectedTaskId)) {
+    taskSelect.value = selectedTaskId;
+  }
+});
 
 loginForm?.addEventListener(
   "submit",
@@ -1166,21 +1204,16 @@ stopTimerButton?.addEventListener(
   "click",
   () => runTimerAction(stopTimer)
 );
-pauseTimerButton?.addEventListener(
-  "click",
-  () => runTimerAction(() => pauseTimer("manual"))
-);
-resumeTimerButton?.addEventListener(
-  "click",
-  () => runTimerAction(() => resumeTimer("manual"))
-);
+breakTimerButton?.addEventListener("click", () => runTimerAction(() =>
+  isIntentionalBreak() ? resumeTimer("break") : pauseTimer("break")
+));
 logoutButton?.addEventListener("click", () => signOut(logoutPending));
 
 async function initializeApp() {
   const storedUser = getStoredUser();
   const token = getToken();
   if (isLoginPage && sessionStorage.getItem("inactivityLogout")) {
-    message.textContent = "You were signed out due to inactivity.";
+    message.textContent = "You were logged out after 3 minutes of inactivity.";
     sessionStorage.removeItem("inactivityLogout");
   }
 

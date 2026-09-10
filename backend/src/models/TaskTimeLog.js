@@ -14,7 +14,7 @@ const pauseSchema = new mongoose.Schema(
 
     reason: {
       type: String,
-      enum: ["manual", "idle"],
+      enum: ["manual", "idle", "break"],
       default: "manual",
     },
   },
@@ -85,6 +85,17 @@ const taskTimeLogSchema = new mongoose.Schema(
     isActiveTimer: {
       type: Boolean,
       default: true,
+    },
+
+    autoLogoutAt: {
+      type: Date,
+      default: null,
+    },
+
+    logoutReason: {
+      type: String,
+      enum: ["manual", "inactivity"],
+      default: null,
     },
   },
   {

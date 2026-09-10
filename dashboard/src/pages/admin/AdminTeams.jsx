@@ -313,7 +313,9 @@ function AdminTeams() {
               className="team-modal-form"
               onSubmit={handleAddTeam}
             >
+              <label htmlFor="add-team-name">Team Name</label>
               <input
+                id="add-team-name"
                 type="text"
                 value={teamName}
                 onChange={(event) =>

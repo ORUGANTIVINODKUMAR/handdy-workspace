@@ -7,6 +7,7 @@ import getApiErrorMessage from "../../utils/getApiErrorMessage";
 function AdminProjects() {
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,6 +25,7 @@ function AdminProjects() {
   const [formData, setFormData] = useState({
     projectName: "",
     clients: [],
+    teams: [],
     status: "Active",
   });
 
@@ -36,6 +38,7 @@ function AdminProjects() {
   const [editFormData, setEditFormData] = useState({
     projectName: "",
     clients: [],
+    teams: [],
     status: "Active",
   });
 
@@ -83,9 +86,12 @@ function AdminProjects() {
   }, [fetchProjects]);
 
   useEffect(() => {
-    axiosInstance.get("/clients")
-      .then(({ data }) => setClients(data.clients || []))
-      .catch((requestError) => setError(getApiErrorMessage(requestError, "Unable to load clients.")));
+    Promise.all([axiosInstance.get("/clients"), axiosInstance.get("/teams")])
+      .then(([clientResponse, teamResponse]) => {
+        setClients(clientResponse.data.clients || []);
+        setTeams((teamResponse.data.teams || []).filter((team) => team.isActive));
+      })
+      .catch((requestError) => setError(getApiErrorMessage(requestError, "Unable to load project options.")));
   }, []);
 
   // SEARCH
@@ -140,12 +146,24 @@ function AdminProjects() {
     else setFormData(update);
   };
 
+  const toggleTeam = (teamId, isEditing = false) => {
+    const update = (previous) => ({
+      ...previous,
+      teams: previous.teams.includes(teamId)
+        ? previous.teams.filter((id) => id !== teamId)
+        : [...previous.teams, teamId],
+    });
+    if (isEditing) setEditFormData(update);
+    else setFormData(update);
+  };
+
   const closeAddProject = () => {
     setShowAddProject(false);
 
     setFormData({
       projectName: "",
       clients: [],
+      teams: [],
       status: "Active",
     });
 
@@ -165,6 +183,10 @@ function AdminProjects() {
       setFormError("Select at least one client.");
       return;
     }
+    if (formData.teams.length === 0) {
+      setFormError("Select at least one team.");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -173,6 +195,7 @@ function AdminProjects() {
       await axiosInstance.post("/projects", {
         projectName: formData.projectName.trim(),
         clients: formData.clients,
+        teams: formData.teams,
         status: formData.status,
       });
 
@@ -197,6 +220,7 @@ function AdminProjects() {
     setEditFormData({
       projectName: project.projectName || "",
       clients: (project.clients || [project.client]).map((client) => typeof client === "string" ? client : client?._id).filter(Boolean),
+      teams: (project.teams || []).map((team) => typeof team === "string" ? team : team?._id).filter(Boolean),
       status: project.status || "Active",
     });
 
@@ -233,6 +257,10 @@ function AdminProjects() {
       setEditError("Select at least one client.");
       return;
     }
+    if (editFormData.teams.length === 0) {
+      setEditError("Select at least one team.");
+      return;
+    }
 
     try {
       setEditSaving(true);
@@ -245,6 +273,7 @@ function AdminProjects() {
             editFormData.projectName.trim(),
 
           clients: editFormData.clients,
+          teams: editFormData.teams,
 
           status:
             editFormData.status,
@@ -336,6 +365,7 @@ function AdminProjects() {
               <tr>
                 <th>Project Name</th>
                 <th>Clients</th>
+                <th>Teams</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -344,13 +374,13 @@ function AdminProjects() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="5">
                     Loading projects...
                   </td>
                 </tr>
               ) : projects.length === 0 ? (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="5">
                     No projects match your filters. Try a different search or create a project.
                   </td>
                 </tr>
@@ -364,6 +394,10 @@ function AdminProjects() {
 
                     <td>
                       {project.clientName || "-"}
+                    </td>
+
+                    <td>
+                      {(project.teams || []).map((team) => team.teamName || team).join(", ") || "All teams"}
                     </td>
 
                     <td>
@@ -551,6 +585,22 @@ function AdminProjects() {
                 </div>
               </div>
 
+              <div className="project-client-picker project-team-picker">
+                <div className="project-client-picker-heading">
+                  <label>Teams</label>
+                  <span>{formData.teams.length} selected</span>
+                </div>
+                <p className="project-picker-help">Only employees in the selected teams can use this project.</p>
+                <div className="project-client-options" role="group" aria-label="Select teams">
+                  {teams.map((team) => {
+                    const selected = formData.teams.includes(team._id);
+                    return <button type="button" key={team._id} className={`project-client-option ${selected ? "selected" : ""}`} onClick={() => toggleTeam(team._id)} aria-pressed={selected}>
+                      <span className="project-client-check">{selected ? "✓" : ""}</span>{team.teamName}
+                    </button>;
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label>Status</label>
 
@@ -658,6 +708,22 @@ function AdminProjects() {
                     const selected = editFormData.clients.includes(client._id);
                     return <button type="button" key={client._id} className={`project-client-option ${selected ? "selected" : ""}`} onClick={() => toggleClient(client._id, true)} aria-pressed={selected}>
                       <span className="project-client-check">{selected ? "✓" : ""}</span>{client.clientName}
+                    </button>;
+                  })}
+                </div>
+              </div>
+
+              <div className="project-client-picker project-team-picker">
+                <div className="project-client-picker-heading">
+                  <label>Teams</label>
+                  <span>{editFormData.teams.length} selected</span>
+                </div>
+                <p className="project-picker-help">Only employees in the selected teams can use this project.</p>
+                <div className="project-client-options" role="group" aria-label="Select teams">
+                  {teams.map((team) => {
+                    const selected = editFormData.teams.includes(team._id);
+                    return <button type="button" key={team._id} className={`project-client-option ${selected ? "selected" : ""}`} onClick={() => toggleTeam(team._id, true)} aria-pressed={selected}>
+                      <span className="project-client-check">{selected ? "✓" : ""}</span>{team.teamName}
                     </button>;
                   })}
                 </div>

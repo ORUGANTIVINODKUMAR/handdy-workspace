@@ -53,6 +53,13 @@ const projectSchema = new mongoose.Schema(
       ref: "Client",
     }],
 
+    // Projects can be shared by several teams. An empty array is retained for
+    // legacy records and means the project has not yet been restricted.
+    teams: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+    }],
+
     status: {
       type: String,
       enum: ["Active", "Completed", "On Hold"],

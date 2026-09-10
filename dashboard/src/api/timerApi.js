@@ -9,14 +9,14 @@ export const startTimer = async (projectId, taskId) => {
   return response.data;
 };
 
-export const pauseTimer = async () => {
-  const response = await axiosInstance.post("/time-logs/pause");
+export const pauseTimer = async (reason = "manual") => {
+  const response = await axiosInstance.post("/time-logs/pause", { reason });
 
   return response.data;
 };
 
-export const resumeTimer = async () => {
-  const response = await axiosInstance.post("/time-logs/resume");
+export const resumeTimer = async (reason = "manual") => {
+  const response = await axiosInstance.post("/time-logs/resume", { reason });
 
   return response.data;
 };

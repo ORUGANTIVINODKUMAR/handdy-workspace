@@ -86,6 +86,9 @@ const startTimer = async (req, res) => {
             isActiveTimer: true,
         });
 
+        await timeLog.populate("project", "projectCode projectName serviceType");
+        await timeLog.populate("task", "taskCode taskName idleLogout");
+
         return res.status(201).json({
             success: true,
             message: "Timer started successfully.",
@@ -108,13 +111,30 @@ const startTimer = async (req, res) => {
 const pauseTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
-        const reason = req.body?.reason === "idle" ? "idle" : "manual";
+        const requestedReason = req.body?.reason;
+        const reason = requestedReason === "idle" ? "idle" : requestedReason === "break" ? "break" : "manual";
 
-        if (reason === "idle" && req.user.idleTrackingExempt) {
-            return res.status(200).json({
-                success: true,
-                skipped: true,
-                message: "Idle tracking is disabled for this employee.",
+        if (reason === "idle") {
+            const runningTimer = await TaskTimeLog.findOne({ employee: employeeId, status: "running" }).select("task");
+            const taskAllowsIdleLogout = runningTimer
+                ? Boolean(await Task.exists({ _id: runningTimer.task, idleLogout: true }))
+                : false;
+            if (req.user.idleTrackingExempt || !taskAllowsIdleLogout) {
+                return res.status(200).json({
+                    success: true,
+                    skipped: true,
+                    message: "Idle tracking is disabled for this employee or task.",
+                });
+            }
+        }
+
+        const projectTeams = (projectExists.teams || []).map(String);
+        const isLegacyUnrestrictedProject = projectTeams.length === 0;
+        const projectAssignedToUserTeam = req.user.team && projectTeams.includes(String(req.user.team));
+        if (!isLegacyUnrestrictedProject && !projectAssignedToUserTeam) {
+            return res.status(403).json({
+                success: false,
+                message: "This project is not assigned to your team.",
             });
         }
 
@@ -161,20 +181,21 @@ const pauseTimer = async (req, res) => {
 const resumeTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
-        const reason = req.body?.reason === "idle" ? "idle" : "manual";
+        const requestedReason = req.body?.reason;
+        const reason = requestedReason === "idle" ? "idle" : requestedReason === "break" ? "break" : "manual";
         const filter = {
             employee: employeeId,
             status: "paused",
             pauses: {
                 $elemMatch: {
                     resumedAt: null,
-                    ...(reason === "idle" ? { reason: "idle" } : {}),
+                    ...(reason === "idle" ? { reason: "idle" } : reason === "break" ? { reason: { $in: ["break", "manual"] } } : {}),
                 },
             },
         };
         const pauseFilter = {
             "elem.resumedAt": null,
-            ...(reason === "idle" ? { "elem.reason": "idle" } : {}),
+            ...(reason === "idle" ? { "elem.reason": "idle" } : reason === "break" ? { "elem.reason": { $in: ["break", "manual"] } } : {}),
         };
 
         const pausedTimer = await TaskTimeLog.findOneAndUpdate(
@@ -265,6 +286,12 @@ const stopTimer = async (req, res) => {
         activeTimer.totalWorkedSeconds = totalWorkedSeconds;
         activeTimer.status = "stopped";
         activeTimer.isActiveTimer = false;
+        if (req.body?.logoutReason === "inactivity") {
+            activeTimer.logoutReason = "inactivity";
+            activeTimer.autoLogoutAt = stoppedAt;
+        } else if (req.body?.logoutReason === "manual") {
+            activeTimer.logoutReason = "manual";
+        }
 
         await activeTimer.save();
 
@@ -366,7 +393,7 @@ const getActiveTimer = async (req, res) => {
             status: { $in: ["running", "paused"] },
         })
             .populate("project", "projectCode projectName serviceType")
-            .populate("task", "taskCode taskName");
+            .populate("task", "taskCode taskName idleLogout");
 
         return res.status(200).json({
             success: true,

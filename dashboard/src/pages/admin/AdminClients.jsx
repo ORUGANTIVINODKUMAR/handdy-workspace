@@ -211,7 +211,7 @@ function AdminClients() {
       {showAddClient && (
         <ModalFrame onClose={closeAddClient} label="Clients details">
 
-          <div className="employee-modal">
+          <div className="employee-modal client-editor-modal">
 
             <div className="employee-modal-header">
 
@@ -239,10 +239,11 @@ function AdminClients() {
             >
 
               <div>
-                <label>Client Name</label>
+                <label htmlFor="add-client-name">Client Name</label>
 
                 <input
                   type="text"
+                  id="add-client-name"
                   name="clientName"
                   value={formData.clientName}
                   onChange={handleChange}

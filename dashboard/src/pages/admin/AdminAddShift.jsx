@@ -656,6 +656,7 @@ function AdminAddShift() {
                                     key={item.id}
                                     className="shift-break-row"
                                 >
+                                    <strong className="shift-break-number">Break {index + 1}</strong>
                                     {/* BREAK TITLE */}
                                     <div className="shift-form-group">
                                         <label>
@@ -748,24 +749,17 @@ function AdminAddShift() {
                                             )}
                                         </strong>
 
-                                        {breaks.length >
-                                            1 && (
-                                                <button
-                                                    type="button"
-                                                    className="shift-remove-break"
-                                                    onClick={() =>
-                                                        removeBreak(
-                                                            item.id
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        saving
-                                                    }
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
                                     </div>
+                                    {breaks.length > 1 && (
+                                        <button
+                                            type="button"
+                                            className="shift-remove-break"
+                                            onClick={() => removeBreak(item.id)}
+                                            disabled={saving}
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
                                 </div>
                             );
                         }

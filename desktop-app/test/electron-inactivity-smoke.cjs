@@ -9,7 +9,7 @@ const defaults = require("../idle-policy-defaults.json");
 app.setPath("userData", fs.mkdtempSync(path.join(os.tmpdir(), "crm-idle-smoke-")));
 process.env.HANDDY_API_URL = "http://127.0.0.1:5000/api";
 let idleSeconds = 0;
-let timer = { _id: "smoke-timer", status: "running", startedAt: new Date().toISOString(), pauses: [] };
+let timer = { _id: "smoke-timer", status: "running", startedAt: new Date().toISOString(), pauses: [], task: { _id: "task", idleLogout: true } };
 const actions = [];
 const user = { _id: "smoke-user", fullName: "Local test employee", role: "employee", isActive: true };
 const server = http.createServer((req, res) => {
@@ -23,7 +23,7 @@ const server = http.createServer((req, res) => {
     let data = {};
     if (req.url === "/api/auth/login") data = { token: "local-test-token", user };
     else if (req.url === "/api/auth/me") data = { user };
-    else if (req.url === "/api/settings/idle-policy") data = { idlePolicy: { idleThresholdMinutes: 1, autoLogoutMinutes: 2 } };
+    else if (req.url === "/api/settings/idle-policy") data = { idlePolicy: { idleThresholdMinutes: 1, autoLogoutMinutes: 3 } };
     else if (req.url === "/api/time-logs/active") data = { timeLog: timer };
     else if (req.url === "/api/time-logs/pause") {
       actions.push("pause");
@@ -31,6 +31,10 @@ const server = http.createServer((req, res) => {
       data = { timeLog: timer };
     } else if (req.url === "/api/time-logs/resume") {
       actions.push("resume"); timer.status = "running"; data = { timeLog: timer };
+    } else if (req.url === "/api/time-logs/stop") {
+      actions.push("stop");
+      data = { timeLog: { ...timer, status: "stopped", totalWorkedSeconds: 0 } };
+      timer = null;
     } else if (req.url === "/api/auth/logout") actions.push("logout");
     else if (req.url.startsWith("/api/projects")) data = { projects: [] };
     else data = { timeLogs: [], tasks: [] };
@@ -60,20 +64,17 @@ app.whenReady().then(async () => {
     idleSeconds = 60;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     assert.equal(timer.status, "paused");
-    idleSeconds = 120;
+    idleSeconds = 180;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     await until(() => win.webContents.getURL().endsWith("index.html"));
-    await until(() => win.webContents.executeJavaScript('document.getElementById("message")?.textContent === "You were signed out due to inactivity."'));
-    assert.deepEqual(actions, ["pause", "logout"]);
+    await until(() => win.webContents.executeJavaScript('document.getElementById("message")?.textContent === "You were logged out after 3 minutes of inactivity."'));
+    assert.deepEqual(actions, ["pause", "stop", "logout"]);
     idleSeconds = 0;
     await login();
     await win.webContents.executeJavaScript("checkSystemIdleState()");
-    assert.equal(timer.status, "paused");
-    assert.equal(timer._id, "smoke-timer");
-    await win.webContents.executeJavaScript('document.getElementById("resumeTimerButton").click()');
-    await until(() => timer.status === "running");
-    assert.deepEqual(actions, ["pause", "logout", "resume"]);
-    console.log("PASS: Electron login, 1-minute simulated idle pause, 2-minute simulated logout/message, login restoration and manual Resume.");
+    assert.equal(timer, null);
+    assert.equal(await win.webContents.executeJavaScript('document.getElementById("timerDuration").textContent'), "00:00:00");
+    console.log("PASS: Electron idle pause, 3-minute logout, safe timer close, and zeroed next session.");
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

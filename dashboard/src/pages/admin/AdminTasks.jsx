@@ -1,6 +1,7 @@
 import ModalFrame from "../../components/layout/ModalFrame";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Pencil, Trash2 } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import TaskForm from "../../components/tasks/TaskForm";
 import "../../styles/adminTasks.css";
@@ -592,27 +593,31 @@ function AdminTasks() {
                             <div className="task-actions">
                               <button
                                 type="button"
-                                className="task-icon-button"
+                                className="task-icon-button task-edit-button"
                                 title="Edit"
+                                aria-label={`Edit ${getTaskName(task)}`}
                                 onClick={() =>
                                   openEditModal(
                                     task
                                   )
                                 }
                               >
+                                <Pencil size={15} aria-hidden="true" />
                                 ✎
                               </button>
 
                               <button
                                 type="button"
-                                className="task-icon-button"
+                                className="task-icon-button task-delete-button"
                                 title="Delete"
+                                aria-label={`Delete ${getTaskName(task)}`}
                                 onClick={() =>
                                   handleDelete(
                                     task
                                   )
                                 }
                               >
+                                <Trash2 size={15} aria-hidden="true" />
                                 ⊠
                               </button>
                             </div>
