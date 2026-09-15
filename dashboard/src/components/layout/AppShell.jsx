@@ -17,6 +17,11 @@ export default function AppShell({ children }) {
   const [signOutError, setSignOutError] = useState("");
 
   useEffect(() => { setMobileOpen(false); setSearch(""); }, [location.pathname]);
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    if (mobileOpen) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [mobileOpen]);
   if (!isAuthenticated || isAuthLoading || /login|password/.test(location.pathname)) return children;
 
   const staff = ["hr", "manager"].includes(user?.role);
@@ -44,10 +49,10 @@ export default function AppShell({ children }) {
   return (
     <div className={`crm-workspace${collapsed ? " is-compact" : ""}`}>
       <a className="crm-skip-link" href="#workspace-content">Skip to content</a>
-      {mobileOpen && <button className="crm-nav-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
+      {mobileOpen && <button className="crm-nav-scrim" aria-label="Close navigation" onClick={closeNavigation} />}
       <aside className={`crm-nav${mobileOpen ? " is-open" : ""}`} aria-label="Workspace navigation">
         <Link className="crm-brand" to={navigation[0]?.path || "/attendance"} onClick={closeNavigation}><span className="crm-brand-mark"><Building2 size={20} /></span><strong>CRM<span>Employee workspace</span></strong></Link>
-        <button className="crm-nav-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={18} /></button>
+        <button className="crm-nav-close" onClick={closeNavigation} aria-label="Close navigation"><X size={18} /></button>
         <div className="crm-workspace-label"><span className="crm-workspace-initial">{initials}</span><span>{user?.companyName || "Your workspace"}<small>{user?.role?.replaceAll("_", " ")}</small></span></div>
         <nav>
           {groups.map((group) => {
