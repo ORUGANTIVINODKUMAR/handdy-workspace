@@ -345,7 +345,7 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
   .crm-content { width:min(100% - 28px,760px); min-height:calc(100vh - 125px); padding-top:20px; }
   .crm-footer { width:calc(100% - 28px); }
 }
-@media(max-width:600px) { .crm-app-header .crm-brand small,.crm-signout { display:none; } .crm-content h1,.crm-page-header h1 { font-size:27px; } .crm-stat-strip { grid-template-columns:1fr 1fr; } .crm-stat-strip article { padding:16px; } }
+@media(max-width:600px) { .crm-app-header .crm-brand small { display:none; } .crm-content h1,.crm-page-header h1 { font-size:27px; } .crm-stat-strip { grid-template-columns:1fr 1fr; } .crm-stat-strip article { padding:16px; } }
 
 .crm-auth-story { background:#143c31; }
 .crm-auth-story h2 { font-family:Georgia,"Times New Roman",serif; font-weight:500; }
@@ -455,6 +455,12 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
   .crm-content .employee-editor-form>.employee-form-actions :is(.secondary-button,.primary-button) { flex:0 0 auto; width:100%; }
 }
 
+
+@media(max-width:760px) {
+  .crm-topbar .crm-breadcrumb { min-width:0; overflow:hidden; white-space:nowrap; }
+  .crm-topbar .crm-breadcrumb strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .crm-topbar .crm-signout { width:44px; min-width:44px; min-height:44px; margin:0; padding:0; }
+}
 /* Shared workspace header search */
 .crm-topbar .crm-route-search {
   display:flex;
