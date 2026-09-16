@@ -56,9 +56,9 @@ function EmployeeApps() {
 
   let downloadUrl = "";
   try {
-    const url = new URL(release.downloadUrl);
-    if (url.protocol === "https:" && !url.username && !url.password &&
-        !/^(localhost|127\.|\[::1\])|\.localhost$/i.test(url.hostname)) {
+    const url = new URL(release.downloadUrl, window.location.origin);
+    if ((url.origin === window.location.origin || url.protocol === "https:") &&
+        !url.username && !url.password) {
       downloadUrl = url.href;
     }
   } catch {
@@ -112,7 +112,7 @@ function EmployeeApps() {
                   <div className="employee-release-meta">
                     {release.latestVersion && <span>Current Version: {release.latestVersion}</span>}
                     {formattedReleaseDate && <span>Released {formattedReleaseDate}</span>}
-                    <span>Windows 10 and 11 (64-bit)</span>
+                    <span>{release.platform}</span>
                   </div>
                   <p>Windows installer{release.fileSize ? ` · ${release.fileSize}` : ""}</p>
                 </div>

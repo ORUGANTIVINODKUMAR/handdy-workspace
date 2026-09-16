@@ -178,6 +178,23 @@ app.use("/api", (req, res) => {
   });
 });
 
+const desktopInstallerPath = path.resolve(dashboardBuildPath, "downloads", "CRM-Setup.exe");
+app.get("/downloads/CRM-Setup.exe", (req, res) => {
+  if (!fs.existsSync(desktopInstallerPath)) {
+    return res.status(404).json({
+      success: false,
+      message: "The CRM Windows installer is not available yet.",
+    });
+  }
+
+  return res.download(desktopInstallerPath, "CRM-Setup.exe", {
+    headers: {
+      "Cache-Control": "public, max-age=3600",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+});
+
 // ==============================
 // HEALTH CHECK
 // ==============================
