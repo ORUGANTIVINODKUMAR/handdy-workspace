@@ -10,13 +10,25 @@ const {
 } = require("electron");
 const path = require("path");
 const { fileURLToPath } = require("url");
+const { PRODUCTION_APP_ORIGIN, resolveApiBaseUrl } = require("./api-config");
 
 // Pin the existing package-derived profile before changing the display name.
 // This preserves saved employee sessions in both development and packaged builds.
 app.setPath("userData", app.getPath("userData"));
 app.setName("CRM");
 
-const APP_ORIGIN = "https://handdy-workspace.onrender.com";
+// Development clients share the local API; packaged clients share production.
+// HANDDY_API_URL remains the explicit override for staging or custom builds.
+process.env.CRM_API_BASE_URL = resolveApiBaseUrl({
+  isPackaged: app.isPackaged,
+  override: process.env.HANDDY_API_URL,
+});
+
+ipcMain.on("config:get-api-base-url", (event) => {
+  event.returnValue = process.env.CRM_API_BASE_URL;
+});
+
+const APP_ORIGIN = PRODUCTION_APP_ORIGIN;
 const UPDATE_MANIFEST_URL = `${APP_ORIGIN}/desktop-release.json`;
 const DEFAULT_RELEASE_PAGE_URL = `${APP_ORIGIN}/employee/app`;
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;

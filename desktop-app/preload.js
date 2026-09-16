@@ -1,10 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-// The packaged desktop client uses the live CRM API. Developers can still
-// override this with HANDDY_API_URL when running against a local/test server.
-const apiBaseUrl =
-  process.env.HANDDY_API_URL ||
-  "https://handdy-workspace.onrender.com/api";
+const apiBaseUrl = ipcRenderer.sendSync("config:get-api-base-url");
 
 contextBridge.exposeInMainWorld("electronAPI", {
   getIdleDefaults: () => ipcRenderer.invoke("system:idle-defaults"),
