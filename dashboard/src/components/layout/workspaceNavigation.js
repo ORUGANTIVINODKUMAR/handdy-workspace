@@ -16,6 +16,7 @@ export const workspaceNavigation = [
   { path: "/admin/scheduler/shift", title: "Shifts", role: "admin", group: "Time & attendance" },
   { path: "/admin/scheduler/schedule", title: "Schedule", role: "admin", group: "Time & attendance" },
   { path: "/admin/billing", title: "Billing", role: "admin", group: "Finance" },
+  { path: "/admin/app", title: "Desktop App", role: "admin", group: "System" },
   { path: "/admin/settings", title: "Idle & logout", role: "admin", group: "System" },
 
   { path: "/team-lead/dashboard", title: "Overview", role: "team_lead", group: "Workspace" },
@@ -36,6 +37,38 @@ export const workspaceNavigation = [
   { path: "/employee/app", title: "Desktop app", role: "employee", group: "System" },
   { path: "/employee/help", title: "Help", role: "employee", group: "System" },
 
-  { path: "/attendance", title: "Attendance", role: "hr", group: "Time & attendance" },
+  // Manager and HR get the same business/operational modules as admin
+  // (reporting, projects, tasks, teams, clients, scheduling, billing).
+  // Employees and Idle & logout Settings stay admin-only — see AppRoutes.jsx.
+  { path: "/admin/dashboard", title: "Overview", role: "manager", group: "Workspace" },
+  { path: "/admin/clients", title: "Clients", role: "manager", group: "Workspace" },
+  { path: "/admin/projects", title: "Projects", role: "manager", group: "Workspace" },
+  { path: "/admin/tasks", title: "Tasks", role: "manager", group: "Workspace" },
+  { path: "/admin/team", title: "Teams", role: "manager", group: "Workspace" },
+  { path: "/admin/my-timesheet", title: "My timesheet", role: "manager", group: "Time & attendance" },
+  { path: "/admin/my-timesheet/details", title: "My detailed timesheet", role: "manager", group: "Time & attendance" },
+  { path: "/admin/my-timesheet/count", title: "My count report", role: "manager", group: "Time & attendance" },
+  { path: "/admin/timesheets/team", title: "Team timesheet", role: "manager", group: "Time & attendance" },
+  { path: "/admin/timesheets/detailed", title: "Detailed timesheet", role: "manager", group: "Time & attendance" },
+  { path: "/admin/timesheets/project-hours", title: "Project hours", role: "manager", group: "Time & attendance" },
   { path: "/attendance", title: "Attendance", role: "manager", group: "Time & attendance" },
+  { path: "/admin/scheduler/shift", title: "Shifts", role: "manager", group: "Time & attendance" },
+  { path: "/admin/scheduler/schedule", title: "Schedule", role: "manager", group: "Time & attendance" },
+  { path: "/admin/billing", title: "Billing", role: "manager", group: "Finance" },
+
+  { path: "/admin/dashboard", title: "Overview", role: "hr", group: "Workspace" },
+  { path: "/admin/clients", title: "Clients", role: "hr", group: "Workspace" },
+  { path: "/admin/projects", title: "Projects", role: "hr", group: "Workspace" },
+  { path: "/admin/tasks", title: "Tasks", role: "hr", group: "Workspace" },
+  { path: "/admin/team", title: "Teams", role: "hr", group: "Workspace" },
+  { path: "/admin/my-timesheet", title: "My timesheet", role: "hr", group: "Time & attendance" },
+  { path: "/admin/my-timesheet/details", title: "My detailed timesheet", role: "hr", group: "Time & attendance" },
+  { path: "/admin/my-timesheet/count", title: "My count report", role: "hr", group: "Time & attendance" },
+  { path: "/admin/timesheets/team", title: "Team timesheet", role: "hr", group: "Time & attendance" },
+  { path: "/admin/timesheets/detailed", title: "Detailed timesheet", role: "hr", group: "Time & attendance" },
+  { path: "/admin/timesheets/project-hours", title: "Project hours", role: "hr", group: "Time & attendance" },
+  { path: "/attendance", title: "Attendance", role: "hr", group: "Time & attendance" },
+  { path: "/admin/scheduler/shift", title: "Shifts", role: "hr", group: "Time & attendance" },
+  { path: "/admin/scheduler/schedule", title: "Schedule", role: "hr", group: "Time & attendance" },
+  { path: "/admin/billing", title: "Billing", role: "hr", group: "Finance" },
 ];

@@ -10,7 +10,7 @@ import "../../styles/employeeApps.css";
 const DEFAULT_RELEASE = {
   latestVersion: "",
   platform: "Windows",
-  fileName: "Handdy-Setup.exe",
+  fileName: "CRM-Setup.exe",
   fileSize: "",
   downloadUrl: "",
   releaseDate: "",

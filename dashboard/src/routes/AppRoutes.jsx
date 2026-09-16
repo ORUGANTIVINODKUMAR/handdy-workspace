@@ -114,6 +114,18 @@ function AdminOnly({ children }) {
   );
 }
 
+// Business/operational admin features Manager and HR also get: reporting,
+// projects, tasks, teams, clients, scheduling, billing. Account/security-
+// sensitive pages (Employees, Idle & logout Settings) stay on AdminOnly —
+// see AdminEmployees and AdminSettings routes below.
+function AdminStaffOnly({ children }) {
+  return (
+    <ProtectedRoute allowedRoles={["admin", "manager", "hr"]}>
+      {children}
+    </ProtectedRoute>
+  );
+}
+
 
 function TeamLeadOnly({ children }) {
   return (
@@ -207,15 +219,20 @@ function AppRoutes() {
       <Route
         path="/admin/dashboard"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Employee insights" description="Company project and task timer activity by employee." />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/billing"
-        element={<AdminOnly><BillingPage /></AdminOnly>}
+        element={<AdminStaffOnly><BillingPage /></AdminStaffOnly>}
+      />
+
+      <Route
+        path="/admin/app"
+        element={<AdminOnly><EmployeeApps /></AdminOnly>}
       />
 
 
@@ -246,27 +263,27 @@ function AppRoutes() {
       <Route
         path="/admin/my-timesheet"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="My timesheet" description="Your recorded project and task timer activity." scope="personal" />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/my-timesheet/details"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="My detailed timesheet" description="Detailed personal project and task timer activity." scope="personal" />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/my-timesheet/count"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="My count report" description="Your timer activity and total worked duration." scope="personal" />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
@@ -300,72 +317,72 @@ function AppRoutes() {
       <Route
         path="/admin/timesheets/team"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Team timesheet" description="Employee totals across company project and task timer activity." variant="team" />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/timesheets/detailed"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Detailed timesheet" description="Every company timer session with start, finish, worked, idle, and status details." variant="detailed" />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/timesheets/project-hours"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Project hours" description="Worked and idle duration grouped by project." variant="project" />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/timesheets/attendance"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Attendance" description="Company attendance from employee check-in and check-out activity." mode="attendance" />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/timesheets/count"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Count report" description="Company timer records and total worked duration." />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/timesheets/working-today"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Who is working today" description="Today’s active and completed timer records by employee." />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/timesheets/task-tracker"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Task tracker" description="Task-level timer records across the company." />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/timesheets/project-work"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminReportPage title="Project work details" description="Project and task work records across the company." />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
@@ -395,45 +412,45 @@ function AppRoutes() {
       <Route
         path="/admin/clients"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminClients />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/projects"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminProjects />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/tasks"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminTasks />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/tasks/new"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminAddTask />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/team"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminTeams />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
@@ -450,9 +467,12 @@ function AppRoutes() {
       <Route
         path="/admin/employees"
         element={
-          <AdminOnly>
+          <ProtectedRoute
+            allowedRoles={["admin"]}
+            requiredPermissions={["create_employees", "edit_employees"]}
+          >
             <AdminEmployees />
-          </AdminOnly>
+          </ProtectedRoute>
         }
       />
 
@@ -464,27 +484,27 @@ function AppRoutes() {
       <Route
         path="/admin/scheduler/shift"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminShifts />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/scheduler/shift/add"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminAddShift />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/scheduler/schedule"
         element={
-          <AdminOnly>
+          <AdminStaffOnly>
             <AdminSchedule />
-          </AdminOnly>
+          </AdminStaffOnly>
         }
       />
 
@@ -795,6 +815,8 @@ function AppRoutes() {
               "admin",
               "team_lead",
               "employee",
+              "manager",
+              "hr",
             ]}
           >
             <ProfilePage />
