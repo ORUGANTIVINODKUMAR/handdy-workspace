@@ -1105,6 +1105,7 @@ loginForm?.addEventListener(
   "submit",
   async (event) => {
     event.preventDefault();
+    console.debug(`[desktop-login] Login button clicked; API URL: ${API_BASE_URL}/auth/login`);
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;
@@ -1123,6 +1124,7 @@ loginForm?.addEventListener(
     try {
       loginButton.disabled = true;
       loginButton.textContent = "Logging in...";
+      console.debug("[desktop-login] Request started");
 
       const response = await fetch(
         `${API_BASE_URL}${useRememberedSession ? "/auth/quick-login" : "/auth/login"}`,
@@ -1170,12 +1172,15 @@ loginForm?.addEventListener(
         "user",
         JSON.stringify(data.user)
       );
+      console.debug(`[desktop-login] Authentication success; role: ${data.user?.role || "unknown"}`);
+      console.debug("[desktop-login] Token stored: yes; user stored: yes");
 
       if (data.rememberedSessionToken) {
         localStorage.setItem("rememberedSessionToken", data.rememberedSessionToken);
         localStorage.setItem("rememberedUser", JSON.stringify(data.user));
       }
 
+      console.debug("[desktop-login] Navigating to: ./dashboard.html");
       window.location.replace("./dashboard.html");
     } catch (error) {
       console.error(`[desktop-auth] Login failed for ${API_BASE_URL}/auth/login:`, error.name, error.message);
