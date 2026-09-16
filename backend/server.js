@@ -181,6 +181,7 @@ app.use("/api", (req, res) => {
 const desktopInstallerPath = path.resolve(dashboardBuildPath, "downloads", "CRM-Setup.exe");
 app.get("/downloads/CRM-Setup.exe", (req, res) => {
   if (!fs.existsSync(desktopInstallerPath)) {
+    console.error(`Desktop installer not found at: ${desktopInstallerPath}`);
     return res.status(404).json({
       success: false,
       message: "The CRM Windows installer is not available yet.",
@@ -189,6 +190,7 @@ app.get("/downloads/CRM-Setup.exe", (req, res) => {
 
   return res.download(desktopInstallerPath, "CRM-Setup.exe", {
     headers: {
+      "Content-Type": "application/octet-stream",
       "Cache-Control": "public, max-age=3600",
       "X-Content-Type-Options": "nosniff",
     },
