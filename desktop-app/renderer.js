@@ -1134,10 +1134,12 @@ loginForm?.addEventListener(
           },
 
           body: JSON.stringify(useRememberedSession ? { rememberedSessionToken } : { email, password }),
+          signal: AbortSignal.timeout(15000),
         }
       );
 
       const data = await response.json();
+      console.debug(`[desktop-auth] Login response: ${response.status} ${response.url}`);
 
       if (!response.ok) {
         if (useRememberedSession && [401, 403].includes(response.status)) {
@@ -1146,8 +1148,15 @@ loginForm?.addEventListener(
           if (rememberedLogin) rememberedLogin.hidden = true;
           if (loginForm) loginForm.hidden = false;
         }
-        message.textContent =
-          data.message || (useRememberedSession ? "Your remembered session has expired. Enter your email and password." : "Login failed.");
+        message.textContent = useRememberedSession
+          ? "Your remembered session has expired. Enter your email and password."
+          : response.status === 401
+            ? "Invalid email or password."
+            : response.status === 403
+              ? "Your account is inactive or not permitted to use CRM."
+              : response.status >= 500
+                ? "Server error. Please try again later."
+                : data.message || "Login failed.";
 
         return;
       }
@@ -1169,8 +1178,10 @@ loginForm?.addEventListener(
 
       window.location.replace("./dashboard.html");
     } catch (error) {
-      message.textContent =
-        "Unable to reach the backend server.";
+      console.error(`[desktop-auth] Login failed for ${API_BASE_URL}/auth/login:`, error.name, error.message);
+      message.textContent = error.name === "TimeoutError"
+        ? "The server is taking too long to respond. Please try again."
+        : "Unable to reach the backend server. Please check your internet connection and try again.";
     } finally {
       loginButton.disabled = false;
       loginButton.textContent = "Login";
