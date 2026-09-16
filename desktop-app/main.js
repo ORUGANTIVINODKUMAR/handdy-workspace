@@ -171,7 +171,12 @@ function createWindow() {
 
   mainWindow.loadFile("index.html");
 
+  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[electron] Page failed to load: ${errorCode} ${errorDescription} ${validatedURL}`);
+  });
+
   mainWindow.webContents.once("did-finish-load", () => {
+    console.log(`[electron] Page loaded: ${mainWindow.webContents.getURL()}`);
     void checkForAppUpdate(mainWindow);
   });
 

@@ -83,6 +83,7 @@ let logoutPending = false;
 let logoutInProgress = false;
 let timerAction = null;
 let activeTaskIdleLogout = false;
+let loginInProgress = false;
 
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const ACTIVE_AGAIN_SECONDS = 2;
@@ -1105,10 +1106,16 @@ loginForm?.addEventListener(
   "submit",
   async (event) => {
     event.preventDefault();
-    console.debug(`[desktop-login] Login button clicked; API URL: ${API_BASE_URL}/auth/login`);
+    if (loginInProgress) {
+      console.debug("[desktop-login] Duplicate submit ignored");
+      return;
+    }
 
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
+    loginInProgress = true;
+
+    const email = String(loginForm.elements.email?.value || "").trim();
+    const password = String(loginForm.elements.password?.value || "");
+    console.debug(`[desktop-login] Button clicked; email present: ${Boolean(email)}; password present: ${Boolean(password)}; API URL: ${API_BASE_URL}/auth/login`);
 
     message.textContent = "";
 
@@ -1117,7 +1124,7 @@ loginForm?.addEventListener(
     if ((!email || !password) && !useRememberedSession) {
       message.textContent =
         "Email and password are required.";
-
+      loginInProgress = false;
       return;
     }
 
@@ -1163,6 +1170,10 @@ loginForm?.addEventListener(
         return;
       }
 
+      if (!data.token || !data.user) {
+        throw new Error("Login response did not contain the expected session data");
+      }
+
       localStorage.setItem(
         "token",
         data.token
@@ -1188,6 +1199,7 @@ loginForm?.addEventListener(
         ? "The server is taking too long to respond. Please try again."
         : "Unable to reach the backend server. Please check your internet connection and try again.";
     } finally {
+      loginInProgress = false;
       loginButton.disabled = false;
       loginButton.textContent = "Login";
     }
