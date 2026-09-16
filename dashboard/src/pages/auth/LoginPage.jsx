@@ -23,7 +23,7 @@ function getDashboardForRole(role) {
 
     case "hr":
     case "manager":
-      return "/attendance";
+      return "/admin/dashboard";
 
     case "employee":
       return "/employee/dashboard";

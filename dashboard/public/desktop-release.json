@@ -1,18 +1,18 @@
 {
-  "latestVersion": "1.2.1",
+  "latestVersion": "1.2.2",
   "minimumSupportedVersion": "1.1.0",
   "mandatory": false,
   "platform": "Windows 10 and 11 (64-bit)",
   "fileName": "CRM-Setup.exe",
   "fileSize": "106 MB",
-  "sha256": "355FF7C3721ED8D517D8764866C3C747B91430DE02813F10F95F8F7B8CD3F51A",
+  "sha256": "2C2304CEFBD724ADE38F0DEBA25D6010E481A37E63F363FEDFDE5A13A64E5547",
   "downloadUrl": "/downloads/CRM-Setup.exe",
   "releasePageUrl": "/employee/app",
   "releaseDate": "2026-09-16",
   "message": "A new CRM desktop version is available. Open the dashboard to download and install it.",
   "releaseNotes": [
-    "Checks for new CRM desktop versions at startup and every six hours.",
-    "Opens the employee App page when an update is available.",
-    "Installs over the existing CRM application without requiring an uninstall."
+    "Selected project and task stay selected while the app refreshes in the background.",
+    "Task list loads for the selected project and shows loading, empty and error states.",
+    "Running timers restore their project and task after reopening the app."
   ]
 }

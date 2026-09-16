@@ -63,18 +63,6 @@ function ProtectedRoute({
     !allowedRoles.includes(user.role) &&
     !hasRequiredPermission
   ) {
-    if (allowedRoles.length === 1 && allowedRoles[0] === "admin") {
-      return (
-        <Navigate
-          to="/login"
-          replace
-          state={{
-            accessDenied: "Access denied. This application is available to Admin users only.",
-          }}
-        />
-      );
-    }
-
     if (user.role === "admin") {
       return (
         <Navigate

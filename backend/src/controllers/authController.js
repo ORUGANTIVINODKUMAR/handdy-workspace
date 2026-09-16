@@ -295,13 +295,6 @@ const login = async (req, res) => {
       });
     }
 
-    if (employee.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. This application is available to Admin users only.",
-      });
-    }
-
     employee.lastLoginAt =
       new Date();
 
@@ -351,9 +344,6 @@ const quickLogin = async (req, res) => {
     }).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions");
     if (!employee || !employee.isActive) {
       return res.status(employee && !employee.isActive ? 403 : 401).json({ success: false, message: "Your remembered session is no longer valid." });
-    }
-    if (employee.role !== "admin") {
-      return res.status(403).json({ success: false, message: "Access denied. This application is available to Admin users only." });
     }
     employee.rememberedSessions = (employee.rememberedSessions || []).filter((session) => session.tokenHash !== tokenHash);
     if (employee.rememberedSessionTokenHash === tokenHash) {
