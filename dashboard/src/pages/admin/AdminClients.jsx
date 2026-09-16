@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useDataRefresh from "../../hooks/useDataRefresh";
 
 function AdminClients() {
   const [showAddClient, setShowAddClient] = useState(false);
@@ -23,6 +24,7 @@ function AdminClients() {
   };
 
   useEffect(() => { void loadClients(); }, []);
+  useDataRefresh(loadClients);
 
   const [formData, setFormData] = useState({
     clientName: "",

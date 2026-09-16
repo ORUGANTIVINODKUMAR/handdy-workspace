@@ -188,6 +188,19 @@ const employeeSchema = new mongoose.Schema(
       default: true,
     },
 
+    // Admin-granted delegated permissions for non-admin roles. Deliberately a
+    // short, explicit allowlist — password reset, deletion, role promotion,
+    // and system settings are never delegable through this mechanism, only
+    // through the true "admin" role.
+    permissions: {
+      type: [String],
+      enum: {
+        values: ["create_employees", "edit_employees"],
+        message: "Invalid permission",
+      },
+      default: [],
+    },
+
     teamLead: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
@@ -220,6 +233,15 @@ const employeeSchema = new mongoose.Schema(
     rememberedSessionExpires: {
       type: Date,
       default: null,
+      select: false,
+    },
+
+    rememberedSessions: {
+      type: [{
+        tokenHash: { type: String, required: true },
+        expiresAt: { type: Date, required: true },
+      }],
+      default: [],
       select: false,
     },
 

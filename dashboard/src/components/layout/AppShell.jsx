@@ -24,10 +24,19 @@ export default function AppShell({ children }) {
   }, [mobileOpen]);
   if (!isAuthenticated || isAuthLoading || /login|password/.test(location.pathname)) return children;
 
-  const staff = ["hr", "manager"].includes(user?.role);
-  const navigation = staff ? [{ path: "/attendance", title: "Attendance", group: "Time & attendance" }] : [
+  // HR and Manager both get the full business/operational navigation, same
+  // mechanism as admin/team_lead/employee (driven by workspaceNavigation.js).
+  const hasDelegatedEmployeeAccess = ["create_employees", "edit_employees"].some(
+    (key) => (user?.permissions || []).includes(key),
+  );
+  const navigation = [
     ...workspaceNavigation.filter((item) => item.role === user?.role),
     ...(user?.role === "team_lead" ? [{ path: "/employees", title: "Team members", group: "Workspace" }] : []),
+    // Admin already has this from workspaceNavigation; anyone else only gets
+    // it when specifically granted the delegated permission.
+    ...(hasDelegatedEmployeeAccess && user?.role !== "admin"
+      ? [{ path: "/admin/employees", title: "Employees", group: "Workspace" }]
+      : []),
   ];
   const current = navigation.find((item) => item.path === location.pathname);
   const name = user?.fullName || user?.name || "Your account";
@@ -64,7 +73,7 @@ export default function AppShell({ children }) {
           })}
         </nav>
         <div className="crm-nav-bottom">
-          {!staff && <NavLink to="/profile" onClick={closeNavigation}><Users size={17} /><span>My profile</span></NavLink>}
+          <NavLink to="/profile" onClick={closeNavigation}><Users size={17} /><span>My profile</span></NavLink>
           <button onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}><ChevronLeft size={17} /><span>Collapse navigation</span></button>
         </div>
       </aside>
@@ -78,7 +87,7 @@ export default function AppShell({ children }) {
           <button className="crm-signout" aria-label="Log out" title="Log out" disabled={signingOut} onClick={signOut}><LogOut size={17} /></button>
         </header>
         <main id="workspace-content" className="crm-content" key={location.pathname}>
-          <div className="crm-context-line"><span><CalendarDays size={14} />{new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</span><span>CRM / {staff ? "People operations" : "Workspace"}</span></div>
+          <div className="crm-context-line"><span><CalendarDays size={14} />{new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</span><span>CRM / Workspace</span></div>
           {children}
         </main>
         <footer className="crm-footer"><span>CRM · Employee workspace</span><span>Time. People. Progress.</span></footer>

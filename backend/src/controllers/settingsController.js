@@ -6,7 +6,7 @@ const getSettings = () =>
   SystemSettings.findOneAndUpdate(
     { key: "global" },
     { $setOnInsert: { idleThresholdMinutes: defaults.idleThresholdMinutes, autoLogoutMinutes: defaults.autoLogoutMinutes } },
-    { new: true, upsert: true, runValidators: true }
+    { returnDocument: "after", upsert: true, runValidators: true }
   );
 
 const getIdlePolicy = async (req, res) => {
@@ -52,7 +52,7 @@ const updateIdlePolicy = async (req, res) => {
     const settings = await SystemSettings.findOneAndUpdate(
       { key: "global" },
       { $set: policy },
-      { new: true, upsert: true, runValidators: true }
+      { returnDocument: "after", upsert: true, runValidators: true }
     );
 
     return res.status(200).json({

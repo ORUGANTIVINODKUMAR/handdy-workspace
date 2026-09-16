@@ -96,7 +96,7 @@ const getAllProjects = async (req, res) => {
     const search = req.query.search || "";
     const status = req.query.status || "";
 
-    const filter = {};
+    const filter = { deletedAt: null };
 
     if (search) {
       const safeSearch = escapeRegExp(search);
@@ -143,7 +143,7 @@ const getAllProjects = async (req, res) => {
 // Get Project By ID
 const getProjectById = async (req, res) => {
   try {
-    const project = await Project.findOne(applyProjectVisibility({ _id: req.params.id }, req.user))
+    const project = await Project.findOne(applyProjectVisibility({ _id: req.params.id, deletedAt: null }, req.user))
       .populate("createdBy", "fullName email")
       .populate("client", "clientName status")
       .populate("clients", "clientName status")
@@ -171,7 +171,7 @@ const getProjectById = async (req, res) => {
 // Update Project
 const updateProject = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await Project.findOne({ _id: req.params.id, deletedAt: null });
 
     if (!project) {
       return res.status(404).json({
@@ -197,7 +197,7 @@ const updateProject = async (req, res) => {
       req.params.id,
       updates,
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     );
@@ -215,7 +215,7 @@ const updateProject = async (req, res) => {
 // Delete Project
 const deleteProject = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await Project.findOne({ _id: req.params.id, deletedAt: null });
 
     if (!project) {
       return res.status(404).json({
@@ -225,11 +225,12 @@ const deleteProject = async (req, res) => {
     }
 
     project.status = "Completed";
+    project.deletedAt = new Date();
     await project.save();
 
     return res.status(200).json({
       success: true,
-      message: "Project archived successfully.",
+      message: "Project deleted successfully.",
     });
   } catch (error) {
     return res.status(500).json({

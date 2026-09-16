@@ -23,5 +23,9 @@ export default function ModalFrame({ children, onClose, label = "Edit details" }
     element.addEventListener("keydown", handleKey);
     return () => { element.removeEventListener("keydown", handleKey); document.body.style.overflow = overflow; previous?.focus(); };
   }, []);
-  return <div ref={ref} className="crm-modal-overlay" role="dialog" aria-modal="true" aria-label={label}>{children}</div>;
+  const handleBackdropClick = (event) => {
+    if (event.target === event.currentTarget) closeRef.current?.();
+  };
+
+  return <div ref={ref} className="crm-modal-overlay" role="dialog" aria-modal="true" aria-label={label} onMouseDown={handleBackdropClick}>{children}</div>;
 }

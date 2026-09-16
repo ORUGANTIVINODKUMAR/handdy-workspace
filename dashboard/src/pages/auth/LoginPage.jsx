@@ -5,6 +5,7 @@ import {
 
 import {
   Link,
+  useLocation,
   useNavigate,
 } from "react-router-dom";
 
@@ -34,6 +35,7 @@ function getDashboardForRole(role) {
 
 function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     login,
@@ -205,6 +207,12 @@ function LoginPage() {
         {error && (
           <div className="auth-error">
             {error}
+          </div>
+        )}
+
+        {!error && location.state?.accessDenied && (
+          <div className="auth-error">
+            {location.state.accessDenied}
           </div>
         )}
 

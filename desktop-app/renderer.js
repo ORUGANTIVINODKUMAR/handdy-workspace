@@ -74,6 +74,7 @@ const API_BASE_URL =
 let timerInterval = null;
 let idleMonitorInterval = null;
 let idlePolicyRefreshInterval = null;
+let dataRefreshInterval = null;
 let idleCheckInProgress = false;
 let idlePolicy = null;
 let currentTimeLog = null;
@@ -86,6 +87,7 @@ let activeTaskIdleLogout = false;
 let loginInProgress = false;
 
 const IDLE_CHECK_INTERVAL_MS = 5000;
+const DATA_REFRESH_INTERVAL_MS = 10 * 1000;
 const ACTIVE_AGAIN_SECONDS = 2;
 
 const showTimerView = (viewName) => {
@@ -179,7 +181,8 @@ function clearSessionLoops() {
   clearInterval(idleMonitorInterval);
   clearInterval(idlePolicyRefreshInterval);
   clearInterval(timerInterval);
-  idleMonitorInterval = idlePolicyRefreshInterval = timerInterval = null;
+  clearInterval(dataRefreshInterval);
+  idleMonitorInterval = idlePolicyRefreshInterval = timerInterval = dataRefreshInterval = null;
   automaticIdlePause = false;
 }
 
@@ -316,23 +319,80 @@ function getStoredUser() {
   }
 }
 
+// Work selection state. The project/task <select> elements are rebuilt when
+// data refreshes, so the employee's choice is kept here by MongoDB _id and
+// re-applied after every rebuild instead of being read back from the DOM.
+let selectedProjectId = "";
+let selectedTaskId = "";
+let projectsSignature = null;
+let tasksSignature = null;
+let tasksProjectId = "";
+let projectRequestId = 0;
+let taskRequestId = 0;
+
+// TEMPORARY: work-selection diagnostics. Set to false (or remove) once verified.
+const DEBUG_WORK_SELECTION = true;
+const debugWorkSelection = (...args) => {
+  if (DEBUG_WORK_SELECTION) console.log("[work-selection]", ...args);
+};
+
+function setSelectedProjectId(projectId, source) {
+  const nextProjectId = String(projectId || "");
+  if (nextProjectId === selectedProjectId) return;
+  debugWorkSelection("selectedProjectId changed:", selectedProjectId || "(none)", "->", nextProjectId || "(none)", "via", source);
+  if (!nextProjectId && DEBUG_WORK_SELECTION) console.trace("[work-selection] selectedProjectId cleared by", source);
+  selectedProjectId = nextProjectId;
+}
+
+function setSelectedTaskId(taskId, source) {
+  const nextTaskId = String(taskId || "");
+  if (nextTaskId === selectedTaskId) return;
+  debugWorkSelection("selectedTaskId changed:", selectedTaskId || "(none)", "->", nextTaskId || "(none)", "via", source);
+  selectedTaskId = nextTaskId;
+}
+
+const hasOption = (select, value) =>
+  Boolean(value) && [...select.options].some((option) => option.value === value);
+
+// Adds an option for a restored active timer whose project/task is no longer
+// in the assignable list, so the running work is still displayed.
+function ensureOption(select, value, label) {
+  if (!value || hasOption(select, value)) return;
+  select.appendChild(new Option(label || "Unavailable", value));
+  if (select === projectSelect) projectsSignature = null;
+  if (select === taskSelect) tasksSignature = null;
+}
+
+function updateClientName() {
+  if (!clientName) return;
+  const selectedOption = projectSelect.selectedOptions[0];
+  clientName.textContent = selectedProjectId && selectedOption?.value
+    ? selectedOption.dataset.clientName || "Not assigned"
+    : "Not selected";
+}
+
+function renderTaskPlaceholder(text) {
+  tasksSignature = null;
+  taskSelect.replaceChildren(new Option(text, ""));
+  taskSelect.disabled = true;
+}
+
 async function loadProjects() {
   const token = getToken();
 
-  if (!token) {
-    return;
+  if (!token || !projectSelect) {
+    return false;
   }
 
-  workSelectionMessage.textContent = "";
-
-  projectSelect.innerHTML =
-    '<option value="">Select Project</option>';
+  const requestId = ++projectRequestId;
 
   try {
+    // Only active projects can be started (see POST /time-logs/start).
     const response = await fetch(
-      `${API_BASE_URL}/projects?limit=100`,
+      `${API_BASE_URL}/projects?limit=100&status=Active`,
       {
         method: "GET",
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -341,40 +401,78 @@ async function loadProjects() {
 
     const data = await response.json();
 
+    if (requestId !== projectRequestId) return false;
+
     if (!response.ok) {
+      // Keep the current options and selection; a failed refresh must not
+      // wipe what the employee has already chosen.
       workSelectionMessage.textContent =
         data.message || "Unable to load projects.";
 
-      return;
+      return false;
     }
 
-    data.projects.forEach((project) => {
-      const option = document.createElement("option");
+    const projects = Array.isArray(data.projects) ? data.projects : [];
+    debugWorkSelection("Projects refreshed:", projects.map((project) => ({ id: project._id, name: project.projectName })));
+    debugWorkSelection("Current selectedProjectId:", selectedProjectId || "(none)");
 
-      option.value = project._id;
-      option.dataset.clientName = project.clientName || "Not assigned";
+    // Rebuilding the options closes an open dropdown and momentarily shows
+    // the placeholder, so only rebuild when the project list really changed.
+    const signature = JSON.stringify(
+      projects.map((project) => [project._id, project.projectName, project.clientName])
+    );
 
-      option.textContent = project.projectName;
+    if (signature !== projectsSignature) {
+      projectSelect.replaceChildren(
+        new Option("Select Project", ""),
+        ...projects.map((project) => {
+          const option = new Option(project.projectName, project._id);
+          option.dataset.clientName = project.clientName || "Not assigned";
+          return option;
+        })
+      );
+      projectsSignature = signature;
+    }
 
-      projectSelect.appendChild(option);
-    });
+    if (selectedProjectId && !hasOption(projectSelect, selectedProjectId) && !currentTimeLog) {
+      setSelectedProjectId("", "loadProjects: project is no longer active or assigned");
+      setSelectedTaskId("", "loadProjects: project is no longer active or assigned");
+    }
+
+    projectSelect.value = selectedProjectId;
+    updateClientName();
+    workSelectionMessage.textContent = "";
+    return true;
   } catch (error) {
-    workSelectionMessage.textContent =
-      "Unable to reach the backend server.";
+    if (requestId === projectRequestId) {
+      workSelectionMessage.textContent =
+        "Unable to reach the backend server.";
+    }
+    return false;
   }
 }
 
-async function loadTasks(projectId) {
-  const token = getToken();
-  taskSelect.innerHTML =
-    '<option value="">Select Task</option>';
+async function loadTasks(projectId, { background = false } = {}) {
+  if (!taskSelect) return;
 
-  taskSelect.disabled = true;
-  workSelectionMessage.textContent = "";
+  const token = getToken();
+  const requestId = ++taskRequestId;
 
   if (!projectId || !token) {
+    tasksProjectId = "";
+    renderTaskPlaceholder("Select Task");
     return;
   }
+
+  // A background refresh keeps the current options until the response
+  // arrives, so the chosen task never flickers back to the placeholder.
+  const keepExistingTasks = background && tasksProjectId === projectId && tasksSignature !== null;
+  if (!keepExistingTasks) {
+    tasksProjectId = projectId;
+    renderTaskPlaceholder("Loading tasks...");
+  }
+
+  debugWorkSelection("Loading tasks for project:", projectId);
 
   try {
     const response = await fetch(
@@ -390,33 +488,55 @@ async function loadTasks(projectId) {
 
     const data = await response.json();
 
+    // Ignore responses for a project the employee has already moved away from.
+    if (requestId !== taskRequestId || projectId !== selectedProjectId) return;
+
+    debugWorkSelection("Task API response:", data);
+
     if (!response.ok) {
+      if (keepExistingTasks) return;
+      renderTaskPlaceholder("Unable to load tasks");
       workSelectionMessage.textContent =
         data.message || "Unable to load tasks.";
 
       return;
     }
 
-    if (data.tasks.length === 0) {
-      workSelectionMessage.textContent =
-        "No tasks are assigned to you for this project.";
+    const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    debugWorkSelection("Available tasks:", tasks.map((task) => ({ id: task._id, name: task.taskName })));
 
+    if (tasks.length === 0) {
+      renderTaskPlaceholder("No tasks available for this project");
+      if (!currentTimeLog) setSelectedTaskId("", "loadTasks: project has no available tasks");
       return;
     }
 
-    data.tasks.forEach((task) => {
-      const option = document.createElement("option");
+    const signature = JSON.stringify(
+      tasks.map((task) => [task._id, task.taskName, task.idleLogout === true])
+    );
 
-      option.value = task._id;
-      option.dataset.idleLogout = String(task.idleLogout === true);
+    if (signature !== tasksSignature) {
+      taskSelect.replaceChildren(
+        new Option("Select Task", ""),
+        ...tasks.map((task) => {
+          const option = new Option(task.taskName, task._id);
+          option.dataset.idleLogout = String(task.idleLogout === true);
+          return option;
+        })
+      );
+      tasksSignature = signature;
+    }
 
-      option.textContent = task.taskName;
+    if (selectedTaskId && !hasOption(taskSelect, selectedTaskId) && !currentTimeLog) {
+      setSelectedTaskId("", "loadTasks: task is no longer active or assigned");
+    }
 
-      taskSelect.appendChild(option);
-    });
-
-    taskSelect.disabled = false;
+    taskSelect.value = selectedTaskId;
+    taskSelect.disabled = Boolean(currentTimeLog);
+    workSelectionMessage.textContent = "";
   } catch (error) {
+    if (requestId !== taskRequestId || projectId !== selectedProjectId || keepExistingTasks) return;
+    renderTaskPlaceholder("Unable to load tasks");
     workSelectionMessage.textContent =
       "Unable to reach the backend server.";
   }
@@ -434,6 +554,61 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
+async function refreshCurrentUser() {
+  const token = getToken();
+  if (!token || isLoginPage || logoutPending) return true;
+  try {
+    const response = await fetch(API_BASE_URL + "/auth/me", {
+      cache: "no-store",
+      headers: { Authorization: "Bearer " + token },
+      signal: AbortSignal.timeout(10000),
+    });
+    if ([401, 403].includes(response.status)) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.replace("./index.html");
+      return false;
+    }
+    if (!response.ok) return true;
+    const data = await response.json();
+    const user = data.user || data;
+    localStorage.setItem("user", JSON.stringify(user));
+    // Background refresh: update the header/profile only. showLoggedInView
+    // would also force the Timer tab every refresh.
+    updateUserDetails(user);
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+let desktopRefreshInFlight = null;
+
+// The interval, window focus and visibilitychange can fire together. Sharing
+// one in-flight refresh stops overlapping runs from reading each other's
+// half-rebuilt dropdowns.
+function refreshDesktopData() {
+  if (!desktopRefreshInFlight) {
+    desktopRefreshInFlight = runDesktopRefresh().finally(() => {
+      desktopRefreshInFlight = null;
+    });
+  }
+  return desktopRefreshInFlight;
+}
+
+async function runDesktopRefresh() {
+  if (isLoginPage || !getToken() || logoutPending) return;
+  if (!(await refreshCurrentUser())) return;
+  await loadTodayTimesheet();
+  // An active timer owns the project/task display; it is restored from the
+  // backend by loadActiveTimer, not by the background refresh.
+  if (currentTimeLog) return;
+
+  await loadProjects();
+  if (currentTimeLog) return;
+  await loadTasks(selectedProjectId, { background: true });
+}
+
 function getRememberedUser() {
   const storedUser = localStorage.getItem("rememberedUser");
   if (!storedUser) return null;
@@ -444,7 +619,10 @@ function showLoggedInView(user) {
   if (loginSection) loginSection.hidden = true;
   if (appSection) appSection.hidden = false;
   showTimerView("timer");
+  updateUserDetails(user);
+}
 
+function updateUserDetails(user) {
   userName.textContent = user.fullName || "Employee";
   userRole.textContent = (user.role || "employee").replace("_", " ");
   currentDate.textContent = new Intl.DateTimeFormat(undefined, {
@@ -757,13 +935,20 @@ async function loadActiveTimer() {
         : "Working";
     updateBreakUI(timeLog);
 
+    // Restore the running work from the backend record (the only place the
+    // selection is taken from the server rather than from the employee).
     if (timeLog.project) {
-      projectSelect.value = timeLog.project._id;
+      setSelectedProjectId(timeLog.project._id, "loadActiveTimer: restore active timer");
+      setSelectedTaskId(timeLog.task?._id, "loadActiveTimer: restore active timer");
+      ensureOption(projectSelect, timeLog.project._id, timeLog.project.projectName);
+      projectSelect.value = selectedProjectId;
+      updateClientName();
 
       await loadTasks(timeLog.project._id);
     }
 
     if (timeLog.task) {
+      ensureOption(taskSelect, timeLog.task._id, timeLog.task.taskName);
       taskSelect.value = timeLog.task._id;
     }
 
@@ -852,8 +1037,9 @@ async function stopTimer() {
 
     projectSelect.disabled = false;
 
+    // Only re-enable the task dropdown when it holds real task options.
     taskSelect.disabled =
-      !projectSelect.value;
+      !selectedProjectId || tasksSignature === null;
   } catch (error) {
     timerMessage.textContent =
       "Unable to reach the backend server.";
@@ -1003,8 +1189,8 @@ async function resumeTimer(reason = "manual") {
 async function startTimer() {
   const token = getToken();
 
-  const projectId = projectSelect.value;
-  const taskId = taskSelect.value;
+  const projectId = selectedProjectId;
+  const taskId = selectedTaskId;
 
   timerMessage.textContent = "";
 
@@ -1085,21 +1271,26 @@ async function startTimer() {
 projectSelect?.addEventListener(
   "change",
   async () => {
-    const projectId = projectSelect.value;
-    const selectedProject = projectSelect.selectedOptions[0];
-    clientName.textContent = selectedProject?.dataset.clientName || "Not selected";
+    debugWorkSelection("Project selected:", projectSelect.value);
 
-    await loadTasks(projectId);
+    // Keep the new project; only the previous project's task is cleared.
+    setSelectedProjectId(projectSelect.value, "employee changed project");
+    setSelectedTaskId("", "employee changed project");
+    updateClientName();
+
+    await loadTasks(selectedProjectId);
   }
 );
 
-window.addEventListener("focus", async () => {
-  if (isLoginPage || !getToken() || currentTimeLog || !projectSelect?.value) return;
-  const selectedTaskId = taskSelect.value;
-  await loadTasks(projectSelect.value);
-  if ([...taskSelect.options].some((option) => option.value === selectedTaskId)) {
-    taskSelect.value = selectedTaskId;
-  }
+taskSelect?.addEventListener("change", () => {
+  debugWorkSelection("Task selected:", taskSelect.value);
+  setSelectedTaskId(taskSelect.value, "employee changed task");
+});
+
+window.addEventListener("focus", refreshDesktopData);
+window.addEventListener("online", refreshDesktopData);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") void refreshDesktopData();
 });
 
 loginForm?.addEventListener(
@@ -1301,6 +1492,7 @@ async function initializeApp() {
       await loadIdlePolicy();
       startIdleMonitor();
     }, 60 * 1000);
+    dataRefreshInterval = setInterval(refreshDesktopData, DATA_REFRESH_INTERVAL_MS);
   } else {
     showLoggedOutView();
   }

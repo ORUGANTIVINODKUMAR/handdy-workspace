@@ -8,6 +8,7 @@ import useAuth from "../context/useAuth";
 function ProtectedRoute({
   children,
   allowedRoles = [],
+  requiredPermissions = [],
 }) {
   const location = useLocation();
 
@@ -49,11 +50,31 @@ function ProtectedRoute({
     );
   }
 
-  // Logged in but wrong role.
+  // A route can also be reached via an admin-granted delegated permission
+  // (e.g. a specific HR/employee account given "create_employees"),
+  // regardless of that account's role.
+  const hasRequiredPermission =
+    requiredPermissions.length > 0 &&
+    requiredPermissions.some((key) => (user.permissions || []).includes(key));
+
+  // Logged in but wrong role, and no delegated permission covers this route.
   if (
     allowedRoles.length > 0 &&
-    !allowedRoles.includes(user.role)
+    !allowedRoles.includes(user.role) &&
+    !hasRequiredPermission
   ) {
+    if (allowedRoles.length === 1 && allowedRoles[0] === "admin") {
+      return (
+        <Navigate
+          to="/login"
+          replace
+          state={{
+            accessDenied: "Access denied. This application is available to Admin users only.",
+          }}
+        />
+      );
+    }
+
     if (user.role === "admin") {
       return (
         <Navigate
@@ -83,10 +104,10 @@ function ProtectedRoute({
       );
     }
 
-    if (user.role === "hr" || user.role === "manager") {
+    if (user.role === "manager" || user.role === "hr") {
       return (
         <Navigate
-          to="/attendance"
+          to="/admin/dashboard"
           replace
         />
       );

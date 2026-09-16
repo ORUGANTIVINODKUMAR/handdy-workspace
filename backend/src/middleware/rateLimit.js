@@ -1,8 +1,8 @@
 const buckets = new Map();
 
-const createRateLimit = ({ windowMs, max, message }) => (req, res, next) => {
+const createRateLimit = ({ windowMs, max, message, keyGenerator = (req) => req.ip }) => (req, res, next) => {
   const now = Date.now();
-  const key = `${req.ip}:${req.baseUrl}:${req.path}`;
+  const key = `${keyGenerator(req)}:${req.baseUrl}:${req.path}`;
   const current = buckets.get(key);
 
   if (!current || current.resetAt <= now) {

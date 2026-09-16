@@ -59,4 +59,4 @@ const syncEmployeeTeam = async (employee, requestedTeamId) => {
   return employee;
 };
 
-module.exports = { syncEmployeeTeam };
+module.exports = { syncEmployeeTeam, clearTeamsLedBy };

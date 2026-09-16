@@ -35,3 +35,28 @@ test("rejects duplicate projects and invalid charge rates", () => {
   assert.match(validateEmployeeForm({ ...validEmployee, projectRates: [{ project: "project-1", chargeRate: "-1" }] }), /positive charge rate/i);
   assert.match(validateEmployeeForm({ ...validEmployee, projectRates: [{ project: "project-1", chargeRate: "invalid" }] }), /positive charge rate/i);
 });
+
+test("no role requires a project rate", () => {
+  for (const role of ["employee", "team_lead", "admin", "hr", "manager"]) {
+    assert.equal(
+      validateEmployeeForm({
+        ...validEmployee,
+        role,
+        team: ["employee", "team_lead"].includes(role) ? "team-1" : "",
+        projectRates: [],
+      }, { passwordRequired: true }),
+      "",
+    );
+  }
+});
+
+test("a project rate supplied for any role is still validated", () => {
+  assert.match(
+    validateEmployeeForm({ ...validEmployee, projectRates: [{ project: "", chargeRate: "25" }] }),
+    /select a project/i,
+  );
+  assert.match(
+    validateEmployeeForm({ ...validEmployee, role: "hr", team: "", projectRates: [{ project: "", chargeRate: "25" }] }),
+    /select a project/i,
+  );
+});

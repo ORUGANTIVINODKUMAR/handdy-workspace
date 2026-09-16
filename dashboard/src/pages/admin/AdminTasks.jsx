@@ -6,6 +6,7 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import TaskForm from "../../components/tasks/TaskForm";
 import "../../styles/adminTasks.css";
 import { API_BASE_URL } from "../../api/axiosInstance";
+import useDataRefresh from "../../hooks/useDataRefresh";
 
 const API_URL = `${API_BASE_URL}/tasks`;
 
@@ -85,6 +86,7 @@ function AdminTasks() {
       const token = getToken();
 
       const response = await fetch(API_URL, {
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -114,6 +116,7 @@ function AdminTasks() {
   useEffect(() => {
     void loadTasks();
   }, []);
+  useDataRefresh(loadTasks);
 
   // ==============================
   // FILTER + SORT
@@ -327,8 +330,7 @@ function AdminTasks() {
       setMessage(
         "Task deleted successfully."
       );
-
-      await loadTasks();
+      setTasks((previous) => previous.filter((item) => (item._id || item.id) !== taskId));
     } catch (err) {
       setError(
         err.message ||
@@ -602,8 +604,7 @@ function AdminTasks() {
                                   )
                                 }
                               >
-                                <Pencil size={15} aria-hidden="true" />
-                                ✎
+                                <Pencil size={17} strokeWidth={2} aria-hidden="true" />
                               </button>
 
                               <button
@@ -617,8 +618,7 @@ function AdminTasks() {
                                   )
                                 }
                               >
-                                <Trash2 size={15} aria-hidden="true" />
-                                ⊠
+                                <Trash2 size={17} strokeWidth={2} aria-hidden="true" />
                               </button>
                             </div>
                           </td>

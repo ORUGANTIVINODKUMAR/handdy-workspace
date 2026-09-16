@@ -13,7 +13,7 @@ const connectDatabase = require("../src/config/db");
 const Employee = require("../src/models/Employee");
 const Team = require("../src/models/Team");
 
-const DEFAULT_PASSWORD = process.env.IMPORT_USER_PASSWORD || "Welcome@123";
+const DEFAULT_PASSWORD = process.env.IMPORT_USER_PASSWORD;
 const inputFile = process.argv[2];
 
 const normalizeRole = (role) => String(role || "").toLowerCase().replace(/\s|_/g, "") === "teamleader"
@@ -29,6 +29,7 @@ const findEmployee = (row) => Employee.findOne({
 
 const run = async () => {
   if (!inputFile) throw new Error("Provide the path to Users_Report.xlsx.");
+  if (!DEFAULT_PASSWORD) throw new Error("Set IMPORT_USER_PASSWORD before running this script.");
 
   const workbook = XLSX.readFile(inputFile);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];

@@ -7,17 +7,36 @@ import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import EmployeeForm from "../../components/employees/EmployeeForm";
 import { getAllActiveProjects } from "../../api/projectApi";
-import { EMPTY_PROJECT_RATE, validateEmployeeForm } from "../../utils/employeeFormValidation";
+import { projectRatesRequiredForRole, validateEmployeeForm } from "../../utils/employeeFormValidation";
 import { Eye, EyeOff } from "lucide-react";
+import useDataRefresh from "../../hooks/useDataRefresh";
+import useAuth from "../../context/useAuth";
+
+const PERMISSION_LABELS = {
+  create_employees: "Create employees",
+  edit_employees: "Edit employee details",
+};
+
+// Drops still-blank placeholder rows when switching to a role that doesn't
+// require a project rate, without discarding any rate the admin already
+// filled in (e.g. an HR employee who does some billable client work too).
+const dropBlankProjectRates = (projectRates) =>
+  projectRates.filter((assignment) => assignment.project || assignment.chargeRate !== "");
 
 function AdminEmployees() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
+  const currentPermissions = currentUser?.permissions || [];
+  const canCreateEmployees = isAdmin || currentPermissions.includes("create_employees");
+  const canEditEmployees = isAdmin || currentPermissions.includes("edit_employees");
   const [employees, setEmployees] = useState([]);
   const [teams, setTeams] = useState([]);
   const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
@@ -39,7 +58,7 @@ function AdminEmployees() {
     password: "",
     role: "employee",
     team: "",
-    projectRates: [{ ...EMPTY_PROJECT_RATE }],
+    projectRates: [],
   });
 
   // EDIT EMPLOYEE
@@ -55,7 +74,7 @@ function AdminEmployees() {
     role: "employee",
     team: "",
     isActive: true,
-    projectRates: [{ ...EMPTY_PROJECT_RATE }],
+    projectRates: [],
   });
 
   // RESET PASSWORD
@@ -72,7 +91,7 @@ function AdminEmployees() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // LOAD EMPLOYEES
-  const fetchEmployees = useCallback(async () => {
+  const fetchEmployees = useCallback(async (isCurrent = () => true) => {
     try {
       setLoading(true);
       setError("");
@@ -87,12 +106,18 @@ function AdminEmployees() {
         params.team = teamFilter;
       }
 
+      if (statusFilter !== "all") {
+        params.isActive = statusFilter === "active" ? "true" : "false";
+      }
+
       const data = await getEmployees(params);
 
+      if (!isCurrent()) return;
       setEmployees(data.employees || []);
       setTotalPages(Math.max(data.totalPages || 1, 1));
       setTotalEmployees(data.totalEmployees || 0);
     } catch (requestError) {
+      if (!isCurrent()) return;
       setError(
         getApiErrorMessage(
           requestError,
@@ -100,13 +125,18 @@ function AdminEmployees() {
         )
       );
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [search, teamFilter, page, limit]);
+  }, [search, teamFilter, statusFilter, page, limit]);
 
   useEffect(() => {
-    void fetchEmployees();
+    let active = true;
+    void fetchEmployees(() => active);
+    return () => {
+      active = false;
+    };
   }, [fetchEmployees]);
+  useDataRefresh(fetchEmployees);
 
   useEffect(() => {
     const fetchTeams = async () => {
@@ -170,7 +200,10 @@ function AdminEmployees() {
         [name]: value,
       };
 
-      if (name === "role" && ["admin", "hr", "manager"].includes(value)) updatedData.team = "";
+      if (name === "role" && ["admin", "hr", "manager"].includes(value)) {
+        updatedData.team = "";
+        updatedData.projectRates = dropBlankProjectRates(previous.projectRates);
+      }
 
       return updatedData;
     });
@@ -185,7 +218,7 @@ function AdminEmployees() {
       password: "",
       role: "employee",
       team: "",
-      projectRates: [{ ...EMPTY_PROJECT_RATE }],
+      projectRates: [],
     });
 
     setFormError("");
@@ -257,7 +290,7 @@ function AdminEmployees() {
             projectStatus: assignment.project?.status || "Completed",
             chargeRate: assignment.chargeRate ?? "",
           }))
-        : [{ ...EMPTY_PROJECT_RATE }],
+        : [],
     });
 
     setEditError("");
@@ -272,7 +305,10 @@ function AdminEmployees() {
         [name]: value,
       };
 
-      if (name === "role" && ["admin", "hr", "manager"].includes(value)) updatedData.team = "";
+      if (name === "role" && ["admin", "hr", "manager"].includes(value)) {
+        updatedData.team = "";
+        updatedData.projectRates = dropBlankProjectRates(previous.projectRates);
+      }
 
       return updatedData;
     });
@@ -311,13 +347,12 @@ function AdminEmployees() {
           email:
             editFormData.email.trim(),
 
-          role:
-            editFormData.role,
+          // role/isActive are admin-only fields on the backend — the request
+          // is rejected outright if a delegated (non-admin) editor sends them
+          // at all, even unchanged, so they must be omitted entirely here.
+          ...(isAdmin ? { role: editFormData.role, isActive: editFormData.isActive } : {}),
 
           team: ["admin", "hr", "manager"].includes(editFormData.role) ? null : editFormData.team,
-
-          isActive:
-            editFormData.isActive,
 
           projectRates: editFormData.projectRates.map((assignment) => ({
             project: assignment.project,
@@ -417,15 +452,17 @@ function AdminEmployees() {
             <h2>Company Employees</h2>
           </div>
 
-          <button
-            className="add-employee-button"
-            type="button"
-            onClick={() =>
-              setShowAddEmployee(true)
-            }
-          >
-            + Add Employee
-          </button>
+          {canCreateEmployees && (
+            <button
+              className="add-employee-button"
+              type="button"
+              onClick={() =>
+                setShowAddEmployee(true)
+              }
+            >
+              + Add Employee
+            </button>
+          )}
         </div>
 
         {/* SEARCH AND FILTER */}
@@ -458,6 +495,17 @@ function AdminEmployees() {
                 {team.teamName}
               </option>
             ))}
+          </select>
+
+          <select
+            className="employees-status-filter"
+            value={statusFilter}
+            onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}
+            aria-label="Filter employees by status"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="all">All statuses</option>
           </select>
         </div>
 
@@ -520,6 +568,15 @@ function AdminEmployees() {
                     <td>
                       {employee.role
                         ?.replace("_", " ") || "-"}
+                      {employee.permissions?.length > 0 && (
+                        <div className="employee-permission-badges">
+                          {employee.permissions.map((key) => (
+                            <span key={key} className="employee-permission-badge">
+                              {PERMISSION_LABELS[key] || key}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
 
                     <td>{employee.team?.teamName || "-"}</td>
@@ -547,35 +604,41 @@ function AdminEmployees() {
                     <td>
                       <div className="employee-actions">
 
-                        <button
-                          className="edit-action-button"
-                          type="button"
-                          onClick={() =>
-                            openEditEmployee(employee)
-                          }
-                        >
-                          Edit
-                        </button>
+                        {canEditEmployees && (
+                          <button
+                            className="edit-action-button"
+                            type="button"
+                            onClick={() =>
+                              openEditEmployee(employee)
+                            }
+                          >
+                            Edit
+                          </button>
+                        )}
 
-                        <button
-                          className="edit-action-button"
-                          type="button"
-                          onClick={() =>
-                            openResetPassword(employee)
-                          }
-                        >
-                          Reset Password
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="edit-action-button"
+                            type="button"
+                            onClick={() =>
+                              openResetPassword(employee)
+                            }
+                          >
+                            Reset Password
+                          </button>
+                        )}
 
-                        <button
-                          className="delete-action-button"
-                          type="button"
-                          onClick={() =>
-                            handleDelete(employee._id)
-                          }
-                        >
-                          Delete
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="delete-action-button"
+                            type="button"
+                            onClick={() =>
+                              handleDelete(employee._id)
+                            }
+                          >
+                            Delete
+                          </button>
+                        )}
 
                       </div>
                     </td>
@@ -651,6 +714,8 @@ function AdminEmployees() {
               projects={projects}
               saving={saving}
               error={formError}
+              isAdmin={isAdmin}
+              projectRatesRequired={projectRatesRequiredForRole(formData.role)}
               onFieldChange={handleFormChange}
               onSubmit={handleAddEmployee}
               onCancel={closeAddEmployeeModal}
@@ -697,6 +762,8 @@ function AdminEmployees() {
               projects={projects}
               saving={editSaving}
               error={editError}
+              isAdmin={isAdmin}
+              projectRatesRequired={projectRatesRequiredForRole(editFormData.role)}
               onFieldChange={handleEditFormChange}
               onSubmit={handleUpdateEmployee}
               onCancel={closeEditEmployeeModal}

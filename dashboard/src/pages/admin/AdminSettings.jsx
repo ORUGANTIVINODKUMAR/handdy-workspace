@@ -2,8 +2,21 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getIdlePolicy, updateIdlePolicy } from "../../api/settingsApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
-import idleDefaults from "../../../../desktop-app/idle-policy-defaults.json";
 import "../../styles/adminSettings.css";
+
+// Display defaults and validation bounds only, kept in sync with
+// desktop-app/idle-policy-defaults.json (the canonical values the backend
+// and desktop app share). Not importing that file directly avoids a
+// cross-package build dependency; the backend independently re-validates
+// and enforces the real limits regardless of what this form sends.
+const idleDefaults = {
+  idleThresholdMinutes: 1,
+  autoLogoutMinutes: 3,
+  minIdleMinutes: 1,
+  maxIdleMinutes: 240,
+  minLogoutMinutes: 2,
+  maxLogoutMinutes: 480,
+};
 
 function AdminSettings() {
   const [idleMinutes, setIdleMinutes] = useState(idleDefaults.idleThresholdMinutes);

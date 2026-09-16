@@ -27,7 +27,7 @@ const router = express.Router();
 router.post(
   "/",
   protect,
-  authorizeRoles("admin", "team_lead"),
+  authorizeRoles("admin", "team_lead", "manager", "hr"),
   createTask
 );
 
@@ -49,7 +49,7 @@ router.get(
 router.get(
   "/resolve-project",
   protect,
-  authorizeRoles("admin", "team_lead"),
+  authorizeRoles("admin", "team_lead", "manager", "hr"),
   resolveProjectForTeams
 );
 
@@ -61,7 +61,7 @@ router.get(
 router.patch(
   "/:id/toggle-status",
   protect,
-  authorizeRoles("admin", "team_lead"),
+  authorizeRoles("admin", "team_lead", "manager", "hr"),
   toggleTaskStatus
 );
 
@@ -80,7 +80,7 @@ router.get(
 router.put(
   "/:id",
   protect,
-  authorizeRoles("admin", "team_lead"),
+  authorizeRoles("admin", "team_lead", "manager", "hr"),
   updateTask
 );
 
@@ -90,7 +90,7 @@ router.put(
 router.delete(
   "/:id",
   protect,
-  authorizeRoles("admin", "team_lead"),
+  authorizeRoles("admin", "team_lead", "manager", "hr"),
   deleteTask
 );
 

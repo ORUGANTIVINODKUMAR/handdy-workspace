@@ -25,7 +25,7 @@ const generateTaskCode = async () => {
 const normalizeTeamIds = (value) => [...new Set((Array.isArray(value) ? value : value ? [value] : []).map(String).filter(Boolean))];
 
 const getTeamsForTask = async (user, requestedTeams) => {
-  if (user.role === "admin") {
+  if (["admin", "manager", "hr"].includes(user.role)) {
     const teamIds = normalizeTeamIds(requestedTeams);
     if (!teamIds.length) return { error: "Select at least one team for this task." };
     const teams = await Team.find({ _id: { $in: teamIds }, isActive: true });
@@ -44,9 +44,14 @@ const getTeamsForTask = async (user, requestedTeams) => {
 };
 
 const validateTaskRelations = async ({ project, teams, assignedTo, user }) => {
-  // Project is optional: a brand-new team's first task may not have an
-  // established project yet. When one is provided, it must still be valid.
-  if (project && !(await Project.exists({ _id: project, status: "Active" }))) return "Select an active project.";
+  if (project) {
+    const selectedProject = await Project.findOne({ _id: project, status: "Active", deletedAt: null }).select("teams").lean();
+    if (!selectedProject) return "Select an active project.";
+    const projectTeams = (selectedProject.teams || []).map(String);
+    if (projectTeams.length && teams.some((teamId) => !projectTeams.includes(String(teamId)))) {
+      return "The selected project is not assigned to every selected team.";
+    }
+  }
 
   if (assignedTo.length === 0) return null;
 
@@ -63,7 +68,7 @@ const validateTaskRelations = async ({ project, teams, assignedTo, user }) => {
 };
 
 const getTaskVisibility = async (user) => {
-  if (user.role === "admin") return null;
+  if (["admin", "manager", "hr"].includes(user.role)) return null;
 
   if (user.role === "employee") {
     if (!user.team) return { _id: null };
@@ -113,6 +118,10 @@ const createTask = async (req, res) => {
     }
 
     const normalizedTaskType = taskType || "work";
+
+    if (normalizedTaskType === "work" && !project) {
+      return res.status(400).json({ success: false, message: "Select a project for this work task." });
+    }
 
     const resolvedTaskCode = taskCode?.trim().toUpperCase() || await generateTaskCode();
     const existingTask = await Task.findOne({ taskCode: resolvedTaskCode });
@@ -235,7 +244,7 @@ const getAllTasks = async (req, res) => {
       ? sortBy
       : "createdAt";
 
-    const filter = {};
+    const filter = { deletedAt: null };
 
     const conditions = [];
 
@@ -333,7 +342,7 @@ const getAllTasks = async (req, res) => {
 const getTaskById = async (req, res) => {
   try {
     const visibility = await getTaskVisibility(req.user);
-    const idFilter = { _id: req.params.id };
+    const idFilter = { _id: req.params.id, deletedAt: null };
     if (visibility) idFilter.$and = [visibility];
 
     const task = await Task.findOne(idFilter)
@@ -371,7 +380,7 @@ const getTaskById = async (req, res) => {
 const updateTask = async (req, res) => {
   try {
     const mutationFilter = await applyTeamLeadMutationScope(
-      { _id: req.params.id },
+      { _id: req.params.id, deletedAt: null },
       req.user
     );
     const task = await Task.findOne(mutationFilter);
@@ -484,6 +493,10 @@ const updateTask = async (req, res) => {
       task.idleLogout = Boolean(idleLogout);
     }
 
+    if (task.taskType === "work" && !task.project) {
+      return res.status(400).json({ success: false, message: "Select a project for this work task." });
+    }
+
     const normalizedAssignments = normalizeAssignments(task.assignedTo);
     const relationError = await validateTaskRelations({
       project: task.project,
@@ -530,7 +543,7 @@ const updateTask = async (req, res) => {
 const deleteTask = async (req, res) => {
   try {
     const mutationFilter = await applyTeamLeadMutationScope(
-      { _id: req.params.id },
+      { _id: req.params.id, deletedAt: null },
       req.user
     );
     const task = await Task.findOne(mutationFilter);
@@ -543,11 +556,12 @@ const deleteTask = async (req, res) => {
     }
 
     task.isActive = false;
+    task.deletedAt = new Date();
     await task.save();
 
     return res.status(200).json({
       success: true,
-      message: "Task deactivated successfully.",
+      message: "Task deleted successfully.",
     });
   } catch (error) {
     return handleTaskError(res, error);
@@ -560,7 +574,7 @@ const deleteTask = async (req, res) => {
 const toggleTaskStatus = async (req, res) => {
   try {
     const mutationFilter = await applyTeamLeadMutationScope(
-      { _id: req.params.id },
+      { _id: req.params.id, deletedAt: null },
       req.user
     );
     const task = await Task.findOne(mutationFilter);

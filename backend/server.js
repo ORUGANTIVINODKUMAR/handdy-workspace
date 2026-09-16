@@ -115,13 +115,12 @@ const configuredOrigins = (process.env.CORS_ORIGINS || "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const browserOrigins = configuredOrigins.length
-  ? configuredOrigins
-  : [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-    ];
+const developmentOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+];
+const browserOrigins = [...new Set([...configuredOrigins, ...developmentOrigins])];
 
 // Electron pages loaded with loadFile send the opaque `null` origin. Keep it
 // available even when browser origins are supplied through CORS_ORIGINS.

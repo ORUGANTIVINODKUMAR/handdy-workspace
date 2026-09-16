@@ -7,12 +7,8 @@ import {
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import "../../styles/adminSchedule.css";
-import { API_BASE_URL } from "../../api/axiosInstance";
-
-const getAuthHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
+import axiosInstance from "../../api/axiosInstance";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function AdminSchedule() {
   const [activeTab, setActiveTab] =
@@ -105,76 +101,26 @@ function AdminSchedule() {
         setLoading(true);
         setError("");
 
-        const headers =
-          getAuthHeaders();
-
         const [
           teamsResponse,
           employeesResponse,
           shiftsResponse,
         ] = await Promise.all([
-          fetch(
-            `${API_BASE_URL}/teams`,
-            {
-              headers,
-            }
-          ),
-
-          fetch(
-            `${API_BASE_URL}/employees?limit=100`,
-            {
-              headers,
-            }
-          ),
-
-          fetch(
-            `${API_BASE_URL}/shifts?limit=100`,
-            {
-              headers,
-            }
-          ),
+          axiosInstance.get("/teams"),
+          axiosInstance.get("/employees", { params: { limit: 100 } }),
+          axiosInstance.get("/shifts", { params: { limit: 100 } }),
         ]);
 
-        const teamsData =
-          await teamsResponse.json();
-
-        const employeesData =
-          await employeesResponse.json();
-
-        const shiftsData =
-          await shiftsResponse.json();
-
-        if (!teamsResponse.ok) {
-          throw new Error(
-            teamsData.message ||
-              "Unable to load teams."
-          );
-        }
-
-        if (!employeesResponse.ok) {
-          throw new Error(
-            employeesData.message ||
-              "Unable to load employees."
-          );
-        }
-
-        if (!shiftsResponse.ok) {
-          throw new Error(
-            shiftsData.message ||
-              "Unable to load shifts."
-          );
-        }
-
         setTeams(
-          teamsData.teams || []
+          teamsResponse.data.teams || []
         );
 
         setEmployees(
-          employeesData.employees || []
+          employeesResponse.data.employees || []
         );
 
         setShifts(
-          shiftsData.shifts || []
+          shiftsResponse.data.shifts || []
         );
       } catch (requestError) {
         console.error(
@@ -183,8 +129,7 @@ function AdminSchedule() {
         );
 
         setError(
-          requestError.message ||
-            "Unable to load schedule data."
+          getApiErrorMessage(requestError, "Unable to load schedule data.")
         );
       } finally {
         setLoading(false);
@@ -204,60 +149,13 @@ function AdminSchedule() {
       setScheduleLoading(true);
       setError("");
 
-      const params =
-        new URLSearchParams();
+      const params = { limit: 100 };
+      if (filters.team) params.team = filters.team;
+      if (filters.employee) params.employee = filters.employee;
+      if (filters.shift) params.shift = filters.shift;
+      if (filters.date) params.date = filters.date;
 
-      if (filters.team) {
-        params.set(
-          "team",
-          filters.team
-        );
-      }
-
-      if (filters.employee) {
-        params.set(
-          "employee",
-          filters.employee
-        );
-      }
-
-      if (filters.shift) {
-        params.set(
-          "shift",
-          filters.shift
-        );
-      }
-
-      if (filters.date) {
-        params.set(
-          "date",
-          filters.date
-        );
-      }
-
-      params.set(
-        "limit",
-        "100"
-      );
-
-      const response =
-        await fetch(
-          `${API_BASE_URL}/schedules?${params.toString()}`,
-          {
-            headers:
-              getAuthHeaders(),
-          }
-        );
-
-      const data =
-        await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Unable to load schedules."
-        );
-      }
+      const { data } = await axiosInstance.get("/schedules", { params });
 
       setSchedules(
         data.schedules || []
@@ -269,8 +167,7 @@ function AdminSchedule() {
       );
 
       setError(
-        requestError.message ||
-          "Unable to load schedules."
+        getApiErrorMessage(requestError, "Unable to load schedules.")
       );
     } finally {
       setScheduleLoading(false);
@@ -388,31 +285,7 @@ function AdminSchedule() {
           status: "Active",
         };
 
-        const response =
-          await fetch(
-            `${API_BASE_URL}/schedules`,
-            {
-              method: "POST",
-
-              headers:
-                getAuthHeaders(),
-
-              body:
-                JSON.stringify(
-                  payload
-                ),
-            }
-          );
-
-        const data =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Unable to save schedule."
-          );
-        }
+        await axiosInstance.post("/schedules", payload);
 
         setMessage(
           "Schedule created successfully."
@@ -431,8 +304,7 @@ function AdminSchedule() {
         );
 
         setError(
-          requestError.message ||
-            "Unable to save schedule."
+          getApiErrorMessage(requestError, "Unable to save schedule.")
         );
       } finally {
         setSaving(false);
@@ -457,28 +329,7 @@ function AdminSchedule() {
         setError("");
         setMessage("");
 
-        const response =
-          await fetch(
-            `${API_BASE_URL}/schedules/${scheduleId}`,
-            {
-              method: "DELETE",
-
-              headers:
-                getAuthHeaders(),
-            }
-          );
-
-        const data =
-          await response
-            .json()
-            .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Unable to delete schedule."
-          );
-        }
+        await axiosInstance.delete(`/schedules/${scheduleId}`);
 
         setMessage(
           "Schedule deleted successfully."
@@ -491,8 +342,7 @@ function AdminSchedule() {
         });
       } catch (requestError) {
         setError(
-          requestError.message ||
-            "Unable to delete schedule."
+          getApiErrorMessage(requestError, "Unable to delete schedule.")
         );
       }
     };

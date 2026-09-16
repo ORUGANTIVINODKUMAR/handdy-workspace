@@ -7,6 +7,8 @@ function EmployeeForm({
   projects = [],
   saving,
   error,
+  isAdmin = true,
+  projectRatesRequired = true,
   onFieldChange,
   onSubmit,
   onCancel,
@@ -77,16 +79,22 @@ function EmployeeForm({
               <input type="password" value={formData.password} onChange={(event) => onFieldChange("password", event.target.value)} placeholder="Minimum 8 characters" autoComplete="new-password" required />
             </label>
           )}
-          <label>
-            Role <em>*</em>
-            <select value={formData.role} onChange={(event) => onFieldChange("role", event.target.value)}>
-              <option value="employee">Employee</option>
-              <option value="team_lead">Team Lead</option>
-              <option value="hr">HR</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
+          {isAdmin ? (
+            <label>
+              Role <em>*</em>
+              <select value={formData.role} onChange={(event) => onFieldChange("role", event.target.value)}>
+                <option value="employee">Employee</option>
+                <option value="team_lead">Team Lead</option>
+                <option value="hr">HR</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+          ) : isCreate && (
+            <p className="employee-delegated-note">
+              You can create employee accounts only — role, status, and access changes require an administrator.
+            </p>
+          )}
           {["employee", "team_lead"].includes(formData.role) && (
             <label>
               Team <em>*</em>
@@ -96,7 +104,7 @@ function EmployeeForm({
               </select>
             </label>
           )}
-          {!isCreate && (
+          {!isCreate && isAdmin && (
             <label>
               Status
               <select value={String(formData.isActive)} onChange={(event) => onFieldChange("isActive", event.target.value === "true")}>
@@ -111,9 +119,23 @@ function EmployeeForm({
         <section className="employee-form-section employee-services-section">
         <div className="employee-form-section-heading">
           <span>02</span>
-          <div><h3>Projects and charge rates</h3><p>Assign each project once and enter the employee's hourly rate.</p></div>
+          <div>
+            <h3>Projects and charge rates{!projectRatesRequired && <em className="employee-optional-badge"> (Optional)</em>}</h3>
+            <p>
+              {projectRatesRequired
+                ? "Assign each project once and enter the employee's hourly rate."
+                : "Optional — add a project and hourly rate only if this person does billable client work."}
+            </p>
+          </div>
         </div>
 
+        {projectRates.length === 0 && (
+          <p className="employee-service-empty">
+            {projectRatesRequired
+              ? "No project assigned yet. Add at least one below."
+              : 'No project assigned. Use "Add Another Project" below if this person also does billable work.'}
+          </p>
+        )}
         <div className="employee-service-labels" aria-hidden="true">
           <span>Project Name</span><span>Hourly charge rate</span><span>Action</span>
         </div>

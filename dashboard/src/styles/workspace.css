@@ -386,11 +386,11 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
 .auth-card h1 { color:var(--text-heading); }
 
 /* Spacious management editors */
-.crm-content .employee-modal.project-editor-modal { width:min(760px,calc(100vw - 40px)); padding:0; overflow:hidden; }
+.crm-content .employee-modal.project-editor-modal { display:flex; flex-direction:column; width:min(760px,calc(100vw - 40px)); max-height:calc(100dvh - 32px); padding:0; overflow:hidden; }
 .crm-content .project-editor-modal .employee-modal-header,
 .crm-content .employee-editor-modal .employee-modal-header,
 .crm-content .password-reset-modal .employee-modal-header { margin:0; padding:24px 28px 20px; background:var(--surface-raised); }
-.crm-content .project-editor-modal .employee-form { display:grid; gap:24px; padding:28px; overflow-y:auto; max-height:calc(88vh - 94px); }
+.crm-content .project-editor-modal .employee-form { display:grid; flex:1 1 auto; min-height:0; gap:24px; padding:28px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; max-height:none; }
 .crm-content .project-editor-modal>.admin-error-box,.crm-content .password-reset-modal>.admin-error-box,.crm-content .password-reset-modal>.profile-success-box { margin:20px 28px 0; }
 .crm-content .project-editor-modal .employee-form>div:not(.employee-form-actions) { display:grid; gap:9px; }
 .crm-content .project-editor-modal .project-client-picker { padding:20px; border:1px solid var(--border-light); border-radius:12px; background:var(--surface-soft); }
@@ -400,6 +400,7 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
 .crm-content .project-editor-modal .project-client-option { justify-content:flex-start; min-height:42px; padding:10px 12px; background:var(--card-bg); color:var(--text-main); border:1px solid var(--border-color); }
 .crm-content .project-editor-modal .project-client-option.selected { color:var(--button-text); background:var(--primary); border-color:var(--primary); }
 .crm-content .employee-modal .employee-form-actions { display:flex; justify-content:flex-end; gap:12px; margin:4px -28px -28px; padding:20px 28px; border-top:1px solid var(--border-light); background:var(--surface-raised); }
+.crm-content .project-editor-modal .employee-form-actions { position:sticky; bottom:0; z-index:2; flex:0 0 auto; margin:4px -28px -28px; box-shadow:0 -8px 18px color-mix(in srgb,var(--shadow-color) 48%,transparent); }
 .crm-content .employee-modal .employee-form-actions button { min-width:130px; min-height:42px; }
 .crm-content .employee-modal.employee-editor-modal { display:flex; flex-direction:column; width:min(960px,calc(100vw - 40px)); max-height:min(90vh,900px); padding:0; overflow:hidden; }
 .crm-content .employee-editor-form { display:flex; flex:1; flex-direction:column; min-height:0; padding:0; overflow:hidden; }

@@ -3,7 +3,7 @@ const generateToken = require("../utils/generateToken");
 const Team = require("../models/Team");
 const { syncEmployeeTeam } = require("../services/teamAssignmentService");
 const { sendPasswordResetEmail } = require("../utils/mailer");
-const { validateProjectRates } = require("../services/projectRateService");
+const { validateProjectRates, projectRatesRequiredForRole } = require("../services/projectRateService");
 const {
   generatePasswordResetToken,
   hashResetToken,
@@ -12,8 +12,11 @@ const { createRememberedSession, hashRememberedSession } = require("../utils/rem
 
 const issueRememberedSession = (employee) => {
   const session = createRememberedSession();
-  employee.rememberedSessionTokenHash = session.tokenHash;
-  employee.rememberedSessionExpires = session.expiresAt;
+  const now = new Date();
+  employee.rememberedSessions = (employee.rememberedSessions || [])
+    .filter((item) => item.expiresAt > now)
+    .slice(-9);
+  employee.rememberedSessions.push({ tokenHash: session.tokenHash, expiresAt: session.expiresAt });
   return session.token;
 };
 
@@ -34,6 +37,7 @@ const buildUserResponse = (employee) => {
     email: employee.email,
 
     role: employee.role,
+    permissions: employee.permissions || [],
 
     department: employee.department || "",
     designation: employee.designation || "",
@@ -138,8 +142,13 @@ const register = async (req, res) => {
     const normalizedFullName =
       fullName.trim();
 
-    const normalizedRole = role || "employee";
-    const normalizedProjectRates = await validateProjectRates(projectRates);
+    // A delegated (non-admin) creator can only ever create plain employee
+    // accounts — this is what closes off the "create_employees" permission
+    // from being used to mint another admin, manager, hr, or team lead.
+    const normalizedRole = req.user.role === "admin" ? (role || "employee") : "employee";
+    const normalizedProjectRates = await validateProjectRates(projectRates, {
+      required: projectRatesRequiredForRole(normalizedRole),
+    });
     if (["employee", "team_lead"].includes(normalizedRole)) {
       const validTeam = team && await Team.exists({ _id: team, isActive: true });
       if (!validTeam) {
@@ -252,7 +261,7 @@ const login = async (req, res) => {
     const employee =
       await Employee.findOne({
         email: normalizedEmail,
-      }).select("+password +tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires");
+      }).select("+password +tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions");
 
     if (!employee) {
       return res.status(401).json({
@@ -283,6 +292,13 @@ const login = async (req, res) => {
 
         message:
           "Invalid email or password.",
+      });
+    }
+
+    if (employee.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. This application is available to Admin users only.",
       });
     }
 
@@ -325,12 +341,24 @@ const quickLogin = async (req, res) => {
     if (!rememberedSessionToken || typeof rememberedSessionToken !== "string") {
       return res.status(401).json({ success: false, message: "Remembered session is required." });
     }
+    const tokenHash = hashRememberedSession(rememberedSessionToken);
+    const now = new Date();
     const employee = await Employee.findOne({
-      rememberedSessionTokenHash: hashRememberedSession(rememberedSessionToken),
-      rememberedSessionExpires: { $gt: new Date() },
-    }).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires");
+      $or: [
+        { rememberedSessions: { $elemMatch: { tokenHash, expiresAt: { $gt: now } } } },
+        { rememberedSessionTokenHash: tokenHash, rememberedSessionExpires: { $gt: now } },
+      ],
+    }).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions");
     if (!employee || !employee.isActive) {
       return res.status(employee && !employee.isActive ? 403 : 401).json({ success: false, message: "Your remembered session is no longer valid." });
+    }
+    if (employee.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied. This application is available to Admin users only." });
+    }
+    employee.rememberedSessions = (employee.rememberedSessions || []).filter((session) => session.tokenHash !== tokenHash);
+    if (employee.rememberedSessionTokenHash === tokenHash) {
+      employee.rememberedSessionTokenHash = null;
+      employee.rememberedSessionExpires = null;
     }
     const nextRememberedSessionToken = issueRememberedSession(employee);
     employee.lastLoginAt = new Date();
@@ -659,6 +687,7 @@ const resetPassword = async (req, res) => {
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
     employee.rememberedSessionTokenHash = null;
     employee.rememberedSessionExpires = null;
+    employee.rememberedSessions = [];
 
     await employee.save();
 
@@ -709,6 +738,7 @@ const changePassword = async (req, res) => {
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
     employee.rememberedSessionTokenHash = null;
     employee.rememberedSessionExpires = null;
+    employee.rememberedSessions = [];
 
     await employee.save();
 
@@ -730,9 +760,8 @@ const changePassword = async (req, res) => {
 // LOGOUT EMPLOYEE
 // ======================================================
 const logout = async (req, res) => {
-  // Revoke the current access token while retaining the independent,
-  // device-bound remembered session used for password-free return.
-  await Employee.findByIdAndUpdate(req.user._id, { $inc: { tokenVersion: 1 } });
+  // Access tokens are held separately by each client. Local logout must not
+  // invalidate an employee's concurrent dashboard or desktop session.
 
   return res.status(200).json({
     success: true,

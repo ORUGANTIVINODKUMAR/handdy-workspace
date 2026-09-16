@@ -1,159 +1,53 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
+import axiosInstance from "../../api/axiosInstance";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useDataRefresh from "../../hooks/useDataRefresh";
+
+const trackerStatus = (log) => log.status === "running" ? "Online" : "Away";
 
 function AdminTaskTracker() {
   const [team, setTeam] = useState("");
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState("");
+  const loadRows = useCallback(async () => {
+    try {
+      setError("");
+      const { data } = await axiosInstance.get("/time-logs/live");
+      setRows(data.timeLogs || []);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to load live timers."));
+    }
+  }, []);
+  useEffect(() => { void loadRows(); }, [loadRows]);
+  useDataRefresh(loadRows, 20_000);
 
-  const [rows] = useState([]);
+  const teams = useMemo(() => [...new Set(rows.map((row) => row.employee?.team?.teamName).filter(Boolean))].sort(), [rows]);
+  const visibleRows = team ? rows.filter((row) => row.employee?.team?.teamName === team) : rows;
 
-  const handleGo = () => {
-    console.log({
-      team,
-    });
-  };
-
-  return (
-    <DashboardLayout title="Task Tracker">
-      <section className="admin-card task-tracker-card">
-
-        <h2 className="task-tracker-title">
-          Task tracker
-        </h2>
-
-        <div className="task-tracker-controls">
-          <select
-            value={team}
-            onChange={(event) =>
-              setTeam(event.target.value)
-            }
-          >
-            <option value="">
-              Select team
-            </option>
-
-            <option value="development">
-              Development Team
-            </option>
-
-            <option value="testing">
-              Testing Team
-            </option>
-
-            <option value="support">
-              Support Team
-            </option>
-          </select>
-
-          <button
-            type="button"
-            className="task-tracker-go-button"
-            onClick={handleGo}
-          >
-            Go
-          </button>
-        </div>
-
-        {/* STATUS LEGEND */}
-        <div className="task-tracker-status-box">
-
-          <div className="task-status-item">
-            <span className="task-status-icon logged-in">
-              ↪
-            </span>
-
-            <span>
-              <strong>Logged in</strong>
-              {" - "}
-              Logged in yet to start timer
-            </span>
-          </div>
-
-          <div className="task-status-item">
-            <span className="task-status-icon away">
-              L
-            </span>
-
-            <span>
-              <strong>Away</strong>
-              {" - "}
-              Logged in and timer running in break time
-            </span>
-          </div>
-
-          <div className="task-status-item">
-            <span className="task-status-icon online">
-              ✓
-            </span>
-
-            <span>
-              <strong>Online</strong>
-              {" - "}
-              Logged in and timer running in work time
-            </span>
-          </div>
-
-          <div className="task-status-item">
-            <span className="task-status-icon offline">
-              −
-            </span>
-
-            <span>
-              <strong>Offline</strong>
-              {" - "}
-              Not logged in the timer
-            </span>
-          </div>
-
-        </div>
-
-        <h3 className="task-tracker-section-title">
-          Task tracker
-        </h3>
-
-        <div className="task-tracker-table-wrapper">
-          <table className="task-tracker-table">
-
-            <thead>
-              <tr>
-                <th>Team name</th>
-                <th>Employee name</th>
-                <th>Client name</th>
-                <th>Project name</th>
-                <th>Task name</th>
-                <th>Task tracker</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="task-tracker-empty"
-                  >
-                    No record found
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.teamName}</td>
-                    <td>{row.employeeName}</td>
-                    <td>{row.clientName}</td>
-                    <td>{row.projectName}</td>
-                    <td>{row.taskName}</td>
-                    <td>{row.trackerStatus}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-
-          </table>
-        </div>
-
-      </section>
-    </DashboardLayout>
-  );
+  return <DashboardLayout title="Task Tracker">
+    <section className="admin-card task-tracker-card">
+      <h2 className="task-tracker-title">Live task tracker</h2>
+      <div className="task-tracker-controls">
+        <select value={team} onChange={(event) => setTeam(event.target.value)} aria-label="Filter live timers by team">
+          <option value="">All teams</option>
+          {teams.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <button type="button" className="task-tracker-go-button" onClick={loadRows}>Refresh</button>
+      </div>
+      {error && <p className="admin-error-box" role="alert">{error}</p>}
+      <div className="task-tracker-status-box">
+        <div className="task-status-item"><span className="task-status-icon online">✓</span><span><strong>Online</strong> - work timer running</span></div>
+        <div className="task-status-item"><span className="task-status-icon away">B</span><span><strong>Away</strong> - timer paused or on break</span></div>
+      </div>
+      <div className="task-tracker-table-wrapper">
+        <table className="task-tracker-table"><thead><tr><th>Team name</th><th>Employee name</th><th>Client name</th><th>Project name</th><th>Task name</th><th>Status</th></tr></thead>
+          <tbody>{visibleRows.length === 0 ? <tr><td colSpan="6" className="task-tracker-empty">No active timers</td></tr> : visibleRows.map((row) => <tr key={row._id}>
+            <td>{row.employee?.team?.teamName || "-"}</td><td>{row.employee?.fullName || "-"}</td><td>{row.project?.clientName || "-"}</td><td>{row.project?.projectName || "-"}</td><td>{row.task?.taskName || "-"}</td><td>{trackerStatus(row)}</td>
+          </tr>)}</tbody></table>
+      </div>
+    </section>
+  </DashboardLayout>;
 }
 
 export default AdminTaskTracker;

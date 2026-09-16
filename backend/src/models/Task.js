@@ -69,6 +69,11 @@ const taskSchema = new mongoose.Schema(
       default: true,
     },
 
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+
     idleLogout: {
       type: Boolean,
       default: false,

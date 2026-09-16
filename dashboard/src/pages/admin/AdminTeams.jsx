@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useDataRefresh from "../../hooks/useDataRefresh";
 
 function AdminTeams() {
   const [teams, setTeams] = useState([]);
@@ -41,6 +42,7 @@ function AdminTeams() {
   useEffect(() => {
     void loadTeams();
   }, []);
+  useDataRefresh(loadTeams);
 
   useEffect(() => {
     axiosInstance.get("/employees", { params: { role: "team_lead", isActive: "true", limit: 100 } })

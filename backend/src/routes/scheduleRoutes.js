@@ -22,7 +22,7 @@ const router = express.Router();
 router.post(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   createSchedule
 );
 
@@ -30,7 +30,7 @@ router.post(
 router.get(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   getAllSchedules
 );
 
@@ -38,7 +38,7 @@ router.get(
 router.get(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   getScheduleById
 );
 
@@ -46,7 +46,7 @@ router.get(
 router.put(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   updateSchedule
 );
 
@@ -54,7 +54,7 @@ router.put(
 router.delete(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   deleteSchedule
 );
 

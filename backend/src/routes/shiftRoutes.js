@@ -32,7 +32,7 @@ const router =
 router.post(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   createShift
 );
 
@@ -42,7 +42,7 @@ router.post(
 router.get(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   getAllShifts
 );
 
@@ -52,7 +52,7 @@ router.get(
 router.get(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   getShiftById
 );
 
@@ -62,7 +62,7 @@ router.get(
 router.put(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   updateShift
 );
 
@@ -72,7 +72,7 @@ router.put(
 router.delete(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   deleteShift
 );
 

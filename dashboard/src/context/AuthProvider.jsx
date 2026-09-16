@@ -124,6 +124,10 @@ function AuthProvider({ children }) {
           );
         }
 
+        if (currentUser.role !== "admin") {
+          throw new Error("Access denied. This application is available to Admin users only.");
+        }
+
         if (!active) {
           return;
         }
@@ -186,6 +190,10 @@ function AuthProvider({ children }) {
       );
     }
 
+    if (loggedInUser.role !== "admin") {
+      throw new Error("Access denied. This application is available to Admin users only.");
+    }
+
     localStorage.setItem(
       "token",
       newToken
@@ -215,6 +223,7 @@ function AuthProvider({ children }) {
       const response = await quickLoginUser(rememberedSessionToken);
       const loggedInUser = normalizeUser(response?.user);
       if (!response?.token || !response?.rememberedSessionToken || !loggedInUser) throw new Error("Invalid quick login response from server.");
+      if (loggedInUser.role !== "admin") throw new Error("Access denied. This application is available to Admin users only.");
       localStorage.setItem("token", response.token);
       localStorage.setItem("user", JSON.stringify(loggedInUser));
       localStorage.setItem("rememberedSessionToken", response.rememberedSessionToken);

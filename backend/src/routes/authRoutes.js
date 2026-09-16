@@ -13,7 +13,7 @@ const {
 } = require("../controllers/authController");
 
 const { protect } = require("../middleware/authMiddleware");
-const { authorizeRoles } = require("../middleware/authorizeRoles");
+const { authorizeAccess } = require("../middleware/authorizeRoles");
 const { createRateLimit } = require("../middleware/rateLimit");
 
 const router = express.Router();
@@ -22,6 +22,7 @@ const loginLimiter = createRateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: "Too many login attempts. Please try again later.",
+  keyGenerator: (req) => `${req.ip}:${String(req.body?.email || "").trim().toLowerCase() || "unknown"}`,
 });
 
 const registrationLimiter = createRateLimit({
@@ -36,11 +37,11 @@ const passwordResetLimiter = createRateLimit({
   message: "Too many password reset requests. Please try again later.",
 });
 
-// Only administrators can create employee accounts.
+// Admins, or anyone an admin has granted the "create_employees" permission.
 router.post(
   "/register",
   protect,
-  authorizeRoles("admin"),
+  authorizeAccess("create_employees"),
   registrationLimiter,
   register
 );

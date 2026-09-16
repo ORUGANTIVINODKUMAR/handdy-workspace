@@ -2,9 +2,8 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import "../../styles/adminShifts.css";
-import { API_BASE_URL } from "../../api/axiosInstance";
-
-const API_URL = `${API_BASE_URL}/shifts`;
+import axiosInstance from "../../api/axiosInstance";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 // =============================================
 // CALCULATE MINUTES BETWEEN TWO TIMES
@@ -284,17 +283,6 @@ function AdminAddShift() {
             setSaving(true);
             setError("");
 
-            const token =
-                localStorage.getItem(
-                    "token"
-                );
-
-            if (!token) {
-                throw new Error(
-                    "Authentication token not found. Please login again."
-                );
-            }
-
             // Remove completely empty break rows
             const cleanedBreaks =
                 breaks
@@ -341,35 +329,7 @@ function AdminAddShift() {
                     form.status,
             };
 
-            const response = await fetch(
-                API_URL,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-
-                        Authorization:
-                            `Bearer ${token}`,
-                    },
-
-                    body:
-                        JSON.stringify(
-                            payload
-                        ),
-                }
-            );
-
-            const data =
-                await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                    "Unable to create shift."
-                );
-            }
+            await axiosInstance.post("/shifts", payload);
 
             window.alert(
                 "Shift created successfully."
@@ -385,8 +345,7 @@ function AdminAddShift() {
             );
 
             setError(
-                requestError.message ||
-                "Unable to create shift."
+                getApiErrorMessage(requestError, "Unable to create shift.")
             );
         } finally {
             setSaving(false);

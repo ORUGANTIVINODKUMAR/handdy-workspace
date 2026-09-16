@@ -18,6 +18,32 @@ const authorizeRoles = (...allowedRoles) => {
   };
 };
 
+// Admin always passes. Anyone else needs at least one of the named
+// permissions explicitly granted on their employee record (see
+// Employee.permissions). Used for actions an admin can delegate to a
+// specific non-admin user.
+const authorizeAccess = (...permissionKeys) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication is required.",
+      });
+    }
+
+    const granted = req.user.permissions || [];
+    if (req.user.role === "admin" || permissionKeys.some((key) => granted.includes(key))) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: "You do not have permission to access this resource.",
+    });
+  };
+};
+
 module.exports = {
   authorizeRoles,
+  authorizeAccess,
 };

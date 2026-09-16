@@ -7,6 +7,7 @@ const resolveTeamsProject = async (teamIds) => {
   const assignedProjects = await Project.find({
     teams: { $all: teamIds },
     status: "Active",
+    deletedAt: null,
   }).select("_id").lean();
 
   if (assignedProjects.length === 1) {

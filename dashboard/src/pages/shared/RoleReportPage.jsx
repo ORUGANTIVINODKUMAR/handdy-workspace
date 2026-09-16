@@ -25,17 +25,34 @@ const today = () => {
 
 const duration = (seconds = 0) => `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 
+const getPauseSeconds = (record, reason) => {
+  const now = Date.now();
+  return (record.pauses || []).reduce((total, pause) => {
+    if (!pause.pausedAt || (reason && pause.reason !== reason)) return total;
+    const end = pause.resumedAt ? new Date(pause.resumedAt).getTime() : now;
+    return total + Math.max(0, Math.floor((end - new Date(pause.pausedAt).getTime()) / 1000));
+  }, 0);
+};
+
+// A running/paused timer has no totalWorkedSeconds yet (only set when
+// stopped), so it must be computed live from startedAt minus paused time.
+const getWorkedSeconds = (record) => {
+  if (record.status === "stopped") {
+    return Math.max(0, Number(record.totalWorkedSeconds) || 0);
+  }
+
+  if (!record.startedAt) return 0;
+  const end = record.stoppedAt ? new Date(record.stoppedAt).getTime() : Date.now();
+  const elapsed = Math.max(0, Math.floor((end - new Date(record.startedAt).getTime()) / 1000));
+  return Math.max(0, elapsed - getPauseSeconds(record));
+};
+
 const getIdleSeconds = (record) => {
   if (record.status === "stopped" && record.totalIdleSeconds !== undefined) {
     return record.totalIdleSeconds || 0;
   }
 
-  const now = Date.now();
-  return (record.pauses || []).reduce((total, pause) => {
-    if (pause.reason !== "idle" || !pause.pausedAt) return total;
-    const end = pause.resumedAt ? new Date(pause.resumedAt).getTime() : now;
-    return total + Math.max(0, Math.floor((end - new Date(pause.pausedAt).getTime()) / 1000));
-  }, 0);
+  return getPauseSeconds(record, "idle");
 };
 
 function RoleReportPage({ title, description, mode = "time", scope = "team", showDesktopDownload = false }) {
@@ -49,12 +66,19 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   const isTeamLead = user?.role === "team_lead";
   const isTeamReport = isTeamLead && scope !== "personal";
 
-  const totalSeconds = useMemo(() => records.reduce((sum, record) => sum + (record.totalWorkedSeconds || 0), 0), [records]);
+  const totalSeconds = useMemo(() => records.reduce((sum, record) => sum + getWorkedSeconds(record), 0), [records]);
 
   const runReport = async () => {
+    setHasRun(true);
+
+    if (!fromDate || !toDate || toDate < fromDate) {
+      setRecords([]);
+      setError("Select a valid From and To date.");
+      return;
+    }
+
     try {
       setLoading(true);
-      setHasRun(true);
       setError("");
       const params = { startDate: fromDate, endDate: toDate, limit: 100 };
       const data = mode === "attendance"
@@ -90,7 +114,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
         {error && <p className="admin-report-message error-message" role="alert">{error}</p>}
         {!error && !hasRun && <div className="admin-report-empty"><FileSearch size={26} /><strong>Your work, in one view</strong><span>Select a period and generate your timesheet to view recorded work.</span></div>}
         {!error && hasRun && records.length === 0 && <div className="admin-report-empty"><FileSearch size={26} /><strong>No records found</strong><span>No matching activity exists for the selected dates.</span></div>}
-        {!error && mode === "time" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Worked</th><th>Idle</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{duration(record.totalWorkedSeconds)}</td><td>{duration(getIdleSeconds(record))}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
+        {!error && mode === "time" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Worked</th><th>Idle</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{duration(getWorkedSeconds(record))}</td><td>{duration(getIdleSeconds(record))}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
         {!error && mode === "attendance" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Hours</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "—"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "—"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
       </section>
       {showDesktopDownload && user?.role === "employee" && <HanddyDownloadCard />}

@@ -173,6 +173,12 @@ function AdminReportPage({
     setHasRun(true);
     setError("");
 
+    if (!fromDate || !toDate || toDate < fromDate) {
+      setRecords([]);
+      setError("Select a valid From and To date.");
+      return;
+    }
+
     if (mode === "tracking") {
       setRecords([]);
       return;

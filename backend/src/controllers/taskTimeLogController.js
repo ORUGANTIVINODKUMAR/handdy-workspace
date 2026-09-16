@@ -20,7 +20,7 @@ const startTimer = async (req, res) => {
 
         const projectExists = await Project.findById(project);
 
-        if (!projectExists || projectExists.status !== "Active") {
+        if (!projectExists || projectExists.status !== "Active" || projectExists.deletedAt) {
             return res.status(404).json({
                 success: false,
                 message: "Project not found.",
@@ -55,6 +55,7 @@ const startTimer = async (req, res) => {
             _id: task,
             project,
             isActive: true,
+            deletedAt: null,
             ...assignmentScope,
         });
 
@@ -114,8 +115,9 @@ const pauseTimer = async (req, res) => {
         const requestedReason = req.body?.reason;
         const reason = requestedReason === "idle" ? "idle" : requestedReason === "break" ? "break" : "manual";
 
+        const runningTimer = await TaskTimeLog.findOne({ employee: employeeId, status: "running" }).select("task project");
+
         if (reason === "idle") {
-            const runningTimer = await TaskTimeLog.findOne({ employee: employeeId, status: "running" }).select("task");
             const taskAllowsIdleLogout = runningTimer
                 ? Boolean(await Task.exists({ _id: runningTimer.task, idleLogout: true }))
                 : false;
@@ -128,14 +130,17 @@ const pauseTimer = async (req, res) => {
             }
         }
 
-        const projectTeams = (projectExists.teams || []).map(String);
-        const isLegacyUnrestrictedProject = projectTeams.length === 0;
-        const projectAssignedToUserTeam = req.user.team && projectTeams.includes(String(req.user.team));
-        if (!isLegacyUnrestrictedProject && !projectAssignedToUserTeam) {
-            return res.status(403).json({
-                success: false,
-                message: "This project is not assigned to your team.",
-            });
+        if (runningTimer) {
+            const projectExists = await Project.findById(runningTimer.project).select("teams");
+            const projectTeams = (projectExists?.teams || []).map(String);
+            const isLegacyUnrestrictedProject = projectTeams.length === 0;
+            const projectAssignedToUserTeam = req.user.team && projectTeams.includes(String(req.user.team));
+            if (!isLegacyUnrestrictedProject && !projectAssignedToUserTeam) {
+                return res.status(403).json({
+                    success: false,
+                    message: "This project is not assigned to your team.",
+                });
+            }
         }
 
         const activeTimer = await TaskTimeLog.findOneAndUpdate(
@@ -153,7 +158,7 @@ const pauseTimer = async (req, res) => {
                 },
                 $set: { status: "paused" },
             },
-            { new: true }
+            { returnDocument: "after" }
         );
 
         if (!activeTimer) {
@@ -208,7 +213,7 @@ const resumeTimer = async (req, res) => {
             },
             {
                 arrayFilters: [pauseFilter],
-                new: true,
+                returnDocument: "after",
             }
         );
 
@@ -406,6 +411,33 @@ const getActiveTimer = async (req, res) => {
         });
     }
 };
+
+// Active company/team timers used by the live web task trackers.
+const getLiveTimers = async (req, res) => {
+    try {
+        const filter = { status: { $in: ["running", "paused"] }, isActiveTimer: true };
+        if (req.user.role === "team_lead") {
+            const teamIds = await Team.find({ teamLead: req.user._id, isActive: true }).distinct("_id");
+            const employeeIds = await Employee.find({ team: { $in: teamIds }, isActive: true }).distinct("_id");
+            filter.employee = { $in: employeeIds };
+        }
+
+        const timeLogs = await TaskTimeLog.find(filter)
+            .populate({
+                path: "employee",
+                select: "employeeId fullName email team",
+                populate: { path: "team", select: "teamName" },
+            })
+            .populate("project", "projectCode projectName clientName")
+            .populate("task", "taskCode taskName taskType")
+            .sort("-startedAt")
+            .lean();
+
+        return res.status(200).json({ success: true, count: timeLogs.length, timeLogs });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
 // Get time logs for employees assigned to the logged-in Team Lead
 const getMyTeamTimeLogs = async (req, res) => {
     try {
@@ -533,6 +565,7 @@ module.exports = {
     stopTimer,
     getMyTeamTimeLogs,
     getActiveTimer,
+    getLiveTimers,
     getMyTimeLogs,
     getAllTimeLogs,
 };

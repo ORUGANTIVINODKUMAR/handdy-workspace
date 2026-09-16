@@ -45,7 +45,7 @@ function LoginForm() {
 
       const loggedInUser = await login(email, password);
 
-      if (loggedInUser.role === "admin") {
+      if (["admin", "manager", "hr"].includes(loggedInUser.role)) {
         navigate("/admin/dashboard");
       } else if (loggedInUser.role === "team_lead") {
         navigate("/team-lead/dashboard");

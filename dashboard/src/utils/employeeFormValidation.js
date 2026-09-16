@@ -1,5 +1,9 @@
 export const EMPTY_PROJECT_RATE = { project: "", chargeRate: "" };
 
+// A project charge rate is optional for every role — mirrors the backend's
+// projectRatesRequiredForRole in services/projectRateService.js.
+export const projectRatesRequiredForRole = () => false;
+
 export const validateEmployeeForm = (formData, { passwordRequired = false } = {}) => {
   if (!formData.employeeId.trim() || !formData.fullName.trim() || !formData.email.trim()) {
     return "Employee ID, Full Name and Email are required.";
@@ -14,7 +18,10 @@ export const validateEmployeeForm = (formData, { passwordRequired = false } = {}
   if (["employee", "team_lead"].includes(formData.role) && !formData.team) {
     return "Team is required for employees and Team Leads.";
   }
-  if (!Array.isArray(formData.projectRates) || formData.projectRates.length === 0) {
+  if (!Array.isArray(formData.projectRates)) {
+    return "Project rates must be provided as a list.";
+  }
+  if (projectRatesRequiredForRole(formData.role) && formData.projectRates.length === 0) {
     return "Add at least one project and charge rate.";
   }
 

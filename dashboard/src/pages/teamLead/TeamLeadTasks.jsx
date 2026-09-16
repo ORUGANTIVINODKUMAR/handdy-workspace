@@ -4,6 +4,7 @@ import { SquareX } from "lucide-react";
 import TeamLeadSidebar from "./TeamLeadSidebar";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useDataRefresh from "../../hooks/useDataRefresh";
 import "../../styles/teamLeadSidebar.css";
 import "../../styles/teamLeadTasks.css";
 
@@ -29,6 +30,7 @@ function TeamLeadTasks() {
   }, []);
 
   useEffect(() => { void loadTasks(); }, [loadTasks]);
+  useDataRefresh(loadTasks);
 
   const filteredTasks = useMemo(() => {
     const text = search.trim().toLowerCase();

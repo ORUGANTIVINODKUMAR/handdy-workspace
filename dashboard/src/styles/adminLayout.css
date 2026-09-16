@@ -232,6 +232,23 @@
   font-size: 13px;
 }
 
+.employee-optional-badge {
+  color: #7c8b85;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.employee-service-empty {
+  margin: 0 0 12px;
+  padding: 10px 13px;
+  border: 1px dashed #dce9e3;
+  border-radius: 10px;
+  background: #fbfdfc;
+  color: #687b74;
+  font-size: 13px;
+}
+
 .employee-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -602,7 +619,8 @@
   width: min(320px, 45vw);
 }
 
-.employees-team-filter {
+.employees-team-filter,
+.employees-status-filter {
   width: min(220px, 35vw);
   margin-left: 0 ;
 }
@@ -717,6 +735,46 @@
   color: var(--admin-error);
 
   background: #FEE2E2;
+}
+
+.employee-permission-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.employee-permission-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e7f4ef;
+  color: #18775c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.employee-delegated-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #687b74;
+  font-size: 13px;
+}
+
+.employee-permissions-help {
+  margin: 0 0 18px;
+  color: #687b74;
+  font-size: 13px;
+}
+
+.employee-permission-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  color: #173c31;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .employee-actions {
@@ -2494,174 +2552,6 @@
 @media (max-width: 700px) {
   .timesheets-attendance-controls {
     grid-template-columns: 1fr;
-  }
-}
-/* =========================================
-   WHO IS WORKING TODAY
-========================================= */
-/* =========================================
-   WHO IS WORKING TODAY
-========================================= */
-
-.working-today-card {
-  width: 100%;
-}
-
-.working-today-title {
-  margin: 0 0 20px;
-  color: #111827;
-  font-size: 28px;
-  font-weight: 700;
-}
-
-/* Date + Timezone + Go */
-.working-today-controls {
-  display: grid;
-
-  /* Important: Go button only gets 60px */
-  grid-template-columns:
-    minmax(250px, 350px)
-    minmax(300px, 450px)
-    60px;
-
-  gap: 16px;
-  align-items: center;
-
-  margin-bottom: 28px;
-}
-
-.working-today-controls input,
-.working-today-controls select {
-  width: 100%;
-  height: 44px;
-
-  padding: 0 14px;
-
-  border: 1px solid #CBD5E1;
-  border-radius: 6px;
-
-  background: #FFFFFF;
-  color: #111827;
-
-  font-size: 15px;
-
-  outline: none;
-}
-
-.working-today-controls input:focus,
-.working-today-controls select:focus {
-  border-color: #2563EB;
-}
-
-/* SMALL GO BUTTON */
-.working-today-go-button {
-  width: 60px ;
-  min-width: 60px;
-  max-width: 60px;
-
-  height: 44px;
-
-  padding: 0 ;
-
-  border: none;
-  border-radius: 6px;
-
-  background: #2563EB;
-  color: #FFFFFF;
-
-  font-size: 14px;
-  font-weight: 700;
-
-  cursor: pointer;
-}
-
-.working-today-go-button:hover {
-  background: #1D4ED8;
-}
-
-/* =========================================
-   REPORT
-========================================= */
-
-.working-today-report {
-  width: 100%;
-
-  overflow: hidden;
-
-  border: 1px solid #E5E7EB;
-
-  background: #FFFFFF;
-}
-
-.working-today-report-title {
-  padding: 14px 18px;
-
-  background: #2563EB;
-  color: #FFFFFF;
-
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.working-today-table-wrapper {
-  padding: 26px;
-  overflow-x: auto;
-}
-
-.working-today-table {
-  width: 100%;
-
-  border-collapse: collapse;
-}
-
-.working-today-table th,
-.working-today-table td {
-  padding: 12px;
-
-  border: 1px solid #E5E7EB;
-
-  text-align: left;
-}
-
-.working-today-table th {
-  background: #F3F4F6;
-
-  color: #111827;
-
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.working-today-table th small {
-  font-size: 10px;
-}
-
-.working-today-table td {
-  color: #374151;
-  font-size: 13px;
-}
-
-.working-today-table td[colspan] {
-  text-align: center;
-}
-
-/* =========================================
-   RESPONSIVE
-========================================= */
-
-@media (max-width: 900px) {
-  .working-today-controls {
-    grid-template-columns: 1fr 1fr 60px;
-  }
-}
-
-@media (max-width: 700px) {
-  .working-today-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .working-today-go-button {
-    width: 60px ;
   }
 }
 /* =========================================

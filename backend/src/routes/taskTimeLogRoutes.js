@@ -9,6 +9,7 @@ const {
   getMyTeamTimeLogs,
   getMyTimeLogs,
   getAllTimeLogs,
+  getLiveTimers,
 } = require("../controllers/taskTimeLogController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -17,9 +18,16 @@ const { authorizeRoles } = require("../middleware/authorizeRoles");
 const router = express.Router();
 
 router.get(
+  "/live",
+  protect,
+  authorizeRoles("admin", "team_lead"),
+  getLiveTimers
+);
+
+router.get(
   "/admin",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   getAllTimeLogs
 );
 

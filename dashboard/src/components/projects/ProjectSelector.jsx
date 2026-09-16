@@ -1,29 +1,29 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAllProjects } from "../../api/projectApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useDataRefresh from "../../hooks/useDataRefresh";
 
 function ProjectSelector({ selectedProject, onProjectChange }) {
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        setError("");
+  const loadProjects = useCallback(async () => {
+    try {
+      setError("");
 
-        const data = await getAllProjects();
+      const data = await getAllProjects();
 
-        setProjects(data.projects || []);
-      } catch (requestError) {
-        setError(getApiErrorMessage(requestError, "Unable to load projects."));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProjects();
+      setProjects(data.projects || []);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to load projects."));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void loadProjects(); }, [loadProjects]);
+  useDataRefresh(loadProjects);
 
   if (isLoading) {
     return <p className="status-message" role="status">Loading projects...</p>;

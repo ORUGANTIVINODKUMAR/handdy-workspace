@@ -5,7 +5,7 @@ const { authorizeRoles } = require("../middleware/authorizeRoles");
 const { escapeRegExp } = require("../utils/requestUtils");
 
 const router = express.Router();
-router.use(protect, authorizeRoles("admin"));
+router.use(protect, authorizeRoles("admin", "manager", "hr"));
 
 router.get("/", async (req, res) => {
   try {
@@ -36,7 +36,7 @@ router.put("/:id", async (req, res) => {
     const clientName = req.body.clientName?.trim();
     if (!clientName) return res.status(400).json({ success: false, message: "Client name is required." });
     const updates = { clientName };
-    const client = await Client.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+    const client = await Client.findByIdAndUpdate(req.params.id, updates, { returnDocument: "after", runValidators: true });
     if (!client) return res.status(404).json({ success: false, message: "Client not found." });
     return res.json({ success: true, message: "Client updated successfully.", client });
   } catch (error) {
@@ -46,7 +46,7 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const client = await Client.findByIdAndUpdate(req.params.id, { status: "Inactive" }, { new: true });
+    const client = await Client.findByIdAndUpdate(req.params.id, { status: "Inactive" }, { returnDocument: "after" });
     if (!client) return res.status(404).json({ success: false, message: "Client not found." });
     return res.json({ success: true, message: "Client deactivated successfully.", client });
   } catch (error) {

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import axiosInstance from "../../api/axiosInstance";
 import { getMyTeam } from "../../api/employeeApi";
-import { resolveProjectForTeams } from "../../api/taskApi";
 import useAuth from "../../context/useAuth";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
@@ -11,11 +10,8 @@ import "../../styles/adminAddTask.css";
 const toId = (value) => (typeof value === "string" ? value : value?._id) || "";
 
 // Shared Task Creation/Edit form used by Admin (full page + list-page edit
-// modal) and Team Lead (full page). Project is never shown in this form: it
-// is silently inferred from the selected team(s)' existing task history. A
-// brand-new team's first task (or a task spanning teams with conflicting
-// project history) simply saves without a project — it gets attached the
-// next time any task for that team specifies one.
+// modal) and Team Lead (full page). The project dropdown is limited to
+// active projects assigned to every currently selected team.
 function TaskForm({
   mode = "create",
   scope = "admin",
@@ -34,7 +30,7 @@ function TaskForm({
   const [isActive, setIsActive] = useState(initialTask ? initialTask.isActive !== false : true);
 
   const [teams, setTeams] = useState(() => {
-    if (scope === "teamLead") return user?.team ? [String(user.team)] : [];
+    if (scope === "teamLead") return user?.team ? [toId(user.team)] : [];
     if (initialTask) {
       const raw = initialTask.teams?.length
         ? initialTask.teams
@@ -56,10 +52,10 @@ function TaskForm({
   const [teamsOptions, setTeamsOptions] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
 
-  // Resolved silently in the background; never surfaced as a field to fill in.
-  const [resolvedProjectId, setResolvedProjectId] = useState(toId(initialTask?.project));
+  const [projectId, setProjectId] = useState(toId(initialTask?.project));
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -85,34 +81,26 @@ function TaskForm({
     }
   }, [scope]);
 
+  useEffect(() => {
+    axiosInstance
+      .get("/projects", { params: { limit: 100, status: "Active" } })
+      .then(({ data }) => setProjects(data.projects || []))
+      .catch(() => {});
+  }, []);
+
   const teamsKey = teams.join(",");
 
+  const availableProjects = useMemo(() => projects.filter((project) => {
+    if (teams.length === 0) return false;
+    const projectTeams = (project.teams || []).map(toId).filter(Boolean);
+    return projectTeams.length === 0 || teams.every((teamId) => projectTeams.includes(teamId));
+  }), [projects, teamsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
-    let active = true;
-
-    if (teams.length === 0) {
-      setResolvedProjectId(null);
-      return undefined;
+    if (projectId && !availableProjects.some((project) => project._id === projectId)) {
+      setProjectId("");
     }
-
-    const run = async () => {
-      try {
-        const data = await resolveProjectForTeams(teams);
-        if (!active || !data) return;
-        setResolvedProjectId(data.status === "resolved" ? data.projectId : null);
-      } catch {
-        // Project is optional — a failed lookup just leaves it unset.
-        if (active) setResolvedProjectId(null);
-      }
-    };
-
-    void run();
-
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamsKey]);
+  }, [availableProjects, projectId]);
 
   const availableEmployees = useMemo(() => {
     const pool =
@@ -133,6 +121,7 @@ function TaskForm({
       previous.includes(teamId) ? previous.filter((id) => id !== teamId) : [...previous, teamId]
     );
     setAssignedTo([]);
+    setProjectId("");
   };
 
   const toggleEmployee = (employeeId) => {
@@ -153,6 +142,10 @@ function TaskForm({
       setError("Select at least one team.");
       return;
     }
+    if (taskType === "work" && !projectId) {
+      setError("Select a project for this work task.");
+      return;
+    }
     if (assignType === "employee" && assignedTo.length === 0) {
       setError("Select at least one employee, or choose to assign the entire team.");
       return;
@@ -162,7 +155,7 @@ function TaskForm({
       taskName: taskName.trim(),
       taskType,
       teams,
-      project: resolvedProjectId || null,
+      project: projectId || null,
       assignToAllEmployees: assignType === "team",
       assignedTo: assignType === "team" ? [] : assignedTo,
       idleLogout,
@@ -268,6 +261,24 @@ function TaskForm({
           </div>
         </div>
       )}
+
+      <div className="admin-task-project">
+        <div className="admin-task-section-heading">
+          <div>
+            <p>PROJECT</p>
+            <h3>Select project</h3>
+            <span className="admin-task-selection-copy">Projects are limited to the selected team assignments.</span>
+          </div>
+        </div>
+        <label>
+          Project
+          <select value={projectId} onChange={(event) => setProjectId(event.target.value)} required={taskType === "work"} disabled={teams.length === 0}>
+            <option value="">{teams.length === 0 ? "Select a team first" : "Select project"}</option>
+            {availableProjects.map((project) => <option key={project._id} value={project._id}>{project.projectName}</option>)}
+          </select>
+        </label>
+        {teams.length > 0 && availableProjects.length === 0 && <p className="admin-task-project-empty">No active project is assigned to every selected team.</p>}
+      </div>
 
       <div className="admin-task-assignees">
         <div className="admin-task-section-heading">

@@ -16,7 +16,7 @@ const getAuthorizedEmployee = async (user, requestedId) => {
   const { targetId } = access;
   if (!mongoose.isValidObjectId(targetId)) return { status: 400, message: "Select a valid employee." };
   if (access.forbidden) {
-    return { status: 403, message: "Only administrators can view billing reports." };
+    return { status: 403, message: "You do not have permission to view billing reports." };
   }
   const employee = await Employee.findOne(access.filter).select(employeeFields).lean();
   if (!employee) {

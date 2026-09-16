@@ -1,45 +1,35 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getTasksByProject } from "../../api/taskApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useDataRefresh from "../../hooks/useDataRefresh";
 
 function TaskSelector({ selectedProject, selectedTask, onTaskChange }) {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(Boolean(selectedProject));
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let isCurrent = true;
-
+  const loadTasks = useCallback(async () => {
     if (!selectedProject) {
-      return () => {
-        isCurrent = false;
-      };
+      setTasks([]);
+      setIsLoading(false);
+      return;
     }
-
-    const loadTasks = async () => {
-      try {
-        const data = await getTasksByProject(selectedProject);
-
-        if (isCurrent) {
-          setTasks(data.tasks || []);
-        }
-      } catch (requestError) {
-        if (isCurrent) {
-          setError(getApiErrorMessage(requestError, "Unable to load tasks."));
-        }
-      } finally {
-        if (isCurrent) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    loadTasks();
-
-    return () => {
-      isCurrent = false;
-    };
+    try {
+      setError("");
+      const data = await getTasksByProject(selectedProject);
+      setTasks(data.tasks || []);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to load tasks."));
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedProject]);
+
+  useEffect(() => {
+    setIsLoading(Boolean(selectedProject));
+    void loadTasks();
+  }, [loadTasks, selectedProject]);
+  useDataRefresh(loadTasks);
 
   return (
     <div className="field-group">

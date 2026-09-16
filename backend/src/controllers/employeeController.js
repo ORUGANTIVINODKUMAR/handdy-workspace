@@ -1,13 +1,19 @@
 const Employee = require("../models/Employee");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const Team = require("../models/Team");
-const { syncEmployeeTeam } = require("../services/teamAssignmentService");
-const { validateProjectRates } = require("../services/projectRateService");
+const { syncEmployeeTeam, clearTeamsLedBy } = require("../services/teamAssignmentService");
+const { validateProjectRates, projectRatesRequiredForRole } = require("../services/projectRateService");
 
 const populateEmployeeRates = (query) => query.populate(
   "projectRates.project",
   "projectCode projectName status",
 );
+
+// A user acting only on the delegated "edit_employees" permission (not a
+// true admin) can update basic details, team, and project rates, but can
+// never touch these — that boundary is what keeps the permission from
+// becoming a privilege-escalation or account-takeover path.
+const FIELDS_RESTRICTED_TO_ADMIN = ["role", "isActive", "password", "permissions"];
 
 const handleEmployeeError = (res, error) => {
   if (error.code === 11000) {
@@ -130,6 +136,16 @@ const updateEmployee = async (req, res) => {
       });
     }
 
+    if (req.user.role !== "admin") {
+      const restrictedField = FIELDS_RESTRICTED_TO_ADMIN.find((field) => req.body[field] !== undefined);
+      if (restrictedField) {
+        return res.status(403).json({
+          success: false,
+          message: "Only an administrator can change role, status, password, or permissions.",
+        });
+      }
+    }
+
     const allowedFields = [
       "employeeId", "fullName", "email", "role", "department",
       "designation", "companyName", "address1", "address2", "city",
@@ -142,7 +158,10 @@ const updateEmployee = async (req, res) => {
 
     if (req.body.projectRates !== undefined) {
       const existingProjectIds = employee.projectRates.map((assignment) => assignment.project);
-      employee.projectRates = await validateProjectRates(req.body.projectRates, { existingProjectIds });
+      employee.projectRates = await validateProjectRates(req.body.projectRates, {
+        existingProjectIds,
+        required: projectRatesRequiredForRole(employee.role),
+      });
     }
 
     if (req.body.password !== undefined) {
@@ -172,6 +191,54 @@ const updateEmployee = async (req, res) => {
       success: true,
       message: "Employee updated successfully.",
       employee: updatedEmployee,
+    });
+  } catch (error) {
+    return handleEmployeeError(res, error);
+  }
+};
+// Admin - grant or revoke a delegated employee's permissions
+const ASSIGNABLE_PERMISSIONS = new Set(["create_employees", "edit_employees"]);
+const updateEmployeePermissions = async (req, res) => {
+  try {
+    const employee = await Employee.findById(req.params.id);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found.",
+      });
+    }
+
+    if (employee.role === "admin") {
+      return res.status(400).json({
+        success: false,
+        message: "Administrators already have full access.",
+      });
+    }
+
+    const requested = req.body.permissions;
+    if (!Array.isArray(requested)) {
+      return res.status(400).json({
+        success: false,
+        message: "Permissions must be provided as a list.",
+      });
+    }
+
+    const invalid = requested.find((key) => !ASSIGNABLE_PERMISSIONS.has(key));
+    if (invalid) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid permission: ${invalid}.`,
+      });
+    }
+
+    employee.permissions = [...new Set(requested)];
+    await employee.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Permissions updated successfully.",
+      permissions: employee.permissions,
     });
   } catch (error) {
     return handleEmployeeError(res, error);
@@ -229,6 +296,7 @@ const assignTeamLead = async (req, res) => {
 
     // Remove Team Lead assignment
     if (!teamLeadId) {
+      await clearTeamsLedBy(employee._id);
       employee.teamLead = null;
       employee.team = null;
       await employee.save();
@@ -260,6 +328,9 @@ const assignTeamLead = async (req, res) => {
       });
     }
 
+    // Clear any team this employee currently leads before moving them under
+    // a different lead, so the old team isn't left pointing at a stale lead.
+    await clearTeamsLedBy(employee._id);
     employee.teamLead = teamLead._id;
     const leadTeam = await Team.findOne({ teamLead: teamLead._id, isActive: true });
     employee.team = leadTeam?._id || null;
@@ -384,6 +455,7 @@ module.exports = {
   getMyTeamMemberById,
   getEmployeeById,
   updateEmployee,
+  updateEmployeePermissions,
   resetEmployeePassword,
   deleteEmployee,
   assignTeamLead,

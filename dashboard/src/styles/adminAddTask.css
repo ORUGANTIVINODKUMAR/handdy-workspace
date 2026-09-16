@@ -13,7 +13,11 @@
 .admin-task-options { display: flex; align-items: center; gap: 26px; padding: 17px 19px; border: 1px solid #e1ebe6; border-radius: 11px; background: #fbfdfc; }
 .admin-task-options > div { display: flex; align-items: center; gap: 16px; }.admin-task-options label { display: inline-flex; align-items: center; gap: 7px; color: #29463c; font-size: 14px; }.admin-task-options input { accent-color: #18775c; }
 .admin-task-idle { margin-left: auto; }
-.admin-task-access, .admin-task-assignees { padding-top: 23px; border-top: 1px solid #e1ebe6; }
+.admin-task-access, .admin-task-project, .admin-task-assignees { padding-top: 23px; border-top: 1px solid #e1ebe6; }
+.admin-task-project > label { display:grid; gap:8px; max-width:520px; color:#29463c; font-size:14px; font-weight:700; }
+.admin-task-project select { width:100%; min-height:50px; padding:0 14px; border:1px solid #c8ddd3; border-radius:9px; background:#fff; color:#173c31; font:inherit; }
+.admin-task-project select:focus { outline:none; border-color:#18775c; box-shadow:0 0 0 3px rgba(24,119,92,.13); }
+.admin-task-project-empty { margin:10px 0 0; color:#a53f3f; font-size:13px; }
 .admin-task-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; }.admin-task-section-heading > span { color: #176344; font-size: 13px; font-weight: 750; }
 .admin-task-team-grid, .admin-task-employee-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; }
 .admin-task-team-grid button, .admin-task-employee-list button { min-height: 48px; display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #c8ddd3; border-radius: 9px; background: #fff; color: #29463c; font: inherit; text-align: left; cursor: pointer; }.admin-task-team-grid button.selected, .admin-task-employee-list button.selected { border-color: #18775c; background: #e8f5ee; color: #145b42; font-weight: 700; }

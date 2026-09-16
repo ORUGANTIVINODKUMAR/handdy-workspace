@@ -6,21 +6,22 @@ const {
   getMyTeamMemberById,
   getEmployeeById,
   updateEmployee,
+  updateEmployeePermissions,
   resetEmployeePassword,
   assignTeamLead,
   deleteEmployee,
 } = require("../controllers/employeeController");
 
 const { protect } = require("../middleware/authMiddleware");
-const { authorizeRoles } = require("../middleware/authorizeRoles");
+const { authorizeRoles, authorizeAccess } = require("../middleware/authorizeRoles");
 
 const router = express.Router();
 
-// Admin - get all employees
+// Admin, or anyone granted create_employees/edit_employees - get all employees
 router.get(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeAccess("create_employees", "edit_employees"),
   getAllEmployees
 );
 
@@ -48,20 +49,28 @@ router.put(
   assignTeamLead
 );
 
-// Admin - get employee by ID
+// Admin, or anyone granted create_employees/edit_employees - get employee by ID
 router.get(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeAccess("create_employees", "edit_employees"),
   getEmployeeById
 );
 
-// Admin - update employee
+// Admin, or anyone granted edit_employees - update employee
 router.put(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeAccess("edit_employees"),
   updateEmployee
+);
+
+// Admin - grant or revoke a delegated employee's permissions
+router.put(
+  "/:id/permissions",
+  protect,
+  authorizeRoles("admin"),
+  updateEmployeePermissions
 );
 
 // Admin - reset an employee's password

@@ -66,6 +66,11 @@ const projectSchema = new mongoose.Schema(
       default: "Active",
     },
 
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+
     startDate: {
       type: Date,
       default: null,

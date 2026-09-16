@@ -3,6 +3,9 @@ const Team = require("../models/Team");
 const Employee = require("../models/Employee");
 const Shift = require("../models/Shift");
 const { getPagination } = require("../utils/requestUtils");
+const { getBillingDateRange, getDateKeyInTimezone } = require("../utils/billingUtils");
+
+const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
 
 const validateScheduleRelations = async ({ team, employee, shift }) => {
   const [validTeam, validEmployee, validShift] = await Promise.all([
@@ -16,6 +19,23 @@ const validateScheduleRelations = async ({ team, employee, shift }) => {
   return null;
 };
 
+// Guards against creating two active schedules for the same employee on the
+// same calendar day. Application-level only (no unique index), so it can't
+// conflict with any duplicates that already exist in the database.
+const hasConflictingSchedule = async ({ employee, date, excludeId }) => {
+  const dateKey = date instanceof Date ? getDateKeyInTimezone(date, APP_TIMEZONE) : date;
+  const { start, endExclusive } = getBillingDateRange(dateKey, dateKey, APP_TIMEZONE);
+
+  const filter = {
+    employee,
+    status: "Active",
+    date: { $gte: start, $lt: endExclusive },
+  };
+  if (excludeId) filter._id = { $ne: excludeId };
+
+  return Boolean(await Schedule.exists(filter));
+};
+
 // ======================================
 // CREATE SCHEDULE
 // ======================================
@@ -24,6 +44,13 @@ const createSchedule = async (req, res) => {
     const relationError = await validateScheduleRelations(req.body);
     if (relationError) {
       return res.status(400).json({ success: false, message: relationError });
+    }
+
+    if (await hasConflictingSchedule({ employee: req.body.employee, date: req.body.date })) {
+      return res.status(400).json({
+        success: false,
+        message: "This employee already has an active schedule for that date.",
+      });
     }
 
     const schedule = await Schedule.create({
@@ -84,14 +111,11 @@ const getAllSchedules = async (req, res) => {
     }
 
     if (date) {
-      const startDate = new Date(date);
-
-      const endDate = new Date(date);
-      endDate.setDate(endDate.getDate() + 1);
+      const { start, endExclusive } = getBillingDateRange(date, date, APP_TIMEZONE);
 
       filter.date = {
-        $gte: startDate,
-        $lt: endDate,
+        $gte: start,
+        $lt: endExclusive,
       };
     }
 
@@ -186,12 +210,23 @@ const updateSchedule = async (req, res) => {
       return res.status(400).json({ success: false, message: relationError });
     }
 
+    if (await hasConflictingSchedule({
+      employee: req.body.employee ?? schedule.employee,
+      date: req.body.date ?? schedule.date,
+      excludeId: schedule._id,
+    })) {
+      return res.status(400).json({
+        success: false,
+        message: "This employee already has an active schedule for that date.",
+      });
+    }
+
     const updatedSchedule =
       await Schedule.findByIdAndUpdate(
         req.params.id,
         req.body,
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true,
         }
       )

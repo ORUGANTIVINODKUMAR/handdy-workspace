@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
+import axiosInstance from "../../api/axiosInstance";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import "../../styles/adminShifts.css";
 
 function AdminShifts() {
@@ -12,7 +14,41 @@ function AdminShifts() {
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
-  const [shifts] = useState([]);
+  const [shifts, setShifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    axiosInstance
+      .get("/shifts", { params: { limit: 100 } })
+      .then(({ data }) => {
+        if (active) setShifts(data.shifts || []);
+      })
+      .catch((requestError) => {
+        if (active) setError(getApiErrorMessage(requestError, "Unable to load shifts."));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleDelete = async (shiftId) => {
+    const confirmed = window.confirm("Are you sure you want to delete this shift?");
+    if (!confirmed) return;
+
+    try {
+      await axiosInstance.delete(`/shifts/${shiftId}`);
+      setShifts((previous) => previous.filter((shift) => shift._id !== shiftId));
+    } catch (requestError) {
+      window.alert(getApiErrorMessage(requestError, "Unable to delete shift."));
+    }
+  };
 
   const filteredShifts = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
@@ -130,7 +166,19 @@ function AdminShifts() {
             </thead>
 
             <tbody>
-              {visibleShifts.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="shift-empty">
+                    Loading shifts...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={5} className="shift-empty">
+                    {error}
+                  </td>
+                </tr>
+              ) : visibleShifts.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
@@ -158,14 +206,8 @@ function AdminShifts() {
                       <div className="shift-actions">
                         <button
                           type="button"
-                          aria-label="Edit shift"
-                        >
-                          ✎
-                        </button>
-
-                        <button
-                          type="button"
                           aria-label="Delete shift"
+                          onClick={() => handleDelete(shift._id)}
                         >
                           ⊠
                         </button>

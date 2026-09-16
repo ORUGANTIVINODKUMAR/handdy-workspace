@@ -1,8 +1,14 @@
 const Project = require("../models/Project");
 const { normalizeProjectRates } = require("../utils/projectRates");
 
-const validateProjectRates = async (value, { existingProjectIds = [] } = {}) => {
-  const projectRates = normalizeProjectRates(value);
+// A project charge rate is optional for every role. Billing already treats
+// a missing rate as "not configured" rather than an error (see
+// aggregateBillingLogs in billingUtils.js), so nothing downstream assumes
+// every employee has one.
+const projectRatesRequiredForRole = () => false;
+
+const validateProjectRates = async (value, { existingProjectIds = [], required = true } = {}) => {
+  const projectRates = normalizeProjectRates(value, { required });
   const projectIds = projectRates.map((assignment) => assignment.project);
   const projects = await Project.find({ _id: { $in: projectIds } }).select("_id status").lean();
 
@@ -25,4 +31,4 @@ const validateProjectRates = async (value, { existingProjectIds = [] } = {}) => 
   return projectRates;
 };
 
-module.exports = { validateProjectRates };
+module.exports = { validateProjectRates, projectRatesRequiredForRole };

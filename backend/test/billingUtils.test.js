@@ -174,11 +174,15 @@ test("billing range uses the configured timezone and rejects excessive ranges", 
   assert.throws(() => getBillingDateRange("2025-01-01", "2026-08-01", "UTC"), /cannot exceed/);
 });
 
-test("billing employee access is restricted to administrators", () => {
+test("billing employee access is restricted to administrators, managers and hr", () => {
   const employeeAccess = getBillingEmployeeAccess({ _id: "employee-1", role: "employee" }, "employee-2");
   const teamAccess = getBillingEmployeeAccess({ _id: "lead-1", role: "team_lead" }, "employee-2");
   assert.equal(employeeAccess.forbidden, true);
   assert.equal(teamAccess.forbidden, true);
   const adminAccess = getBillingEmployeeAccess({ _id: "admin-1", role: "admin" }, "employee-2");
   assert.deepEqual(adminAccess.filter, { _id: "employee-2" });
+  const hrAccess = getBillingEmployeeAccess({ _id: "hr-1", role: "hr" }, "employee-2");
+  assert.deepEqual(hrAccess.filter, { _id: "employee-2" });
+  const managerAccess = getBillingEmployeeAccess({ _id: "manager-1", role: "manager" }, "employee-2");
+  assert.deepEqual(managerAccess.filter, { _id: "employee-2" });
 });

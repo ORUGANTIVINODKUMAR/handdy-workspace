@@ -78,7 +78,7 @@ const getBillingDateRange = (startDate, endDate, timezone = DEFAULT_TIMEZONE) =>
 
 const getBillingEmployeeAccess = (user, requestedId) => {
   const targetId = String(requestedId || "");
-  if (user?.role !== "admin") {
+  if (!["admin", "manager", "hr"].includes(user?.role)) {
     return { forbidden: true, targetId, filter: null };
   }
   const filter = { _id: targetId };

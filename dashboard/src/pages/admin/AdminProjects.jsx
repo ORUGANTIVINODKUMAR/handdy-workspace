@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useDataRefresh from "../../hooks/useDataRefresh";
 
 function AdminProjects() {
   const [projects, setProjects] = useState([]);
@@ -84,6 +85,7 @@ function AdminProjects() {
   useEffect(() => {
     void fetchProjects();
   }, [fetchProjects]);
+  useDataRefresh(fetchProjects);
 
   useEffect(() => {
     Promise.all([axiosInstance.get("/clients"), axiosInstance.get("/teams")])
@@ -111,7 +113,7 @@ function AdminProjects() {
 
     try {
       await axiosInstance.delete(`/projects/${projectId}`);
-      await fetchProjects();
+      setProjects((previous) => previous.filter((project) => project._id !== projectId));
     } catch (requestError) {
       window.alert(
         getApiErrorMessage(
@@ -217,9 +219,19 @@ function AdminProjects() {
   const openEditProject = (project) => {
     setEditingProjectId(project._id);
 
+    let projectClients = Array.isArray(project.clients) && project.clients.length
+      ? project.clients
+      : project.client
+        ? [project.client]
+        : [];
+    if (projectClients.length === 0 && project.clientName) {
+      const storedNames = project.clientName.split(",").map((name) => name.trim().toLowerCase());
+      projectClients = clients.filter((client) => storedNames.includes(client.clientName?.trim().toLowerCase()));
+    }
+
     setEditFormData({
       projectName: project.projectName || "",
-      clients: (project.clients || [project.client]).map((client) => typeof client === "string" ? client : client?._id).filter(Boolean),
+      clients: projectClients.map((client) => typeof client === "string" ? client : client?._id).filter(Boolean),
       teams: (project.teams || []).map((team) => typeof team === "string" ? team : team?._id).filter(Boolean),
       status: project.status || "Active",
     });

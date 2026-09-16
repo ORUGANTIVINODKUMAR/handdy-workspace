@@ -22,7 +22,7 @@ const router = express.Router();
 router.get(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   async (req, res) => {
     try {
       const teams = await Team.find()
@@ -66,7 +66,7 @@ router.get(
 router.post(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   async (req, res) => {
     try {
       const {
@@ -180,7 +180,7 @@ router.post(
 router.put(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   async (req, res) => {
     try {
       const team = await Team.findById(req.params.id);
@@ -248,7 +248,7 @@ router.put(
 router.delete(
   "/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "manager", "hr"),
   async (req, res) => {
     try {
       const team = await Team.findById(req.params.id);
