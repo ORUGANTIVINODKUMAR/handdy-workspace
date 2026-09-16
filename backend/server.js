@@ -8,6 +8,42 @@ const cors = require("cors");
 
 const connectDatabase = require("./src/config/db");
 const { verifyEmailTransport } = require("./src/utils/mailer");
+const Employee = require("./src/models/Employee");
+const Project = require("./src/models/Project");
+
+const DEFAULT_PROJECT_NAMES = [
+  "Software",
+  "FTC WCPA",
+  "KCPA",
+  "KCPA & Renau",
+  "CPA & Unit 1",
+];
+
+const ensureDefaultProjects = async () => {
+  const owner = await Employee.findOne({ isActive: true }).select("_id").lean();
+  if (!owner) {
+    console.warn("Default projects were not created because no active employee exists yet.");
+    return;
+  }
+
+  for (const projectName of DEFAULT_PROJECT_NAMES) {
+    const existingProject = await Project.findOne({ projectName });
+    if (existingProject) {
+      if (existingProject.deletedAt || existingProject.status !== "Active") {
+        existingProject.deletedAt = null;
+        existingProject.status = "Active";
+        await existingProject.save();
+      }
+      continue;
+    }
+
+    await Project.create({
+      projectCode: `DEFAULT-${projectName.replace(/[^A-Z0-9]+/gi, "-").replace(/^-|-$/g, "").toUpperCase()}`,
+      projectName,
+      createdBy: owner._id,
+    });
+  }
+};
 
 // ==============================
 // ROUTES
@@ -184,6 +220,7 @@ const startServer = async () => {
     validateProductionConfig();
     await verifyEmailTransport();
     await connectDatabase();
+    await ensureDefaultProjects();
 
     app.listen(
       PORT,
