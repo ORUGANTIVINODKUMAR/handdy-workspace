@@ -5,6 +5,7 @@ import "./styles/themes.css";
 import "./styles/professional.css";
 import AppShell from "./components/layout/AppShell";
 import "./styles/workspace.css";
+import "./styles/adminEmployees.css";
 
 function App() {
   return (

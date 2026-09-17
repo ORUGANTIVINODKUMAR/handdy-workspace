@@ -8,7 +8,18 @@ import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import EmployeeForm from "../../components/employees/EmployeeForm";
 import { getAllActiveProjects } from "../../api/projectApi";
 import { projectRatesRequiredForRole, validateEmployeeForm } from "../../utils/employeeFormValidation";
-import { Eye, EyeOff } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Pencil,
+  Search,
+  Trash2,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
 import useDataRefresh from "../../hooks/useDataRefresh";
 import useAuth from "../../context/useAuth";
 
@@ -22,6 +33,15 @@ const PERMISSION_LABELS = {
 // filled in (e.g. an HR employee who does some billable client work too).
 const dropBlankProjectRates = (projectRates) =>
   projectRates.filter((assignment) => assignment.project || assignment.chargeRate !== "");
+
+const getEmployeeInitials = (name = "") =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "—";
 
 function AdminEmployees() {
   const location = useLocation();
@@ -444,12 +464,20 @@ function AdminEmployees() {
       {/* EMPLOYEE LIST */}
       <section className="admin-card employees-card">
         <div className="employees-page-heading">
-          <div>
+          <div className="employees-heading-copy">
+            <span className="employees-heading-icon" aria-hidden="true">
+              <UsersRound size={20} />
+            </span>
+            <div>
             <p className="admin-eyebrow">
               EMPLOYEE MANAGEMENT
             </p>
 
-            <h2>Company Employees</h2>
+              <h2>Company directory</h2>
+              <p className="employees-heading-summary">
+                {totalEmployees} employee{totalEmployees === 1 ? "" : "s"} in this view
+              </p>
+            </div>
           </div>
 
           {canCreateEmployees && (
@@ -460,7 +488,8 @@ function AdminEmployees() {
                 setShowAddEmployee(true)
               }
             >
-              + Add Employee
+              <UserPlus size={17} aria-hidden="true" />
+              Add employee
             </button>
           )}
         </div>
@@ -471,42 +500,52 @@ function AdminEmployees() {
             className="employees-search"
             onSubmit={handleSearch}
           >
-            <input
-              type="search" aria-label="Search records"
-              placeholder="Search employee..."
-              value={search}
-              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-            />
+            <label className="employees-filter-field employees-search-field">
+              <span>Search</span>
+              <span className="employees-input-wrap">
+                <Search size={16} aria-hidden="true" />
+                <input
+                  type="search"
+                  placeholder="Name, email or employee ID"
+                  value={search}
+                  onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+                />
+              </span>
+            </label>
 
             <button type="submit">
               Search
             </button>
           </form>
 
-          <select
-            className="employees-team-filter"
-            value={teamFilter}
-            onChange={(event) => { setTeamFilter(event.target.value); setPage(1); }}
-            aria-label="Filter employees by team"
-          >
-            <option value="">All Teams</option>
-            {teams.map((team) => (
-              <option key={team._id} value={team._id}>
-                {team.teamName}
-              </option>
-            ))}
-          </select>
+          <label className="employees-filter-field">
+            <span>Team</span>
+            <select
+              className="employees-team-filter"
+              value={teamFilter}
+              onChange={(event) => { setTeamFilter(event.target.value); setPage(1); }}
+            >
+              <option value="">All teams</option>
+              {teams.map((team) => (
+                <option key={team._id} value={team._id}>
+                  {team.teamName}
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <select
-            className="employees-status-filter"
-            value={statusFilter}
-            onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}
-            aria-label="Filter employees by status"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="all">All statuses</option>
-          </select>
+          <label className="employees-filter-field employees-status-field">
+            <span>Status</span>
+            <select
+              className="employees-status-filter"
+              value={statusFilter}
+              onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="all">All statuses</option>
+            </select>
+          </label>
         </div>
 
         {/* ERROR */}
@@ -525,27 +564,26 @@ function AdminEmployees() {
 
             <thead>
               <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Team</th>
-                <th>Project Rates</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th scope="col">Employee</th>
+                <th scope="col">Contact</th>
+                <th scope="col">Role</th>
+                <th scope="col">Team</th>
+                <th scope="col">Project rates</th>
+                <th scope="col">Status</th>
+                <th scope="col" className="employees-actions-heading">Actions</th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8">
+                  <td colSpan="7" className="employees-table-message">
                     Loading employees...
                   </td>
                 </tr>
               ) : employees.length === 0 ? (
                 <tr>
-                  <td colSpan="8">
+                  <td colSpan="7" className="employees-table-message">
                     No employees match your filters. Try a different search or add an employee.
                   </td>
                 </tr>
@@ -553,21 +591,30 @@ function AdminEmployees() {
                 employees.map((employee) => (
                   <tr key={employee._id}>
 
-                    <td>
-                      {employee.employeeId || "-"}
+                    <td data-label="Employee">
+                      <div className="employee-identity">
+                        <span className="employee-list-avatar" aria-hidden="true">
+                          {getEmployeeInitials(employee.fullName)}
+                        </span>
+                        <span>
+                          <strong>{employee.fullName || "Unnamed employee"}</strong>
+                          <small>ID {employee.employeeId || "—"}</small>
+                        </span>
+                      </div>
                     </td>
 
-                    <td>
-                      {employee.fullName || "-"}
+                    <td data-label="Contact">
+                      {employee.email ? (
+                        <a className="employee-email" href={`mailto:${employee.email}`}>
+                          {employee.email}
+                        </a>
+                      ) : "—"}
                     </td>
 
-                    <td>
-                      {employee.email || "-"}
-                    </td>
-
-                    <td>
-                      {employee.role
-                        ?.replace("_", " ") || "-"}
+                    <td data-label="Role">
+                      <span className="employee-role-badge">
+                        {employee.role?.replaceAll("_", " ") || "—"}
+                      </span>
                       {employee.permissions?.length > 0 && (
                         <div className="employee-permission-badges">
                           {employee.permissions.map((key) => (
@@ -579,15 +626,22 @@ function AdminEmployees() {
                       )}
                     </td>
 
-                    <td>{employee.team?.teamName || "-"}</td>
+                    <td data-label="Team">{employee.team?.teamName || "—"}</td>
 
-                    <td>
+                    <td data-label="Project rates">
                       {employee.projectRates?.length
-                        ? employee.projectRates.map((assignment) => `${assignment.project?.projectName || "Archived project"}: $${Number(assignment.chargeRate).toFixed(2)}/hr`).join(", ")
-                        : "Not configured"}
+                        ? <div className="employee-rate-list">
+                            {employee.projectRates.map((assignment, index) => (
+                              <span key={`${assignment.project?._id || "archived"}-${index}`}>
+                                {assignment.project?.projectName || "Archived project"}
+                                <strong>${Number(assignment.chargeRate).toFixed(2)}/hr</strong>
+                              </span>
+                            ))}
+                          </div>
+                        : <span className="employee-not-configured">Not configured</span>}
                     </td>
 
-                    <td>
+                    <td data-label="Status">
                       <span
                         className={
                           employee.isActive
@@ -601,7 +655,7 @@ function AdminEmployees() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Actions">
                       <div className="employee-actions">
 
                         {canEditEmployees && (
@@ -612,6 +666,7 @@ function AdminEmployees() {
                               openEditEmployee(employee)
                             }
                           >
+                            <Pencil size={15} aria-hidden="true" />
                             Edit
                           </button>
                         )}
@@ -624,7 +679,8 @@ function AdminEmployees() {
                               openResetPassword(employee)
                             }
                           >
-                            Reset Password
+                            <KeyRound size={15} aria-hidden="true" />
+                            Reset
                           </button>
                         )}
 
@@ -636,6 +692,7 @@ function AdminEmployees() {
                               handleDelete(employee._id)
                             }
                           >
+                            <Trash2 size={15} aria-hidden="true" />
                             Delete
                           </button>
                         )}
@@ -668,10 +725,12 @@ function AdminEmployees() {
           <div className="employees-page-controls">
             <span>Page {page} of {totalPages}</span>
             <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
+              <ChevronLeft size={15} aria-hidden="true" />
               Previous
             </button>
             <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>
               Next
+              <ChevronRight size={15} aria-hidden="true" />
             </button>
           </div>
         </div>

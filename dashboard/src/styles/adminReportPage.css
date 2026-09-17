@@ -13,6 +13,13 @@
 .admin-report-results > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -22px -22px 0; padding: 20px 22px; border-bottom: 1px solid var(--border-light); }
 .admin-report-results > header strong { display: inline-flex; align-items: center; gap: 7px; color: var(--primary); font-size: 13px; }
 .admin-report-totals { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.admin-report-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
+.admin-report-export-actions { display: flex; align-items: center; gap: 8px; }
+.admin-report-export-actions .report-export-button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--border-light); background: var(--surface); color: var(--text-primary); white-space: nowrap; }
+.admin-report-export-actions .report-export-button.excel { border-color: color-mix(in srgb, var(--success) 28%, var(--border-light)); color: var(--success); }
+.admin-report-export-actions .report-export-button.pdf { border-color: color-mix(in srgb, var(--danger) 25%, var(--border-light)); color: var(--danger); }
+.admin-report-export-actions .report-export-button:hover:not(:disabled) { background: var(--surface-soft); }
+.admin-report-export-actions .report-export-button:disabled { color: var(--text-muted); background: var(--surface-muted); border-color: var(--border-light); }
 .admin-report-empty { display: flex; align-items: center; flex-direction: column; justify-content: center; min-height: 235px; color: var(--primary); text-align: center; }
 .admin-report-empty strong { margin: 12px 0 5px; color: var(--text-heading); font-size: 14px; }
 .admin-report-empty span { max-width: 500px; color: var(--text-muted); font-size: 12px; line-height: 1.55; }
@@ -21,7 +28,7 @@
 .admin-report-table-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .admin-report-table-wrap th, .admin-report-table-wrap td { padding: 12px 14px; border-bottom: 1px solid var(--table-border); text-align: left; }
 .admin-report-table-wrap th { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
-@media (max-width: 1100px) { .admin-report-filter { align-items: stretch; flex-direction: column; } }
-@media (max-width: 650px) { .admin-report-controls { align-items: stretch; flex-direction: column; } .admin-report-controls select, .admin-report-controls input, .admin-report-controls button { width: 100%; } }
+@media (max-width: 1100px) { .admin-report-filter { align-items: stretch; flex-direction: column; } .admin-report-results > header { align-items: flex-start; } .admin-report-header-actions { align-items: flex-end; flex-direction: column; } }
+@media (max-width: 650px) { .admin-report-controls { align-items: stretch; flex-direction: column; } .admin-report-controls select, .admin-report-controls input, .admin-report-controls button { width: 100%; } .admin-report-results > header, .admin-report-header-actions { align-items: stretch; flex-direction: column; } .admin-report-export-actions { display: grid; grid-template-columns: 1fr 1fr; } .admin-report-export-actions .report-export-button { width: 100%; } }
 
 }

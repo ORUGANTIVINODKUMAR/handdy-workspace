@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Clock3, FileSearch, Search } from "lucide-react";
+import { Activity, Clock3, FileDown, FileSearch, Search, Sheet } from "lucide-react";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getEmployees } from "../../api/employeeApi";
@@ -11,6 +11,7 @@ import {
   getMyTimeLogs,
 } from "../../api/reportApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import { exportReportExcel, exportReportPdf } from "../../utils/reportExport";
 
 import "../../styles/adminReportPage.css";
 import ReportSummary from "../../components/dashboard/ReportSummary";
@@ -115,6 +116,8 @@ function AdminReportPage({
   const [loading, setLoading] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState("");
+  const [exportError, setExportError] = useState("");
 
   useEffect(() => {
     if (mode === "tracking") return;
@@ -213,6 +216,91 @@ function AdminReportPage({
     }
   };
 
+  const getExportData = () => {
+    if (mode === "attendance") {
+      const columns = [
+        ...(scope === "company" ? ["Employee"] : []),
+        "Date", "Check in", "Check out", "Total hours", "Status",
+      ];
+      const rows = records.map((record) => [
+        ...(scope === "company" ? [record.employee?.fullName || "-"] : []),
+        record.date || "-",
+        record.checkIn ? new Date(record.checkIn).toLocaleString() : "-",
+        record.checkOut ? new Date(record.checkOut).toLocaleString() : "-",
+        Number(record.totalHours) || 0,
+        record.status || "-",
+      ]);
+      return { columns, rows };
+    }
+
+    if (variant === "team") {
+      return {
+        columns: ["Employee", "Sessions", "Projects", "Tasks", "Worked", "Idle"],
+        rows: teamRows.map((row) => [
+          row.label, row.sessions, row.projects.size, row.tasks.size,
+          formatDuration(row.workedSeconds), formatDuration(row.idleSeconds),
+        ]),
+      };
+    }
+
+    if (variant === "project") {
+      return {
+        columns: ["Project", "Sessions", "Employees", "Tasks", "Worked", "Idle"],
+        rows: projectRows.map((row) => [
+          row.label, row.sessions, row.employees.size, row.tasks.size,
+          formatDuration(row.workedSeconds), formatDuration(row.idleSeconds),
+        ]),
+      };
+    }
+
+    return {
+      columns: [
+        ...(scope === "company" ? ["Employee"] : []),
+        "Project", "Task", "Started", "Finished", "Worked", "Idle", "Status",
+      ],
+      rows: records.map((record) => [
+        ...(scope === "company" ? [record.employee?.fullName || "-"] : []),
+        record.project?.projectName || "-",
+        record.task?.taskName || "-",
+        record.startedAt ? new Date(record.startedAt).toLocaleString() : "-",
+        record.stoppedAt ? new Date(record.stoppedAt).toLocaleString() : "Active",
+        formatDuration(getWorkedSeconds(record)),
+        formatDuration(getIdleSeconds(record)),
+        record.status || "-",
+      ]),
+    };
+  };
+
+  const exportCurrentReport = async (format) => {
+    if (!hasRun || records.length === 0 || exporting) return;
+    setExporting(format);
+    setExportError("");
+    try {
+      const { columns, rows } = getExportData();
+      const exportOptions = {
+        title,
+        fromDate,
+        toDate,
+        columns,
+        rows,
+        summary: [
+          { label: "Records", value: records.length },
+          ...(mode === "time" ? [
+            { label: "Worked", value: formatDuration(totalSeconds) },
+            { label: "Idle", value: formatDuration(totalIdleSeconds) },
+          ] : []),
+        ],
+      };
+      if (format === "excel") await exportReportExcel(exportOptions);
+      else await exportReportPdf(exportOptions);
+    } catch (exportRequestError) {
+      console.error("Report export failed:", exportRequestError);
+      setExportError(`Unable to export ${format === "excel" ? "Excel" : "PDF"}. Please try again.`);
+    } finally {
+      setExporting("");
+    }
+  };
+
   return (
     <DashboardLayout title={title}>
       <div className="admin-report-page">
@@ -283,14 +371,37 @@ function AdminReportPage({
               <span className="admin-report-kicker">Results</span>
               <h2>{resultCount} {resultLabel}</h2>
             </div>
-            {mode === "time" && (
-              <div className="admin-report-totals">
-                <strong><Clock3 size={16} />Worked {formatDuration(totalSeconds)}</strong>
-                <strong><Activity size={16} />Idle {formatDuration(totalIdleSeconds)}</strong>
+            <div className="admin-report-header-actions">
+              {mode === "time" && (
+                <div className="admin-report-totals">
+                  <strong><Clock3 size={16} />Worked {formatDuration(totalSeconds)}</strong>
+                  <strong><Activity size={16} />Idle {formatDuration(totalIdleSeconds)}</strong>
+                </div>
+              )}
+              <div className="admin-report-export-actions" aria-label="Export report">
+                <button
+                  type="button"
+                  className="report-export-button excel"
+                  onClick={() => exportCurrentReport("excel")}
+                  disabled={!hasRun || records.length === 0 || Boolean(exporting)}
+                >
+                  <Sheet size={16} />
+                  {exporting === "excel" ? "Exporting..." : "Export Excel"}
+                </button>
+                <button
+                  type="button"
+                  className="report-export-button pdf"
+                  onClick={() => exportCurrentReport("pdf")}
+                  disabled={!hasRun || records.length === 0 || Boolean(exporting)}
+                >
+                  <FileDown size={16} />
+                  {exporting === "pdf" ? "Exporting..." : "Export PDF"}
+                </button>
               </div>
-            )}
+            </div>
           </header>
 
+          {exportError && <p className="admin-report-message error-message" role="alert">{exportError}</p>}
           {error && (
             <p className="admin-report-message error-message" role="alert">{error}</p>
           )}
