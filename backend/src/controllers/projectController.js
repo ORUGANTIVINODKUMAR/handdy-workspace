@@ -3,15 +3,13 @@ const Client = require("../models/Client");
 const Team = require("../models/Team");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const { isAdminRole } = require("../utils/roles");
+const sendErrorResponse = require("../utils/sendErrorResponse");
 
 const handleProjectError = (res, error) => {
   if (error.code === 11000) {
     return res.status(409).json({ success: false, message: "Project code already exists." });
   }
-  if (error.name === "ValidationError" || error.name === "CastError") {
-    return res.status(400).json({ success: false, message: error.message });
-  }
-  return res.status(500).json({ success: false, message: "Unable to process the project request." });
+  return sendErrorResponse(res, error, "Unable to process the project request.");
 };
 
 const generateProjectCode = async () => {
@@ -134,10 +132,7 @@ const getAllProjects = async (req, res) => {
       projects,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to fetch projects.");
   }
 };
 
@@ -162,10 +157,7 @@ const getProjectById = async (req, res) => {
       project,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to fetch the project.");
   }
 };
 
@@ -234,10 +226,7 @@ const deleteProject = async (req, res) => {
       message: "Project deleted successfully.",
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to delete the project.");
   }
 };
 

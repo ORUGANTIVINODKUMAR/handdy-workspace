@@ -1,5 +1,6 @@
 const SystemSettings = require("../models/SystemSettings");
 const Employee = require("../models/Employee");
+const sendErrorResponse = require("../utils/sendErrorResponse");
 
 const { defaults, normalizeIdlePolicy, resolveIdlePolicy, validateIdlePolicy } = require("../utils/idlePolicy");
 
@@ -22,10 +23,7 @@ const getIdlePolicy = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Unable to load idle settings.",
-    });
+    return sendErrorResponse(res, error, "Unable to load idle settings.");
   }
 };
 
@@ -114,10 +112,7 @@ const updateIdlePolicy = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Unable to save idle settings.",
-    });
+    return sendErrorResponse(res, error, "Unable to save idle settings.");
   }
 };
 

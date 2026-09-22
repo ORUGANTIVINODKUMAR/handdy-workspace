@@ -1,4 +1,5 @@
 const Employee = require("../models/Employee");
+const { getFrontendUrl } = require("../config/productionConfig");
 const generateToken = require("../utils/generateToken");
 const Team = require("../models/Team");
 const { syncEmployeeTeam } = require("../services/teamAssignmentService");
@@ -156,7 +157,7 @@ const handleControllerError = (res, error) => {
 
   return res.status(500).json({
     success: false,
-    message: error.message || "Something went wrong.",
+    message: "Unable to process the authentication request.",
   });
 };
 
@@ -779,7 +780,7 @@ const forgotPassword = async (req, res) => {
       },
     });
 
-    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+    const frontendUrl = getFrontendUrl();
     const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
 
     try {

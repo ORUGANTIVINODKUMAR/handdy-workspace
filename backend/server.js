@@ -8,6 +8,7 @@ const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
 
 const connectDatabase = require("./src/config/db");
+const { validateProductionConfig } = require("./src/config/productionConfig");
 const { verifyEmailTransport } = require("./src/utils/mailer");
 const Employee = require("./src/models/Employee");
 const Project = require("./src/models/Project");
@@ -77,22 +78,6 @@ app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000;
 const dashboardBuildPath = path.resolve(__dirname, "../dashboard/dist");
 
-const validateProductionConfig = () => {
-  if (process.env.NODE_ENV !== "production") return;
-
-  const missing = ["MONGODB_URI", "JWT_SECRET"].filter(
-    (name) => !String(process.env[name] || "").trim()
-  );
-  if (missing.length) {
-    throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
-  }
-
-  const jwtSecret = String(process.env.JWT_SECRET);
-  if (jwtSecret.length < 32 || /replace|change|secret/i.test(jwtSecret)) {
-    throw new Error("JWT_SECRET must be a non-placeholder value of at least 32 characters in production.");
-  }
-};
-
 // ==============================
 // MIDDLEWARE
 // ==============================
@@ -120,7 +105,22 @@ app.use((req, res, next) => {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   });
   if (process.env.NODE_ENV === "production") {
-    res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    res.set({
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Content-Security-Policy": [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "connect-src 'self'",
+        "font-src 'self' data:",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "img-src 'self' data: blob:",
+        "object-src 'none'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "upgrade-insecure-requests",
+      ].join("; "),
+    });
   }
   next();
 });
@@ -135,7 +135,10 @@ const developmentOrigins = [
   "http://localhost:5174",
   "http://localhost:5175",
 ];
-const browserOrigins = [...new Set([...configuredOrigins, ...developmentOrigins])];
+const browserOrigins = [...new Set([
+  ...configuredOrigins,
+  ...(process.env.NODE_ENV === "production" ? [] : developmentOrigins),
+])];
 
 // Electron pages loaded with loadFile send the opaque `null` origin. Keep it
 // available even when browser origins are supplied through CORS_ORIGINS.

@@ -13,6 +13,13 @@ const sendErrorResponse = (res, error, fallbackMessage = "Something went wrong. 
     });
   }
 
+  if (error?.name === "ValidationError") {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid request data.",
+    });
+  }
+
   return res.status(500).json({
     success: false,
     message: fallbackMessage,

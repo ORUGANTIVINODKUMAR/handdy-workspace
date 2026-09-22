@@ -27,3 +27,7 @@ services:
         value: Asia/Kolkata
       - key: CORS_ORIGINS
         sync: false
+      # Optional on Render because RENDER_EXTERNAL_URL is supplied automatically.
+      # Set this explicitly when the dashboard uses a custom production domain.
+      - key: FRONTEND_URL
+        sync: false

@@ -744,15 +744,9 @@ const handleTaskError = (res, error) => {
   }
 
   if (error.name === "ValidationError") {
-    const message = Object.values(
-      error.errors
-    )
-      .map((item) => item.message)
-      .join(" ");
-
     return res.status(400).json({
       success: false,
-      message,
+      message: "Invalid task data.",
     });
   }
 
@@ -765,9 +759,7 @@ const handleTaskError = (res, error) => {
 
   return res.status(500).json({
     success: false,
-    message:
-      error.message ||
-      "Something went wrong.",
+    message: "Unable to process the task request.",
   });
 };
 
