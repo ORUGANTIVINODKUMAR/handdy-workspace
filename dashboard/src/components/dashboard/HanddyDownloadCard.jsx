@@ -11,7 +11,9 @@ export default function HanddyDownloadCard() {
           <p>Download the CRM desktop application to track your attendance, tasks and working time.</p>
         </div>
         <div className="handdy-download-actions">
-          <Link to="/employee/app" className="handdy-download-btn">Download for Windows</Link>
+          <a href="/downloads/CRM-Setup.exe" className="handdy-download-btn" download>
+            Download for Windows
+          </a>
           <Link to="/employee/app" className="handdy-download-details">View app details and updates</Link>
         </div>
       </div>
