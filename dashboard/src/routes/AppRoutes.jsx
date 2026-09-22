@@ -108,7 +108,7 @@ import ProtectedRoute
 
 function AdminOnly({ children }) {
   return (
-    <ProtectedRoute allowedRoles={["admin"]}>
+    <ProtectedRoute allowedRoles={["admin", "alpha"]}>
       {children}
     </ProtectedRoute>
   );
@@ -120,7 +120,7 @@ function AdminOnly({ children }) {
 // see AdminEmployees and AdminSettings routes below.
 function AdminStaffOnly({ children }) {
   return (
-    <ProtectedRoute allowedRoles={["admin", "manager", "hr"]}>
+    <ProtectedRoute allowedRoles={["admin", "alpha", "manager", "hr"]}>
       {children}
     </ProtectedRoute>
   );
@@ -468,7 +468,7 @@ function AppRoutes() {
         path="/admin/employees"
         element={
           <ProtectedRoute
-            allowedRoles={["admin"]}
+            allowedRoles={["admin", "alpha"]}
             requiredPermissions={["create_employees", "edit_employees"]}
           >
             <AdminEmployees />
@@ -813,6 +813,7 @@ function AppRoutes() {
           <ProtectedRoute
             allowedRoles={[
               "admin",
+              "alpha",
               "team_lead",
               "employee",
               "manager",
@@ -835,6 +836,7 @@ function AppRoutes() {
           <ProtectedRoute
             allowedRoles={[
               "admin",
+              "alpha",
               "team_lead",
             ]}
           >
@@ -846,7 +848,7 @@ function AppRoutes() {
       <Route
         path="/employees/:employeeId"
         element={
-          <ProtectedRoute allowedRoles={["admin", "team_lead"]}>
+          <ProtectedRoute allowedRoles={["admin", "alpha", "team_lead"]}>
             <EmployeeDetailsPage />
           </ProtectedRoute>
         }

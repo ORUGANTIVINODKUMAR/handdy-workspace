@@ -51,7 +51,7 @@ async function call(handler, body) {
   return res;
 }
 
-for (const role of ["admin", "employee", "team_lead", "hr", "manager"]) {
+for (const role of ["alpha", "admin", "employee", "team_lead", "hr", "manager"]) {
   test(`${role} can log in with valid credentials`, () =>
     withEmployee(fakeEmployee({ role }), async () => {
       const res = await call(login, { email: `${role}@example.com`, password: PASSWORD });

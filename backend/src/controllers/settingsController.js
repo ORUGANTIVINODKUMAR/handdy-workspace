@@ -1,6 +1,7 @@
 const SystemSettings = require("../models/SystemSettings");
+const Employee = require("../models/Employee");
 
-const { defaults, normalizeIdlePolicy, validateIdlePolicy } = require("../utils/idlePolicy");
+const { defaults, normalizeIdlePolicy, resolveIdlePolicy, validateIdlePolicy } = require("../utils/idlePolicy");
 
 const getSettings = () =>
   SystemSettings.findOneAndUpdate(
@@ -16,7 +17,7 @@ const getIdlePolicy = async (req, res) => {
     return res.status(200).json({
       success: true,
       idlePolicy: {
-        ...normalizeIdlePolicy(settings),
+        ...resolveIdlePolicy(settings, req.user),
         idleTrackingExempt: Boolean(req.user.idleTrackingExempt),
       },
     });
@@ -24,6 +25,56 @@ const getIdlePolicy = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Unable to load idle settings.",
+    });
+  }
+};
+
+const getEmployeeIdlePolicies = async (req, res) => {
+  try {
+    const employees = await Employee.find({ role: { $ne: "alpha" } })
+      .select("employeeId fullName email role isActive +idlePolicyOverride.idleThresholdMinutes +idlePolicyOverride.autoLogoutMinutes +idlePolicyOverride.updatedAt")
+      .sort("fullName")
+      .lean();
+    return res.status(200).json({ success: true, employees });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Unable to load employee inactivity policies." });
+  }
+};
+
+const updateEmployeeIdlePolicy = async (req, res) => {
+  try {
+    const employee = await Employee.findOne({ _id: req.params.employeeId, role: { $ne: "alpha" } })
+      .select("employeeId fullName email role isActive +idlePolicyOverride.idleThresholdMinutes +idlePolicyOverride.autoLogoutMinutes +idlePolicyOverride.updatedBy +idlePolicyOverride.updatedAt");
+    if (!employee) return res.status(404).json({ success: false, message: "Employee not found." });
+
+    if (req.body.useGlobalPolicy === true) {
+      employee.idlePolicyOverride = {
+        idleThresholdMinutes: null,
+        autoLogoutMinutes: null,
+        updatedBy: req.user._id,
+        updatedAt: new Date(),
+      };
+    } else {
+      const policy = {
+        idleThresholdMinutes: Number(req.body.idleThresholdMinutes),
+        autoLogoutMinutes: Number(req.body.autoLogoutMinutes),
+      };
+      const validationError = validateIdlePolicy(policy);
+      if (validationError) return res.status(400).json({ success: false, message: validationError });
+      employee.idlePolicyOverride = { ...policy, updatedBy: req.user._id, updatedAt: new Date() };
+    }
+    await employee.save();
+    return res.status(200).json({
+      success: true,
+      message: req.body.useGlobalPolicy === true
+        ? "Employee now uses the company inactivity policy."
+        : "Employee inactivity override saved.",
+      employee,
+    });
+  } catch (error) {
+    return res.status(error.name === "CastError" ? 400 : 500).json({
+      success: false,
+      message: error.name === "CastError" ? "Invalid employee ID." : "Unable to save employee inactivity policy.",
     });
   }
 };
@@ -73,4 +124,6 @@ const updateIdlePolicy = async (req, res) => {
 module.exports = {
   getIdlePolicy,
   updateIdlePolicy,
+  getEmployeeIdlePolicies,
+  updateEmployeeIdlePolicy,
 };

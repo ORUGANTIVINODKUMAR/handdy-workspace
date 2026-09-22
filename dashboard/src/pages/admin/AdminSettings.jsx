@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
-import { getIdlePolicy, updateIdlePolicy } from "../../api/settingsApi";
+import {
+  getEmployeeIdlePolicies,
+  getIdlePolicy,
+  updateEmployeeIdlePolicy,
+  updateIdlePolicy,
+} from "../../api/settingsApi";
+import useAuth from "../../context/useAuth";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import "../../styles/adminSettings.css";
 
@@ -19,12 +25,20 @@ const idleDefaults = {
 };
 
 function AdminSettings() {
+  const { user } = useAuth();
+  const isAlpha = user?.role === "alpha";
   const [idleMinutes, setIdleMinutes] = useState(idleDefaults.idleThresholdMinutes);
   const [logoutMinutes, setLogoutMinutes] = useState(idleDefaults.autoLogoutMinutes);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [employeeIdleMinutes, setEmployeeIdleMinutes] = useState(idleDefaults.idleThresholdMinutes);
+  const [employeeLogoutMinutes, setEmployeeLogoutMinutes] = useState(idleDefaults.autoLogoutMinutes);
+  const [useGlobalPolicy, setUseGlobalPolicy] = useState(true);
+  const [employeePolicySaving, setEmployeePolicySaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +56,52 @@ function AdminSettings() {
       });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!isAlpha) return;
+    getEmployeeIdlePolicies()
+      .then((response) => setEmployees(response.employees || []))
+      .catch((requestError) => setError(getApiErrorMessage(requestError, "Unable to load employee policies.")));
+  }, [isAlpha]);
+
+  const handleEmployeeSelection = (employeeId) => {
+    setSelectedEmployeeId(employeeId);
+    const selected = employees.find((employee) => employee._id === employeeId);
+    const override = selected?.idlePolicyOverride;
+    const hasOverride = Number.isInteger(override?.idleThresholdMinutes)
+      && Number.isInteger(override?.autoLogoutMinutes);
+    setUseGlobalPolicy(!hasOverride);
+    setEmployeeIdleMinutes(hasOverride ? override.idleThresholdMinutes : idleMinutes);
+    setEmployeeLogoutMinutes(hasOverride ? override.autoLogoutMinutes : logoutMinutes);
+    setMessage("");
+    setError("");
+  };
+
+  const handleEmployeePolicySave = async () => {
+    if (!selectedEmployeeId) {
+      setError("Select an employee.");
+      return;
+    }
+    const policy = useGlobalPolicy
+      ? { useGlobalPolicy: true }
+      : {
+          idleThresholdMinutes: Number(employeeIdleMinutes),
+          autoLogoutMinutes: Number(employeeLogoutMinutes),
+        };
+    setEmployeePolicySaving(true);
+    setMessage("");
+    setError("");
+    try {
+      const response = await updateEmployeeIdlePolicy(selectedEmployeeId, policy);
+      const refreshed = await getEmployeeIdlePolicies();
+      setEmployees(refreshed.employees || []);
+      setMessage(response.message || "Employee inactivity policy saved.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to save employee policy."));
+    } finally {
+      setEmployeePolicySaving(false);
+    }
+  };
 
   const handleSave = async () => {
     const idleThresholdMinutes = Number(idleMinutes);
@@ -101,6 +161,45 @@ function AdminSettings() {
               </>
             )}
           </div>
+          {isAlpha && (
+            <div className="settings-section" id="settings-employee-idle">
+              <div className="settings-label-row">
+                <div>
+                  <h3>Employee override</h3>
+                  <p className="settings-description">Choose an employee and override the company inactivity policy for that account.</p>
+                </div>
+              </div>
+              <label className="settings-field">
+                <span>Employee</span>
+                <select value={selectedEmployeeId} onChange={(event) => handleEmployeeSelection(event.target.value)}>
+                  <option value="">Select employee</option>
+                  {employees.map((employee) => (
+                    <option key={employee._id} value={employee._id}>
+                      {employee.fullName} ({employee.employeeId})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="settings-field">
+                <span><input type="checkbox" checked={useGlobalPolicy} onChange={(event) => setUseGlobalPolicy(event.target.checked)} /> Use company policy</span>
+              </label>
+              {!useGlobalPolicy && (
+                <>
+                  <label className="settings-field">
+                    <span>Pause this employee's timer after</span>
+                    <span className="settings-inline"><input className="settings-small-input" type="number" min="1" max="240" step="1" value={employeeIdleMinutes} onChange={(event) => setEmployeeIdleMinutes(event.target.value)} /><span>minutes</span></span>
+                  </label>
+                  <label className="settings-field">
+                    <span>Sign this employee out after</span>
+                    <span className="settings-inline"><input className="settings-small-input" type="number" min="2" max="480" step="1" value={employeeLogoutMinutes} onChange={(event) => setEmployeeLogoutMinutes(event.target.value)} /><span>minutes</span></span>
+                  </label>
+                </>
+              )}
+              <button type="button" className="settings-save-button" onClick={handleEmployeePolicySave} disabled={!selectedEmployeeId || employeePolicySaving}>
+                {employeePolicySaving ? "Saving…" : "Save employee override"}
+              </button>
+            </div>
+          )}
           {(message || error) && <p className={`settings-save-message${error ? " is-error" : ""}`} role="status">{error || message}</p>}
           <div className="settings-bottom-save">
             <button type="button" className="settings-save-button" onClick={handleSave} disabled={isLoading || isSaving}>

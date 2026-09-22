@@ -1,3 +1,5 @@
+const { isAdminRole } = require("../utils/roles");
+
 const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -7,7 +9,9 @@ const authorizeRoles = (...allowedRoles) => {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const allowed = allowedRoles.includes(req.user.role)
+      || (req.user.role === "alpha" && allowedRoles.includes("admin"));
+    if (!allowed) {
       return res.status(403).json({
         success: false,
         message: "You do not have permission to access this resource.",
@@ -32,7 +36,7 @@ const authorizeAccess = (...permissionKeys) => {
     }
 
     const granted = req.user.permissions || [];
-    if (req.user.role === "admin" || permissionKeys.some((key) => granted.includes(key))) {
+    if (isAdminRole(req.user.role) || permissionKeys.some((key) => granted.includes(key))) {
       return next();
     }
 

@@ -11,6 +11,7 @@ const {
 const { createRememberedSession, hashRememberedSession } = require("../utils/rememberedSessionUtils");
 const AuthSession = require("../models/AuthSession");
 const DeviceLoginRequest = require("../models/DeviceLoginRequest");
+const { isAdminRole } = require("../utils/roles");
 const {
   normalizeDevice,
   beginLoginSession,
@@ -201,7 +202,17 @@ const register = async (req, res) => {
     // A delegated (non-admin) creator can only ever create plain employee
     // accounts — this is what closes off the "create_employees" permission
     // from being used to mint another admin, manager, hr, or team lead.
-    const normalizedRole = req.user.role === "admin" ? (role || "employee") : "employee";
+    const requestedRole = role || "employee";
+    const API_CREATABLE_ROLES = new Set(["admin", "team_lead", "hr", "manager", "employee"]);
+    if (requestedRole === "alpha") {
+      return res.status(403).json({
+        success: false,
+        message: "Alpha accounts can only be created from the server terminal.",
+      });
+    }
+    const normalizedRole = isAdminRole(req.user.role) && API_CREATABLE_ROLES.has(requestedRole)
+      ? requestedRole
+      : "employee";
     const normalizedProjectRates = await validateProjectRates(projectRates, {
       required: projectRatesRequiredForRole(normalizedRole),
     });

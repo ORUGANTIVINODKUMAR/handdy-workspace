@@ -1,5 +1,6 @@
 const Employee = require("../models/Employee");
 const Team = require("../models/Team");
+const { isAdminRole } = require("../utils/roles");
 
 const clearTeamsLedBy = async (employeeId, exceptTeamId = null) => {
   const filter = { teamLead: employeeId };
@@ -15,7 +16,7 @@ const clearTeamsLedBy = async (employeeId, exceptTeamId = null) => {
 const syncEmployeeTeam = async (employee, requestedTeamId) => {
   const teamId = requestedTeamId || null;
 
-  if (employee.role === "admin" || !teamId) {
+  if (isAdminRole(employee.role) || !teamId) {
     await clearTeamsLedBy(employee._id);
     employee.team = null;
     employee.teamLead = null;

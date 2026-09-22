@@ -3,6 +3,8 @@ const express = require("express");
 const {
   getIdlePolicy,
   updateIdlePolicy,
+  getEmployeeIdlePolicies,
+  updateEmployeeIdlePolicy,
 } = require("../controllers/settingsController");
 const { protect } = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/authorizeRoles");
@@ -16,6 +18,17 @@ router.put(
   authorizeRoles("admin"),
   updateIdlePolicy
 );
+router.get(
+  "/employee-idle-policies",
+  protect,
+  authorizeRoles("alpha"),
+  getEmployeeIdlePolicies
+);
+router.put(
+  "/employee-idle-policies/:employeeId",
+  protect,
+  authorizeRoles("alpha"),
+  updateEmployeeIdlePolicy
+);
 
 module.exports = router;
-

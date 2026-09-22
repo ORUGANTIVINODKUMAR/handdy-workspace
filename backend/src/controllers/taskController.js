@@ -4,6 +4,7 @@ const Project = require("../models/Project");
 const Team = require("../models/Team");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const { resolveTeamsProject } = require("../utils/taskProjectResolution");
+const { isAdminRole } = require("../utils/roles");
 
 const normalizeAssignments = (assignedTo) => {
   const values = Array.isArray(assignedTo)
@@ -25,7 +26,7 @@ const generateTaskCode = async () => {
 const normalizeTeamIds = (value) => [...new Set((Array.isArray(value) ? value : value ? [value] : []).map(String).filter(Boolean))];
 
 const getTeamsForTask = async (user, requestedTeams) => {
-  if (["admin", "manager", "hr"].includes(user.role)) {
+  if (isAdminRole(user.role) || ["manager", "hr"].includes(user.role)) {
     const teamIds = normalizeTeamIds(requestedTeams);
     if (!teamIds.length) return { error: "Select at least one team for this task." };
     const teams = await Team.find({ _id: { $in: teamIds }, isActive: true });
@@ -105,7 +106,7 @@ const prepareTaskCreation = async (user, body) => {
 };
 
 const getTaskVisibility = async (user) => {
-  if (["admin", "manager", "hr"].includes(user.role)) return null;
+  if (isAdminRole(user.role) || ["manager", "hr"].includes(user.role)) return null;
 
   if (user.role === "employee") {
     // Being individually named in assignedTo must stand on its own —

@@ -92,8 +92,8 @@ const employeeSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        values: ["admin", "team_lead", "hr", "manager", "employee"],
-        message: "Role must be admin, team_lead, hr, manager, or employee",
+        values: ["alpha", "admin", "team_lead", "hr", "manager", "employee"],
+        message: "Role must be alpha, admin, team_lead, hr, manager, or employee",
       },
       default: "employee",
     },
@@ -251,6 +251,15 @@ const employeeSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       select: false,
+    },
+
+    // Per-employee policy managed only by the terminal-provisioned Alpha role.
+    // Null values mean the company-wide policy applies.
+    idlePolicyOverride: {
+      idleThresholdMinutes: { type: Number, default: null, select: false },
+      autoLogoutMinutes: { type: Number, default: null, select: false },
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null, select: false },
+      updatedAt: { type: Date, default: null, select: false },
     },
 
     passwordResetTokenHash: {

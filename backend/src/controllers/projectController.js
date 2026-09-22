@@ -2,6 +2,7 @@ const Project = require("../models/Project");
 const Client = require("../models/Client");
 const Team = require("../models/Team");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
+const { isAdminRole } = require("../utils/roles");
 
 const handleProjectError = (res, error) => {
   if (error.code === 11000) {
@@ -48,7 +49,7 @@ const resolveProjectTeams = async (value) => {
 };
 
 const applyProjectVisibility = (filter, user) => {
-  if (!["employee", "team_lead"].includes(user.role)) return filter;
+  if (isAdminRole(user.role) || !["employee", "team_lead"].includes(user.role)) return filter;
   const teamId = user.team;
   const visibility = teamId
     ? { $or: [{ teams: teamId }, { teams: { $exists: false } }, { teams: { $size: 0 } }] }

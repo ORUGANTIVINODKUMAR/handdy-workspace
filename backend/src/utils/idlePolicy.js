@@ -37,4 +37,17 @@ function validateIdlePolicy({ idleThresholdMinutes, autoLogoutMinutes }) {
   return autoLogoutMinutes <= idleThresholdMinutes ? "Auto logout must be greater than the idle pause threshold." : "";
 }
 
-module.exports = { defaults, normalizeIdlePolicy, validateIdlePolicy };
+function resolveIdlePolicy(settings = {}, employee = {}) {
+  const globalPolicy = normalizeIdlePolicy(settings);
+  const override = employee.idlePolicyOverride || {};
+  const employeePolicy = {
+    idleThresholdMinutes: override.idleThresholdMinutes,
+    autoLogoutMinutes: override.autoLogoutMinutes,
+  };
+  if (!validateIdlePolicy(employeePolicy)) {
+    return { ...employeePolicy, source: "employee_override" };
+  }
+  return { ...globalPolicy, source: "global" };
+}
+
+module.exports = { defaults, normalizeIdlePolicy, resolveIdlePolicy, validateIdlePolicy };

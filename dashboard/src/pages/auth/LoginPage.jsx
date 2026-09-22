@@ -16,6 +16,7 @@ import useAuth
 function getDashboardForRole(role) {
   switch (role) {
     case "admin":
+    case "alpha":
       return "/admin/dashboard";
 
     case "team_lead":

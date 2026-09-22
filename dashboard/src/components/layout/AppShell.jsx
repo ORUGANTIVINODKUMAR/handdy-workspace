@@ -54,12 +54,13 @@ export default function AppShell({ children }) {
   const hasDelegatedEmployeeAccess = ["create_employees", "edit_employees"].some(
     (key) => (user?.permissions || []).includes(key),
   );
+  const navigationRole = user?.role === "alpha" ? "admin" : user?.role;
   const navigation = [
-    ...workspaceNavigation.filter((item) => item.role === user?.role),
+    ...workspaceNavigation.filter((item) => item.role === navigationRole),
     ...(user?.role === "team_lead" ? [{ path: "/employees", title: "Team members", group: "Workspace" }] : []),
     // Admin already has this from workspaceNavigation; anyone else only gets
     // it when specifically granted the delegated permission.
-    ...(hasDelegatedEmployeeAccess && user?.role !== "admin"
+    ...(hasDelegatedEmployeeAccess && !["admin", "alpha"].includes(user?.role)
       ? [{ path: "/admin/employees", title: "Employees", group: "Workspace" }]
       : []),
   ];

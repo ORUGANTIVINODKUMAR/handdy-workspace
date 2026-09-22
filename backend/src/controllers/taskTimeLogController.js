@@ -6,6 +6,7 @@ const Team = require("../models/Team");
 const { getPagination } = require("../utils/requestUtils");
 const { getBillingDateRange } = require("../utils/billingUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
+const { isAdminRole } = require("../utils/roles");
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
 
@@ -48,7 +49,7 @@ const startTimer = async (req, res) => {
             ? Boolean(await Team.exists({ _id: req.user.team, isActive: true }))
             : false;
         const teamMatch = { $or: [{ team: req.user.team }, { teams: req.user.team }] };
-        const isElevatedRole = ["admin", "manager", "hr"].includes(req.user.role);
+        const isElevatedRole = isAdminRole(req.user.role) || ["manager", "hr"].includes(req.user.role);
         // A team lead's own team already proves they lead the task's team, so
         // they don't also need to appear in assignedTo (they never can — see
         // validateTaskRelations, which restricts assignedTo to role:"employee").

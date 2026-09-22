@@ -47,7 +47,7 @@ function AdminEmployees() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = ["admin", "alpha"].includes(currentUser?.role);
   const currentPermissions = currentUser?.permissions || [];
   const canCreateEmployees = isAdmin || currentPermissions.includes("create_employees");
   const canEditEmployees = isAdmin || currentPermissions.includes("edit_employees");
@@ -658,7 +658,7 @@ function AdminEmployees() {
                     <td data-label="Actions">
                       <div className="employee-actions">
 
-                        {canEditEmployees && (
+                        {canEditEmployees && employee.role !== "alpha" && (
                           <button
                             className="edit-action-button"
                             type="button"
@@ -671,7 +671,7 @@ function AdminEmployees() {
                           </button>
                         )}
 
-                        {isAdmin && (
+                        {isAdmin && employee.role !== "alpha" && (
                           <button
                             className="edit-action-button"
                             type="button"
@@ -684,7 +684,7 @@ function AdminEmployees() {
                           </button>
                         )}
 
-                        {isAdmin && (
+                        {isAdmin && employee.role !== "alpha" && (
                           <button
                             className="delete-action-button"
                             type="button"

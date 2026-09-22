@@ -6,6 +6,7 @@ const { validateProjectRates, projectRatesRequiredForRole } = require("../servic
 const sendErrorResponse = require("../utils/sendErrorResponse");
 const { revokeEmployeeSessions } = require("../services/authSessionService");
 const generateToken = require("../utils/generateToken");
+const { isAdminRole, isAlphaRole } = require("../utils/roles");
 
 const populateEmployeeRates = (query) => query.populate(
   "projectRates.project",
@@ -17,6 +18,17 @@ const populateEmployeeRates = (query) => query.populate(
 // never touch these — that boundary is what keeps the permission from
 // becoming a privilege-escalation or account-takeover path.
 const FIELDS_RESTRICTED_TO_ADMIN = ["role", "isActive", "password", "permissions"];
+
+const alphaAccountIsProtected = (_actor, target) => isAlphaRole(target?.role);
+
+const rejectProtectedAlphaMutation = (res, actor, target) => {
+  if (!alphaAccountIsProtected(actor, target)) return false;
+  res.status(403).json({
+    success: false,
+    message: "Alpha accounts can only be managed from the server terminal.",
+  });
+  return true;
+};
 
 const handleEmployeeError = (res, error) => {
   if (error.code === 11000) {
@@ -136,7 +148,9 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    if (req.user.role !== "admin") {
+    if (rejectProtectedAlphaMutation(res, req.user, employee)) return;
+
+    if (!isAdminRole(req.user.role)) {
       const restrictedField = FIELDS_RESTRICTED_TO_ADMIN.find((field) => req.body[field] !== undefined);
       if (restrictedField) {
         return res.status(403).json({
@@ -144,6 +158,10 @@ const updateEmployee = async (req, res) => {
           message: "Only an administrator can change role, status, password, or permissions.",
         });
       }
+    }
+
+    if (req.body.role === "alpha" || (employee.role === "alpha" && req.body.role && req.body.role !== "alpha")) {
+      return res.status(403).json({ success: false, message: "Alpha role assignment is terminal-only." });
     }
 
     const allowedFields = [
@@ -234,7 +252,9 @@ const updateEmployeePermissions = async (req, res) => {
       });
     }
 
-    if (employee.role === "admin") {
+    if (rejectProtectedAlphaMutation(res, req.user, employee)) return;
+
+    if (isAdminRole(employee.role)) {
       return res.status(400).json({
         success: false,
         message: "Administrators already have full access.",
@@ -290,6 +310,8 @@ const resetEmployeePassword = async (req, res) => {
       });
     }
 
+    if (rejectProtectedAlphaMutation(res, req.user, employee)) return;
+
     employee.password = password;
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
     employee.rememberedSessionTokenHash = null;
@@ -331,6 +353,8 @@ const assignTeamLead = async (req, res) => {
         message: "Employee not found.",
       });
     }
+
+    if (rejectProtectedAlphaMutation(res, req.user, employee)) return;
 
     // Remove Team Lead assignment
     if (!teamLeadId) {
@@ -394,6 +418,8 @@ const deleteEmployee = async (req, res) => {
         message: "Employee not found.",
       });
     }
+
+    if (rejectProtectedAlphaMutation(res, req.user, employee)) return;
 
     if (employee._id.equals(req.user._id)) {
       return res.status(400).json({
