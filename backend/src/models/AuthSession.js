@@ -20,8 +20,12 @@ const authSessionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 authSessionSchema.index(
-  { employee: 1, status: 1 },
-  { unique: true, partialFilterExpression: { status: "active" } },
+  { employee: 1, clientType: 1, status: 1 },
+  {
+    name: "one_active_desktop_session_per_employee",
+    unique: true,
+    partialFilterExpression: { clientType: "desktop", status: "active" },
+  },
 );
 authSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 

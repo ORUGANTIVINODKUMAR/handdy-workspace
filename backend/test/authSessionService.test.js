@@ -82,6 +82,18 @@ test("PC1 can deny PC2 or transfer the only active session without touching time
     const pc1 = await beginLoginSession("employee-1", { deviceId: "pc-1", deviceName: "PC 1", clientType: "desktop" });
     assert.equal(pc1.kind, "active");
 
+    const browser = await beginLoginSession("employee-1", { deviceId: "browser-1", deviceName: "Web browser", clientType: "web" });
+    assert.equal(browser.kind, "active");
+    assert.equal(requests.length, 0);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "desktop").length, 1);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "web").length, 1);
+
+    const browserAgain = await beginLoginSession("employee-1", { deviceId: "browser-1", deviceName: "Web browser", clientType: "web" });
+    assert.equal(browserAgain.kind, "active");
+    assert.equal(requests.length, 0);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "desktop").length, 1);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "web").length, 1);
+
     const firstPc2Attempt = await beginLoginSession("employee-1", { deviceId: "pc-2", deviceName: "PC 2", clientType: "desktop" });
     assert.equal(firstPc2Attempt.kind, "pending");
     await decideLoginRequest({ requestId: firstPc2Attempt.request.requestId, currentSession: pc1.session, decision: "deny" });
@@ -93,15 +105,17 @@ test("PC1 can deny PC2 or transfer the only active session without touching time
     assert.equal(pc1.session.status, "revoked");
     assert.equal(secondPc2Attempt.request.status, "approved");
     assert.equal(sessions.find((item) => item._id === secondPc2Attempt.request.requestedSession).status, "active");
-    assert.equal(sessions.filter((item) => item.status === "active").length, 1);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "desktop").length, 1);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "web").length, 1);
 
     const interruptedTransfer = await beginLoginSession("employee-1", { deviceId: "pc-3", deviceName: "PC 3", clientType: "desktop" });
     interruptedTransfer.request.status = "approving";
-    sessions.find((item) => item.status === "active").status = "revoked";
+    sessions.find((item) => item.status === "active" && item.clientType === "desktop").status = "revoked";
     const recovered = await findRequestForRequester(interruptedTransfer.request.requestId, interruptedTransfer.requestToken);
     assert.equal(recovered.status, "approved");
     assert.equal(sessions.find((item) => item._id === interruptedTransfer.request.requestedSession).status, "active");
-    assert.equal(sessions.filter((item) => item.status === "active").length, 1);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "desktop").length, 1);
+    assert.equal(sessions.filter((item) => item.status === "active" && item.clientType === "web").length, 1);
   } finally {
     Object.assign(AuthSession, originals.session);
     Object.assign(DeviceLoginRequest, originals.request);

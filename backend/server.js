@@ -11,6 +11,7 @@ const connectDatabase = require("./src/config/db");
 const { verifyEmailTransport } = require("./src/utils/mailer");
 const Employee = require("./src/models/Employee");
 const Project = require("./src/models/Project");
+const { ensureAuthSessionIndexes } = require("./src/services/authSessionService");
 
 const DEFAULT_PROJECT_NAMES = [
   "Software",
@@ -252,6 +253,7 @@ const startServer = async () => {
     validateProductionConfig();
     await verifyEmailTransport();
     await connectDatabase();
+    await ensureAuthSessionIndexes();
     await ensureDefaultProjects();
 
     app.listen(

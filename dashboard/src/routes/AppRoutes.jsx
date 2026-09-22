@@ -232,7 +232,12 @@ function AppRoutes() {
 
       <Route
         path="/admin/app"
-        element={<AdminOnly><EmployeeApps /></AdminOnly>}
+        element={<AdminStaffOnly><EmployeeApps /></AdminStaffOnly>}
+      />
+
+      <Route
+        path="/admin/help"
+        element={<AdminStaffOnly><EmployeeHelp /></AdminStaffOnly>}
       />
 
 

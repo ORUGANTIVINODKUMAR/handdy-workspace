@@ -86,13 +86,45 @@ async function createPendingRequest(employeeId, activeSession, device) {
 
 async function beginLoginSession(employeeId, device) {
   await expireStaleSessions(employeeId);
-  let activeSession = await AuthSession.findOne({ employee: employeeId, status: "active" });
+
+  // Browser sessions do not participate in desktop device approval. Refreshing
+  // or reauthenticating the same browser replaces only that browser's session,
+  // while other browsers and the single active desktop session remain valid.
+  if (device.clientType === "web") {
+    const now = new Date();
+    await AuthSession.updateMany(
+      {
+        employee: employeeId,
+        deviceId: device.deviceId,
+        clientType: "web",
+        status: "active",
+      },
+      {
+        $set: {
+          status: "revoked",
+          revokedAt: now,
+          revokeReason: "same_device_reauthentication",
+        },
+      },
+    );
+    return { kind: "active", session: await createSession(employeeId, device, "active") };
+  }
+
+  let activeSession = await AuthSession.findOne({
+    employee: employeeId,
+    clientType: "desktop",
+    status: "active",
+  });
   if (!activeSession) {
     try {
       return { kind: "active", session: await createSession(employeeId, device, "active") };
     } catch (error) {
       if (error.code !== 11000) throw error;
-      activeSession = await AuthSession.findOne({ employee: employeeId, status: "active" });
+      activeSession = await AuthSession.findOne({
+        employee: employeeId,
+        clientType: "desktop",
+        status: "active",
+      });
     }
   }
   if (activeSession.deviceId === device.deviceId) {
@@ -118,7 +150,12 @@ async function reconcileApprovingRequest(request) {
   let activated = await AuthSession.findOne({ _id: request.requestedSession, status: "active" });
   if (!activated) {
     await AuthSession.updateMany(
-      { employee: request.employee, _id: { $ne: request.requestedSession }, status: "active" },
+      {
+        employee: request.employee,
+        _id: { $ne: request.requestedSession },
+        clientType: "desktop",
+        status: "active",
+      },
       { $set: { status: "revoked", revokedAt: now, revokeReason: "new_device_authorized" } },
     );
     activated = await AuthSession.findOneAndUpdate(
@@ -237,6 +274,13 @@ async function revokeEmployeeSessions(employeeId, reason = "account_security_cha
   );
 }
 
+async function ensureAuthSessionIndexes() {
+  const indexes = await AuthSession.collection.indexes();
+  const legacyIndex = indexes.find((index) => index.name === "employee_1_status_1" && index.unique);
+  if (legacyIndex) await AuthSession.collection.dropIndex(legacyIndex.name);
+  await AuthSession.createIndexes();
+}
+
 module.exports = {
   LOGIN_REQUEST_LIFETIME_MS,
   OFFLINE_GRACE_MS,
@@ -246,5 +290,6 @@ module.exports = {
   findPendingForSession,
   decideLoginRequest,
   revokeEmployeeSessions,
+  ensureAuthSessionIndexes,
   hashSecret,
 };

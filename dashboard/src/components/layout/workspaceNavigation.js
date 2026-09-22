@@ -15,6 +15,7 @@ export const workspaceNavigation = [
   { path: "/admin/timesheets/project-hours", title: "Project hours", role: "admin", group: "Time & attendance" },
   { path: "/admin/billing", title: "Billing", role: "admin", group: "Finance" },
   { path: "/admin/app", title: "Desktop App", role: "admin", group: "System" },
+  { path: "/admin/help", title: "Help", role: "admin", group: "System" },
   { path: "/admin/settings", title: "Idle & logout", role: "admin", group: "System" },
 
   { path: "/team-lead/dashboard", title: "Overview", role: "team_lead", group: "Workspace" },
@@ -27,12 +28,14 @@ export const workspaceNavigation = [
   { path: "/team-lead/timesheets/detailed", title: "Detailed timesheet", role: "team_lead", group: "Time & attendance" },
   { path: "/team-lead/timesheets/project-hours", title: "Project hours", role: "team_lead", group: "Time & attendance" },
   { path: "/team-lead/timesheets/attendance", title: "Attendance", role: "team_lead", group: "Time & attendance" },
+  { path: "/team-lead/apps", title: "Desktop App", role: "team_lead", group: "System" },
+  { path: "/team-lead/help", title: "Help", role: "team_lead", group: "System" },
 
   { path: "/employee/dashboard", title: "Overview", role: "employee", group: "Workspace" },
   { path: "/employee/timesheet", title: "My timesheet", role: "employee", group: "Time & attendance" },
   { path: "/employee/timesheet/details", title: "My detailed timesheet", role: "employee", group: "Time & attendance" },
   { path: "/employee/timesheet/count", title: "My count report", role: "employee", group: "Time & attendance" },
-  { path: "/employee/app", title: "Desktop app", role: "employee", group: "System" },
+  { path: "/employee/app", title: "Desktop App", role: "employee", group: "System" },
   { path: "/employee/help", title: "Help", role: "employee", group: "System" },
 
   // Manager and HR get the same business/operational modules as admin
@@ -51,6 +54,8 @@ export const workspaceNavigation = [
   { path: "/admin/timesheets/project-hours", title: "Project hours", role: "manager", group: "Time & attendance" },
   { path: "/attendance", title: "Attendance", role: "manager", group: "Time & attendance" },
   { path: "/admin/billing", title: "Billing", role: "manager", group: "Finance" },
+  { path: "/admin/app", title: "Desktop App", role: "manager", group: "System" },
+  { path: "/admin/help", title: "Help", role: "manager", group: "System" },
 
   { path: "/admin/dashboard", title: "Overview", role: "hr", group: "Workspace" },
   { path: "/admin/clients", title: "Clients", role: "hr", group: "Workspace" },
@@ -65,4 +70,6 @@ export const workspaceNavigation = [
   { path: "/admin/timesheets/project-hours", title: "Project hours", role: "hr", group: "Time & attendance" },
   { path: "/attendance", title: "Attendance", role: "hr", group: "Time & attendance" },
   { path: "/admin/billing", title: "Billing", role: "hr", group: "Finance" },
+  { path: "/admin/app", title: "Desktop App", role: "hr", group: "System" },
+  { path: "/admin/help", title: "Help", role: "hr", group: "System" },
 ];
