@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-only-secret";
 
 const Employee = require("../src/models/Employee");
+const AuthSession = require("../src/models/AuthSession");
 const { login, quickLogin } = require("../src/controllers/authController");
 
 const PASSWORD = "correct-password";
@@ -24,9 +25,18 @@ function fakeEmployee({ role, isActive = true }) {
 
 function withEmployee(employee, fn) {
   const original = Employee.findOne;
+  const originalSessionMethods = {
+    updateMany: AuthSession.updateMany,
+    findOne: AuthSession.findOne,
+    create: AuthSession.create,
+  };
   Employee.findOne = () => ({ select: async () => employee });
+  AuthSession.updateMany = async () => ({ modifiedCount: 0 });
+  AuthSession.findOne = async () => null;
+  AuthSession.create = async (data) => ({ _id: "6a952f26effaab09e60bb7b5", ...data });
   return fn().finally(() => {
     Employee.findOne = original;
+    Object.assign(AuthSession, originalSessionMethods);
   });
 }
 

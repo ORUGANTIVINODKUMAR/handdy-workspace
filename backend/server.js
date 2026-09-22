@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const mongoSanitize = require("express-mongo-sanitize");
 
 const connectDatabase = require("./src/config/db");
 const { verifyEmailTransport } = require("./src/utils/mailer");
@@ -72,6 +73,11 @@ if (process.env.MONGODB_DNS_SERVERS) {
 
 const app = express();
 
+// Render sits the app behind a single reverse-proxy hop; trust that hop's
+// X-Forwarded-For so req.ip (used by the rate limiters) reflects the real
+// client IP instead of the proxy's address.
+app.set("trust proxy", 1);
+
 const PORT = process.env.PORT || 5000;
 const dashboardBuildPath = path.resolve(__dirname, "../dashboard/dist");
 
@@ -95,6 +101,19 @@ const validateProductionConfig = () => {
 // MIDDLEWARE
 // ==============================
 app.use(express.json({ limit: "1mb" }));
+
+// Strip any Mongo operator ($-prefixed) or dot-prefixed keys from user input
+// before it can reach any Model.find()/update() call, closing off NoSQL
+// operator injection via query params, body fields, or route params.
+// Express 5 exposes req.query as a getter-only property, so this sanitizes
+// each object's keys in place instead of using the package's own middleware
+// (which reassigns req.query and would throw under Express 5).
+app.use((req, res, next) => {
+  if (req.body) mongoSanitize.sanitize(req.body);
+  if (req.params) mongoSanitize.sanitize(req.params);
+  if (req.query) mongoSanitize.sanitize(req.query);
+  next();
+});
 
 app.disable("x-powered-by");
 app.use((req, res, next) => {

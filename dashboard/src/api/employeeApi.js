@@ -13,8 +13,11 @@ export const getEmployeeById = async (employeeId) => {
 };
 
 // Team Lead - get assigned team
-export const getMyTeam = async () => {
-  const response = await axiosInstance.get("/employees/my-team");
+// Note: the backend endpoint does not currently paginate this list (it
+// always returns every active team member), so `params` is forwarded for
+// forward-compatibility but callers should not assume it is honored yet.
+export const getMyTeam = async (params = {}) => {
+  const response = await axiosInstance.get("/employees/my-team", { params });
   return response.data;
 };
 

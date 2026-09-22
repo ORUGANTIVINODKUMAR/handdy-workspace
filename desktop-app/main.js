@@ -9,6 +9,9 @@ const {
   shell,
 } = require("electron");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const crypto = require("crypto");
 const { fileURLToPath } = require("url");
 const { PRODUCTION_APP_ORIGIN, resolveApiBaseUrl } = require("./api-config");
 
@@ -28,12 +31,33 @@ ipcMain.on("config:get-api-base-url", (event) => {
   event.returnValue = process.env.CRM_API_BASE_URL;
 });
 
+function getPersistentDeviceInfo() {
+  const deviceFile = path.join(app.getPath("userData"), "device.json");
+  try {
+    const saved = JSON.parse(fs.readFileSync(deviceFile, "utf8"));
+    if (typeof saved.deviceId === "string" && saved.deviceId.length >= 16) {
+      return { deviceId: saved.deviceId, deviceName: saved.deviceName || os.hostname(), clientType: "desktop" };
+    }
+  } catch {
+    // The first run (or a damaged file) creates a fresh installation identity.
+  }
+  const device = { deviceId: crypto.randomUUID(), deviceName: os.hostname(), clientType: "desktop" };
+  fs.mkdirSync(path.dirname(deviceFile), { recursive: true });
+  fs.writeFileSync(deviceFile, JSON.stringify(device, null, 2), { mode: 0o600 });
+  return device;
+}
+
+ipcMain.on("config:get-device-info", (event) => {
+  event.returnValue = getPersistentDeviceInfo();
+});
+
 const APP_ORIGIN = PRODUCTION_APP_ORIGIN;
 const UPDATE_MANIFEST_URL = `${APP_ORIGIN}/desktop-release.json`;
 const DEFAULT_RELEASE_PAGE_URL = `${APP_ORIGIN}/employee/app`;
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 let lastPromptedVersion = null;
+let mainWindowRef = null;
 
 function compareVersions(firstVersion, secondVersion) {
   const firstParts = String(firstVersion).replace(/^v/i, "").split(".");
@@ -142,6 +166,8 @@ function createWindow() {
     },
   });
 
+  mainWindowRef = mainWindow;
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
       const destination = new URL(url);
@@ -184,10 +210,29 @@ function createWindow() {
     if (!mainWindow.isDestroyed()) void checkForAppUpdate(mainWindow);
   }, UPDATE_CHECK_INTERVAL_MS);
   updateTimer.unref();
+
+  // On macOS, window-all-closed doesn't quit the app, so repeated
+  // close/reopen cycles would otherwise leak one updateTimer interval per
+  // closed window.
+  mainWindow.on("closed", () => {
+    clearInterval(updateTimer);
+    if (mainWindowRef === mainWindow) mainWindowRef = null;
+  });
 }
 
 const ownsSession = app.requestSingleInstanceLock();
 if (!ownsSession) app.quit();
+
+// A second launch (e.g. double-clicking the app icon while it's already
+// running, possibly minimized) quits immediately via the lock above; bring
+// the existing window to the foreground instead of leaving the user with no
+// visible response.
+app.on("second-instance", () => {
+  if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
+  if (mainWindowRef.isMinimized()) mainWindowRef.restore();
+  mainWindowRef.show();
+  mainWindowRef.focus();
+});
 
 app.whenReady().then(() => {
   if (!ownsSession) return;

@@ -54,6 +54,11 @@ const scheduleSchema = new mongoose.Schema(
   }
 );
 
+// Matches the query pattern in scheduleController.js's hasConflictingSchedule
+// (employee + date range lookup) and getAllSchedules (date-sorted, often
+// filtered by employee).
+scheduleSchema.index({ employee: 1, date: 1 });
+
 const Schedule = mongoose.model("Schedule", scheduleSchema);
 
 module.exports = Schedule;

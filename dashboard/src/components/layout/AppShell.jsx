@@ -3,11 +3,12 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Building2, CalendarDays, ChevronLeft, ClipboardList, Clock3, LayoutDashboard, LogOut, Menu, Search, Settings2, Users, WalletCards, X } from "lucide-react";
 import useAuth from "../../context/useAuth";
 import { workspaceNavigation } from "./workspaceNavigation";
+import { decideLoginRequest, getPendingLoginRequest } from "../../api/authApi";
 
 const icons = { Workspace: LayoutDashboard, "Time & attendance": Clock3, Finance: WalletCards, System: Settings2 };
 
 export default function AppShell({ children }) {
-  const { user, isAuthenticated, isAuthLoading, logout } = useAuth();
+  const { user, isAuthenticated, isAuthLoading, logout, clearAuth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -15,6 +16,9 @@ export default function AppShell({ children }) {
   const [search, setSearch] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
+  const [pendingLoginRequest, setPendingLoginRequest] = useState(null);
+  const [deviceDecisionError, setDeviceDecisionError] = useState("");
+  const [savingDeviceDecision, setSavingDeviceDecision] = useState(false);
 
   useEffect(() => { setMobileOpen(false); setSearch(""); }, [location.pathname]);
   useEffect(() => {
@@ -22,6 +26,27 @@ export default function AppShell({ children }) {
     if (mobileOpen) document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previousOverflow; };
   }, [mobileOpen]);
+  useEffect(() => {
+    if (!isAuthenticated || isAuthLoading || pendingLoginRequest) return undefined;
+    let active = true;
+    const monitor = async () => {
+      while (active) {
+        try {
+          const response = await getPendingLoginRequest();
+          if (active && response?.loginRequest) {
+            setPendingLoginRequest(response.loginRequest);
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } catch (error) {
+          if ([401, 403].includes(error?.response?.status)) return;
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+    };
+    void monitor();
+    return () => { active = false; };
+  }, [isAuthenticated, isAuthLoading, pendingLoginRequest]);
   if (!isAuthenticated || isAuthLoading || /login|password/.test(location.pathname)) return children;
 
   // HR and Manager both get the full business/operational navigation, same
@@ -54,9 +79,28 @@ export default function AppShell({ children }) {
       setSignOutError("Unable to close the active timer. Check your connection and try again.");
     } finally { setSigningOut(false); }
   };
+  const decideDevice = async (decision) => {
+    setSavingDeviceDecision(true);
+    setDeviceDecisionError("");
+    try {
+      await decideLoginRequest(pendingLoginRequest.requestId, decision);
+      if (decision === "allow") {
+        sessionStorage.setItem("sessionEndedMessage", "You allowed this account to continue on the new device.");
+        clearAuth();
+        navigate("/login", { replace: true });
+      } else {
+        setPendingLoginRequest(null);
+      }
+    } catch (error) {
+      setDeviceDecisionError(error?.response?.data?.message || "Unable to save your decision.");
+    } finally {
+      setSavingDeviceDecision(false);
+    }
+  };
 
   return (
     <div className={`crm-workspace${collapsed ? " is-compact" : ""}`}>
+      {pendingLoginRequest && <div className="crm-device-modal" role="dialog" aria-modal="true" aria-labelledby="crm-device-title"><section><p className="crm-auth-kicker">SECURITY CHECK</p><h2 id="crm-device-title">Another device is trying to sign in</h2><p><strong>{pendingLoginRequest.deviceName}</strong> requested access to this account.</p><p>Keep this device to reject that login, or allow the new device and end this session. A running timer will continue.</p>{deviceDecisionError && <p className="crm-device-error" role="alert">{deviceDecisionError}</p>}<div><button disabled={savingDeviceDecision} onClick={() => decideDevice("deny")}>Keep This Device</button><button disabled={savingDeviceDecision} onClick={() => decideDevice("allow")}>Allow New Device</button></div></section></div>}
       <a className="crm-skip-link" href="#workspace-content">Skip to content</a>
       {mobileOpen && <button className="crm-nav-scrim" aria-label="Close navigation" onClick={closeNavigation} />}
       <aside className={`crm-nav${mobileOpen ? " is-open" : ""}`} aria-label="Workspace navigation">
@@ -86,7 +130,7 @@ export default function AppShell({ children }) {
           {signOutError && <span className="crm-signout-error" role="alert">{signOutError}</span>}
           <button className="crm-signout" aria-label="Log out" title="Log out" disabled={signingOut} onClick={signOut}><LogOut size={17} /></button>
         </header>
-        <main id="workspace-content" className="crm-content" key={location.pathname}>
+        <main id="workspace-content" className="crm-content">
           <div className="crm-context-line"><span><CalendarDays size={14} />{new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</span><span>CRM / Workspace</span></div>
           {children}
         </main>

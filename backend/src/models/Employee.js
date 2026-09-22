@@ -279,6 +279,12 @@ employeeSchema.index(
   }
 );
 
+// Speed up the common employee list/report filters (getAllEmployees,
+// getMyTeam, task/schedule relation checks, etc.).
+employeeSchema.index({ team: 1 });
+employeeSchema.index({ teamLead: 1 });
+employeeSchema.index({ role: 1 });
+
 // Hash password before saving
 employeeSchema.pre("save", async function () {
   if (!this.isModified("password")) {

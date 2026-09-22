@@ -44,7 +44,7 @@ function AdminProjects() {
   });
 
   // LOAD PROJECTS
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (isCurrent = () => true) => {
     try {
       setLoading(true);
       setError("");
@@ -68,9 +68,11 @@ function AdminProjects() {
 
       const data = response.data;
 
+      if (!isCurrent()) return;
       setProjects(data.projects || []);
       setTotalPages(data.totalPages || 1);
     } catch (requestError) {
+      if (!isCurrent()) return;
       setError(
         getApiErrorMessage(
           requestError,
@@ -78,12 +80,16 @@ function AdminProjects() {
         )
       );
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [search, status, page, limit]);
 
   useEffect(() => {
-    void fetchProjects();
+    let active = true;
+    void fetchProjects(() => active);
+    return () => {
+      active = false;
+    };
   }, [fetchProjects]);
   useDataRefresh(fetchProjects);
 

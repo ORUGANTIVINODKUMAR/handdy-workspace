@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -142,9 +143,17 @@ function AdminSchedule() {
   // =========================================
   // LOAD SCHEDULES
   // =========================================
+  // Request-id guard: fast, repeated "Go" clicks (or filter changes) can let
+  // an earlier, slower response resolve after a later one and overwrite the
+  // table with stale results, so only the most recently issued request is
+  // allowed to update state.
+  const scheduleRequestRef = useRef(0);
   const loadSchedules = useCallback(async (
     filters = {}
   ) => {
+    const requestId = ++scheduleRequestRef.current;
+    const isCurrent = () => scheduleRequestRef.current === requestId;
+
     try {
       setScheduleLoading(true);
       setError("");
@@ -157,10 +166,12 @@ function AdminSchedule() {
 
       const { data } = await axiosInstance.get("/schedules", { params });
 
+      if (!isCurrent()) return;
       setSchedules(
         data.schedules || []
       );
     } catch (requestError) {
+      if (!isCurrent()) return;
       console.error(
         "Load schedule error:",
         requestError
@@ -170,7 +181,7 @@ function AdminSchedule() {
         getApiErrorMessage(requestError, "Unable to load schedules.")
       );
     } finally {
-      setScheduleLoading(false);
+      if (isCurrent()) setScheduleLoading(false);
     }
   }, []);
 

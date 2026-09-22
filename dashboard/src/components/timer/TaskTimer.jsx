@@ -53,11 +53,11 @@ function TaskTimer({ selectedProject, selectedTask }) {
     }, 1000);
   };
 
-  const restoreActiveTimer = async () => {
+  const restoreActiveTimer = async (isCurrent = () => true) => {
     try {
       const data = await getActiveTimer();
 
-      if (!data.timeLog) {
+      if (!isCurrent() || !data.timeLog) {
         return;
       }
 
@@ -137,6 +137,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
         }
       }
     } catch (requestError) {
+      if (!isCurrent()) return;
       setError(
         getApiErrorMessage(
           requestError,
@@ -148,9 +149,12 @@ function TaskTimer({ selectedProject, selectedTask }) {
 
 
   useEffect(() => {
-    restoreActiveTimer();
+    let isCurrent = true;
+
+    restoreActiveTimer(() => isCurrent);
 
     return () => {
+      isCurrent = false;
       clearTimerInterval();
     };
     // restore once on mount; timer helpers use refs for mutable state

@@ -3,6 +3,9 @@ const { escapeRegExp, getPagination } = require("../utils/requestUtils");
 const Team = require("../models/Team");
 const { syncEmployeeTeam, clearTeamsLedBy } = require("../services/teamAssignmentService");
 const { validateProjectRates, projectRatesRequiredForRole } = require("../services/projectRateService");
+const sendErrorResponse = require("../utils/sendErrorResponse");
+const { revokeEmployeeSessions } = require("../services/authSessionService");
+const generateToken = require("../utils/generateToken");
 
 const populateEmployeeRates = (query) => query.populate(
   "projectRates.project",
@@ -117,17 +120,14 @@ const getEmployeeById = async (req, res) => {
       employee,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to fetch employee.");
   }
 };
 // Update employee
 const updateEmployee = async (req, res) => {
   try {
   
-    const employee = await Employee.findById(req.params.id).select("+rememberedSessionTokenHash +rememberedSessionExpires");
+    const employee = await Employee.findById(req.params.id).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions");
 
     if (!employee) {
       return res.status(404).json({
@@ -172,17 +172,41 @@ const updateEmployee = async (req, res) => {
         });
       }
       employee.password = req.body.password;
+      employee.tokenVersion = (employee.tokenVersion || 0) + 1;
       employee.rememberedSessionTokenHash = null;
       employee.rememberedSessionExpires = null;
+      employee.rememberedSessions = [];
     }
 
     if (req.body.isActive === false) {
       employee.rememberedSessionTokenHash = null;
       employee.rememberedSessionExpires = null;
+      employee.rememberedSessions = [];
     }
 
     const requestedTeam = req.body.team !== undefined ? req.body.team : employee.team;
     await syncEmployeeTeam(employee, requestedTeam);
+
+    // Changing your own password (or deactivating your own account, though
+    // deleteEmployee already blocks self-deactivation there) bumps
+    // tokenVersion, which invalidates every outstanding token — including
+    // the one the admin is using right now. For a self password change,
+    // exclude the acting session from the revocation and hand back a fresh
+    // token in the response, mirroring authController.changePassword, so
+    // the admin isn't logged out mid-session.
+    const isSelfAccount = employee._id.equals(req.user._id);
+    let freshToken;
+    if (req.body.password !== undefined) {
+      if (isSelfAccount) {
+        await revokeEmployeeSessions(employee._id, "admin_password_reset", { excludeSessionId: req.authSession._id });
+        freshToken = generateToken(employee._id, employee.tokenVersion, req.authSession);
+      } else {
+        await revokeEmployeeSessions(employee._id, "admin_password_reset");
+      }
+    }
+    if (req.body.isActive === false) {
+      await revokeEmployeeSessions(employee._id, "account_deactivated");
+    }
     const updatedEmployee = await populateEmployeeRates(Employee.findById(employee._id)
       .populate("team", "teamName isActive")
       .populate("teamLead", "employeeId fullName"));
@@ -191,6 +215,7 @@ const updateEmployee = async (req, res) => {
       success: true,
       message: "Employee updated successfully.",
       employee: updatedEmployee,
+      ...(freshToken ? { token: freshToken } : {}),
     });
   } catch (error) {
     return handleEmployeeError(res, error);
@@ -256,7 +281,7 @@ const resetEmployeePassword = async (req, res) => {
       });
     }
 
-    const employee = await Employee.findById(req.params.id).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires");
+    const employee = await Employee.findById(req.params.id).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions");
 
     if (!employee) {
       return res.status(404).json({
@@ -269,11 +294,24 @@ const resetEmployeePassword = async (req, res) => {
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
     employee.rememberedSessionTokenHash = null;
     employee.rememberedSessionExpires = null;
+    employee.rememberedSessions = [];
     await employee.save();
+
+    // Same self-account guard as updateEmployee above: don't strand the
+    // admin's own session when they reset their own password this way.
+    const isSelfAccount = employee._id.equals(req.user._id);
+    let freshToken;
+    if (isSelfAccount) {
+      await revokeEmployeeSessions(employee._id, "admin_password_reset", { excludeSessionId: req.authSession._id });
+      freshToken = generateToken(employee._id, employee.tokenVersion, req.authSession);
+    } else {
+      await revokeEmployeeSessions(employee._id, "admin_password_reset");
+    }
 
     return res.status(200).json({
       success: true,
       message: "Password reset successfully.",
+      ...(freshToken ? { token: freshToken } : {}),
     });
   } catch (error) {
     return handleEmployeeError(res, error);
@@ -342,16 +380,13 @@ const assignTeamLead = async (req, res) => {
       employee,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to assign Team Lead.");
   }
 };
 // Deactivate an employee instead of deleting linked historical records.
 const deleteEmployee = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id).select("+rememberedSessionTokenHash +rememberedSessionExpires");
+    const employee = await Employee.findById(req.params.id).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions");
 
     if (!employee) {
       return res.status(404).json({
@@ -373,7 +408,9 @@ const deleteEmployee = async (req, res) => {
     employee.tokenVersion = (employee.tokenVersion || 0) + 1;
     employee.rememberedSessionTokenHash = null;
     employee.rememberedSessionExpires = null;
+    employee.rememberedSessions = [];
     await employee.save();
+    await revokeEmployeeSessions(employee._id, "account_deactivated");
 
     await Employee.updateMany(
       { teamLead: employee._id },
@@ -389,35 +426,40 @@ const deleteEmployee = async (req, res) => {
       message: "Employee deactivated successfully.",
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to deactivate employee.");
   }
 };
 // Get employees assigned to the logged-in Team Lead
 const getMyTeam = async (req, res) => {
   try {
     const teamLeadId = req.user._id;
+    const { page, limit, skip } = getPagination(req.query);
 
-    const employees = await populateEmployeeRates(Employee.find({
+    const filter = {
       teamLead: teamLeadId,
       isActive: true,
-    })
+    };
+
+    const totalEmployees = await Employee.countDocuments(filter);
+
+    const employees = await populateEmployeeRates(Employee.find(filter)
       .select("-password")
       .populate("team", "teamName")
-      .sort("fullName"));
+      .sort("fullName")
+      .skip(skip)
+      .limit(limit));
 
     return res.status(200).json({
       success: true,
+      page,
+      limit,
+      totalPages: Math.ceil(totalEmployees / limit),
       count: employees.length,
       employees,
+      totalEmployees,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to fetch your team.");
   }
 };
 // Team Lead - get one assigned team member by ID
@@ -443,10 +485,7 @@ const getMyTeamMemberById = async (req, res) => {
       employee,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to fetch team member.");
   }
 };
 module.exports = {

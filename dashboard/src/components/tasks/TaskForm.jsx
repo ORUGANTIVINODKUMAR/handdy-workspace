@@ -25,6 +25,7 @@ function TaskForm({
   const { user } = useAuth();
 
   const [taskName, setTaskName] = useState(initialTask?.taskName || "");
+  const [additionalTaskNames, setAdditionalTaskNames] = useState([]);
   const [taskType, setTaskType] = useState(initialTask?.taskType || "work");
   const [idleLogout, setIdleLogout] = useState(initialTask?.idleLogout === true);
   const [isActive, setIsActive] = useState(initialTask ? initialTask.isActive !== false : true);
@@ -134,8 +135,13 @@ function TaskForm({
     event.preventDefault();
     setError("");
 
-    if (!taskName.trim()) {
-      setError("Task name is required.");
+    const taskNames = [taskName, ...additionalTaskNames].map((name) => name.trim());
+    if (taskNames.some((name) => !name)) {
+      setError("Enter every task name, or remove unused task-name rows.");
+      return;
+    }
+    if (new Set(taskNames.map((name) => name.toLowerCase())).size !== taskNames.length) {
+      setError("Each task name in this batch must be unique.");
       return;
     }
     if (scope === "admin" && teams.length === 0) {
@@ -167,8 +173,10 @@ function TaskForm({
       const response =
         mode === "edit"
           ? await axiosInstance.put(`/tasks/${initialTask._id}`, payload)
-          : await axiosInstance.post("/tasks", payload);
-      onSaved(response.data.task);
+          : taskNames.length > 1
+            ? await axiosInstance.post("/tasks/bulk", { ...payload, taskNames })
+            : await axiosInstance.post("/tasks", payload);
+      onSaved(response.data.tasks || response.data.task);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Unable to save task."));
     } finally {
@@ -181,7 +189,7 @@ function TaskForm({
       {header}
       {error && <p className="admin-error-box" role="alert">{error}</p>}
 
-      <div className="admin-task-basics" style={{ gridTemplateColumns: "1fr" }}>
+      <div className="admin-task-basics admin-task-name-list" style={{ gridTemplateColumns: "1fr" }}>
         <label>
           Task name
           <input
@@ -191,6 +199,40 @@ function TaskForm({
             required
           />
         </label>
+
+        {mode === "create" && additionalTaskNames.map((name, index) => (
+          <div className="admin-task-name-row" key={index}>
+            <label>
+              Task name {index + 2}
+              <input
+                value={name}
+                onChange={(event) => setAdditionalTaskNames((current) =>
+                  current.map((item, itemIndex) => itemIndex === index ? event.target.value : item)
+                )}
+                placeholder="Enter another task name"
+                required
+              />
+            </label>
+            <button
+              type="button"
+              className="admin-task-name-remove"
+              onClick={() => setAdditionalTaskNames((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+              aria-label={`Remove task name ${index + 2}`}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+
+        {mode === "create" && additionalTaskNames.length < 24 && (
+          <button
+            type="button"
+            className="admin-task-name-add"
+            onClick={() => setAdditionalTaskNames((current) => [...current, ""])}
+          >
+            + Add another task name
+          </button>
+        )}
 
         {mode === "edit" && (
           <label>
@@ -349,7 +391,11 @@ function TaskForm({
           Cancel
         </button>
         <button type="submit" className="admin-add-task-save" disabled={saving}>
-          {saving ? "Saving..." : saveLabel || "Save task"}
+          {saving
+            ? "Saving..."
+            : mode === "create" && additionalTaskNames.length > 0
+              ? `Save ${additionalTaskNames.length + 1} tasks`
+              : saveLabel || "Save task"}
         </button>
       </footer>
     </form>

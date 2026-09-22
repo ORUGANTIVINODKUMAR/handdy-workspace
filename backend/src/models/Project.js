@@ -92,4 +92,9 @@ const projectSchema = new mongoose.Schema(
   }
 );
 
+// Speed up project filtering by team assignment and by client (task/project
+// scoping checks, client-facing project lists).
+projectSchema.index({ teams: 1 });
+projectSchema.index({ client: 1 });
+
 module.exports = mongoose.model("Project", projectSchema);

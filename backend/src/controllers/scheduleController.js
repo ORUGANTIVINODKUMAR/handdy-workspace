@@ -4,6 +4,7 @@ const Employee = require("../models/Employee");
 const Shift = require("../models/Shift");
 const { getPagination } = require("../utils/requestUtils");
 const { getBillingDateRange, getDateKeyInTimezone } = require("../utils/billingUtils");
+const sendErrorResponse = require("../utils/sendErrorResponse");
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
 
@@ -72,10 +73,7 @@ const createSchedule = async (req, res) => {
       schedule: populatedSchedule,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to create schedule.");
   }
 };
 
@@ -146,10 +144,7 @@ const getAllSchedules = async (req, res) => {
       schedules,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to fetch schedules.");
   }
 };
 
@@ -178,10 +173,7 @@ const getScheduleById = async (req, res) => {
       schedule,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to fetch schedule.");
   }
 };
 
@@ -244,10 +236,7 @@ const updateSchedule = async (req, res) => {
       schedule: updatedSchedule,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to update schedule.");
   }
 };
 
@@ -275,10 +264,7 @@ const deleteSchedule = async (req, res) => {
       message: "Schedule deactivated successfully.",
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendErrorResponse(res, error, "Unable to deactivate schedule.");
   }
 };
 

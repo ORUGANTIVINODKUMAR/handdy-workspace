@@ -19,6 +19,8 @@ const userRole = document.getElementById("userRole");
 
 const todayDate = document.getElementById("todayDate");
 const todayTotal = document.getElementById("todayTotal");
+const todayBreak = document.getElementById("todayBreak");
+const timesheetBreakDuration = document.getElementById("timesheetBreakDuration");
 const todayIdle = document.getElementById("todayIdle");
 const todaySessions = document.getElementById("todaySessions");
 const todayTasks = document.getElementById("todayTasks");
@@ -68,9 +70,19 @@ const clientName = document.getElementById("clientName");
 const currentDate = document.getElementById("currentDate");
 const addNoteButton = document.getElementById("addNoteButton");
 const timerNote = document.getElementById("timerNote");
+const deviceLoginModal = document.getElementById("deviceLoginModal");
+const requestingDeviceName = document.getElementById("requestingDeviceName");
+const deviceLoginMessage = document.getElementById("deviceLoginMessage");
+const keepThisDeviceButton = document.getElementById("keepThisDeviceButton");
+const allowNewDeviceButton = document.getElementById("allowNewDeviceButton");
 
 const API_BASE_URL =
   window.electronAPI?.apiBaseUrl || "http://localhost:5000/api";
+const DEVICE_INFO = window.electronAPI?.deviceInfo || {
+  deviceId: "desktop-development-device",
+  deviceName: "CRM desktop app",
+  clientType: "desktop",
+};
 let timerInterval = null;
 let idleMonitorInterval = null;
 let idlePolicyRefreshInterval = null;
@@ -85,6 +97,16 @@ let logoutInProgress = false;
 let timerAction = null;
 let activeTaskIdleLogout = false;
 let loginInProgress = false;
+let deviceApprovalMonitorActive = false;
+let pendingDeviceLoginRequest = null;
+// Idle seconds observed on the previous poll. getSystemIdleTime() counts
+// continuously since the last real input, so a brief activity burst that
+// happens between two polls can already have climbed back past
+// ACTIVE_AGAIN_SECONDS by the time the next poll runs. Tracking the previous
+// reading lets us detect a drop (this poll's idle seconds < last poll's),
+// which is evidence real activity happened since the last check, even when
+// the instantaneous value no longer looks "just active".
+let lastIdleSeconds = 0;
 
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const DATA_REFRESH_INTERVAL_MS = 10 * 1000;
@@ -98,6 +120,9 @@ const showTimerView = (viewName) => {
   timerNavigationButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.timerView === viewName);
   });
+
+  const user = getStoredUser();
+  if (user) localStorage.setItem(`desktop-view:${user._id || user.email || "user"}`, viewName);
 };
 
 timerNavigationButtons.forEach((button) => {
@@ -145,6 +170,13 @@ function isIntentionalBreak(timeLog = currentTimeLog) {
   return timeLog?.status === "paused" && ["break", "manual"].includes(getOpenPauseReason(timeLog));
 }
 
+// Shared classification used by both the "Idle time" total and the timeline
+// table so they can never disagree: any pause reason other than an
+// intentional break/manual pause counts as idle.
+function isIdlePauseReason(reason) {
+  return !["break", "manual"].includes(reason);
+}
+
 function normalizedDesktopPolicy(policy = {}) {
   const idle = Number(policy.idleThresholdMinutes);
   const thresholdMinutes = Number.isInteger(idle) && idle >= idleDefaults.minIdleMinutes && idle <= idleDefaults.maxIdleMinutes
@@ -178,6 +210,7 @@ async function loadIdlePolicy() {
 }
 
 function clearSessionLoops() {
+  deviceApprovalMonitorActive = false;
   clearInterval(idleMonitorInterval);
   clearInterval(idlePolicyRefreshInterval);
   clearInterval(timerInterval);
@@ -245,7 +278,17 @@ async function signOut(inactivity = false) {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     });
-    if (inactivity) sessionStorage.setItem("inactivityLogout", "1");
+    if (inactivity) {
+      sessionStorage.setItem("inactivityLogout", "1");
+      // Read the configured minutes right now (not a value cached earlier in
+      // this session) so the login page can show the policy that actually
+      // triggered this logout; idlePolicy itself does not survive the
+      // upcoming full-page navigation to index.html.
+      const logoutMinutes = idlePolicy ? Math.round(idlePolicy.logoutSeconds / 60) : NaN;
+      if (Number.isFinite(logoutMinutes) && logoutMinutes > 0) {
+        sessionStorage.setItem("inactivityLogoutMinutes", String(logoutMinutes));
+      }
+    }
     window.location.replace("./index.html");
   } catch {
     // Never discard the access token needed to close a potentially active backend timer.
@@ -261,12 +304,28 @@ async function checkSystemIdleState() {
   idleCheckInProgress = true;
   try {
     const idleSeconds = await window.electronAPI.getSystemIdleTime();
-    if (!getToken() || isIntentionalBreak() || !activeTaskIdleLogout) return;
+    const previousIdleSeconds = lastIdleSeconds;
+    lastIdleSeconds = idleSeconds;
+    if (!getToken() || isIntentionalBreak()) return;
+    // Session-level auto-logout: applies to every logged-in, non-break session
+    // regardless of whether a timer is running or that task's idleLogout flag.
+    // (idlePolicy.exempt intentionally does NOT block this - it only exempts
+    // an employee's active work from being auto-paused for idleness, see below.)
     if (logoutPending || idleSeconds >= idlePolicy.logoutSeconds) {
       await signOut(true);
-    } else if (!idlePolicy.exempt && currentTimeLog?.status === "running" && idleSeconds >= idlePolicy.thresholdSeconds) {
+      return;
+    }
+    // Per-task auto-pause/resume: only applies while the running task opted
+    // into idle enforcement (activeTaskIdleLogout) and the employee isn't
+    // idle-tracking exempt.
+    if (!activeTaskIdleLogout || idlePolicy.exempt) return;
+    if (currentTimeLog?.status === "running" && idleSeconds >= idlePolicy.thresholdSeconds) {
       await runTimerAction(() => pauseTimer("idle"));
-    } else if (!idlePolicy.exempt && currentTimeLog?.status === "paused" && automaticIdlePause && idleSeconds <= ACTIVE_AGAIN_SECONDS) {
+    } else if (
+      currentTimeLog?.status === "paused" &&
+      automaticIdlePause &&
+      (idleSeconds <= ACTIVE_AGAIN_SECONDS || idleSeconds < previousIdleSeconds)
+    ) {
       await runTimerAction(() => resumeTimer("idle"));
     }
   } catch {
@@ -330,25 +389,41 @@ let tasksProjectId = "";
 let projectRequestId = 0;
 let taskRequestId = 0;
 
-// TEMPORARY: work-selection diagnostics. Set to false (or remove) once verified.
-const DEBUG_WORK_SELECTION = true;
-const debugWorkSelection = (...args) => {
-  if (DEBUG_WORK_SELECTION) console.log("[work-selection]", ...args);
-};
+function getWorkSelectionStorageKey() {
+  const user = getStoredUser();
+  return `desktop-work-selection:${user?._id || user?.email || "user"}`;
+}
+
+function restoreWorkSelection() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(getWorkSelectionStorageKey()) || "{}");
+    selectedProjectId = String(saved.projectId || "");
+    selectedTaskId = String(saved.taskId || "");
+  } catch {
+    selectedProjectId = "";
+    selectedTaskId = "";
+  }
+}
+
+function saveWorkSelection() {
+  localStorage.setItem(getWorkSelectionStorageKey(), JSON.stringify({
+    projectId: selectedProjectId,
+    taskId: selectedTaskId,
+  }));
+}
 
 function setSelectedProjectId(projectId, source) {
   const nextProjectId = String(projectId || "");
   if (nextProjectId === selectedProjectId) return;
-  debugWorkSelection("selectedProjectId changed:", selectedProjectId || "(none)", "->", nextProjectId || "(none)", "via", source);
-  if (!nextProjectId && DEBUG_WORK_SELECTION) console.trace("[work-selection] selectedProjectId cleared by", source);
   selectedProjectId = nextProjectId;
+  saveWorkSelection();
 }
 
 function setSelectedTaskId(taskId, source) {
   const nextTaskId = String(taskId || "");
   if (nextTaskId === selectedTaskId) return;
-  debugWorkSelection("selectedTaskId changed:", selectedTaskId || "(none)", "->", nextTaskId || "(none)", "via", source);
   selectedTaskId = nextTaskId;
+  saveWorkSelection();
 }
 
 const hasOption = (select, value) =>
@@ -413,8 +488,6 @@ async function loadProjects() {
     }
 
     const projects = Array.isArray(data.projects) ? data.projects : [];
-    debugWorkSelection("Projects refreshed:", projects.map((project) => ({ id: project._id, name: project.projectName })));
-    debugWorkSelection("Current selectedProjectId:", selectedProjectId || "(none)");
 
     // Rebuilding the options closes an open dropdown and momentarily shows
     // the placeholder, so only rebuild when the project list really changed.
@@ -472,8 +545,6 @@ async function loadTasks(projectId, { background = false } = {}) {
     renderTaskPlaceholder("Loading tasks...");
   }
 
-  debugWorkSelection("Loading tasks for project:", projectId);
-
   try {
     const response = await fetch(
       `${API_BASE_URL}/tasks?project=${encodeURIComponent(projectId)}&active=true&limit=100`,
@@ -491,8 +562,6 @@ async function loadTasks(projectId, { background = false } = {}) {
     // Ignore responses for a project the employee has already moved away from.
     if (requestId !== taskRequestId || projectId !== selectedProjectId) return;
 
-    debugWorkSelection("Task API response:", data);
-
     if (!response.ok) {
       if (keepExistingTasks) return;
       renderTaskPlaceholder("Unable to load tasks");
@@ -503,7 +572,6 @@ async function loadTasks(projectId, { background = false } = {}) {
     }
 
     const tasks = Array.isArray(data.tasks) ? data.tasks : [];
-    debugWorkSelection("Available tasks:", tasks.map((task) => ({ id: task._id, name: task.taskName })));
 
     if (tasks.length === 0) {
       renderTaskPlaceholder("No tasks available for this project");
@@ -554,6 +622,102 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
+function endRevokedDeviceSession(reason = "This account is now active on another device.") {
+  deviceApprovalMonitorActive = false;
+  clearSessionLoops();
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  ["activeTimer", "currentTimeLog", "timerState", "timerStartedAt", "timerElapsedSeconds"].forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+  sessionStorage.setItem("sessionEndedMessage", reason);
+  window.location.replace("./index.html");
+}
+
+async function waitForDeviceApproval(loginRequest) {
+  message.textContent = `Waiting for approval on ${loginRequest.activeDevice?.deviceName || "the active device"}...`;
+  while (loginInProgress) {
+    const response = await fetch(`${API_BASE_URL}/auth/login-requests/${encodeURIComponent(loginRequest.requestId)}/wait`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestToken: loginRequest.requestToken }),
+      signal: AbortSignal.timeout(25_000),
+    });
+    const data = await response.json();
+    if (response.status === 202) continue;
+    if (!response.ok) {
+      message.textContent = data.message || "The login request was not approved.";
+      return null;
+    }
+    return data;
+  }
+  return null;
+}
+
+function showDeviceLoginRequest(loginRequest) {
+  pendingDeviceLoginRequest = loginRequest;
+  requestingDeviceName.textContent = loginRequest.deviceName || "Another device";
+  deviceLoginMessage.textContent = "";
+  keepThisDeviceButton.disabled = false;
+  allowNewDeviceButton.disabled = false;
+  deviceLoginModal.hidden = false;
+}
+
+async function monitorDeviceLoginRequests() {
+  if (deviceApprovalMonitorActive || isLoginPage || !getToken()) return;
+  deviceApprovalMonitorActive = true;
+  while (deviceApprovalMonitorActive && getToken() && !logoutPending) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login-requests/pending`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        signal: AbortSignal.timeout(25_000),
+      });
+      const data = await response.json();
+      if ([401, 403].includes(response.status)) {
+        endRevokedDeviceSession(data.message);
+        return;
+      }
+      if (response.ok && data.loginRequest) {
+        showDeviceLoginRequest(data.loginRequest);
+        deviceApprovalMonitorActive = false;
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } catch (error) {
+      if (error.name !== "TimeoutError") await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+}
+
+async function decideDeviceLogin(decision) {
+  if (!pendingDeviceLoginRequest) return;
+  keepThisDeviceButton.disabled = true;
+  allowNewDeviceButton.disabled = true;
+  deviceLoginMessage.textContent = decision === "allow" ? "Authorizing the new device..." : "Keeping this device active...";
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login-requests/${encodeURIComponent(pendingDeviceLoginRequest.requestId)}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ decision }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Unable to save the decision.");
+    if (decision === "allow") {
+      endRevokedDeviceSession("You allowed this account to continue on the new device.");
+      return;
+    }
+    pendingDeviceLoginRequest = null;
+    deviceLoginModal.hidden = true;
+    void monitorDeviceLoginRequests();
+  } catch (error) {
+    deviceLoginMessage.textContent = error.message;
+    keepThisDeviceButton.disabled = false;
+    allowNewDeviceButton.disabled = false;
+  }
+}
+
 async function refreshCurrentUser() {
   const token = getToken();
   if (!token || isLoginPage || logoutPending) return true;
@@ -564,9 +728,8 @@ async function refreshCurrentUser() {
       signal: AbortSignal.timeout(10000),
     });
     if ([401, 403].includes(response.status)) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.replace("./index.html");
+      const data = await response.json().catch(() => ({}));
+      endRevokedDeviceSession(data.message);
       return false;
     }
     if (!response.ok) return true;
@@ -618,7 +781,8 @@ function getRememberedUser() {
 function showLoggedInView(user) {
   if (loginSection) loginSection.hidden = true;
   if (appSection) appSection.hidden = false;
-  showTimerView("timer");
+  const savedView = localStorage.getItem(`desktop-view:${user._id || user.email || "user"}`);
+  showTimerView(savedView === "dashboard" ? "dashboard" : "timer");
   updateUserDetails(user);
 }
 
@@ -650,55 +814,153 @@ function isToday(value) {
   );
 }
 
-function getTimeLogWorkedSeconds(timeLog) {
-  if (
-    timeLog.status === "stopped" &&
-    Number.isFinite(Number(timeLog.totalWorkedSeconds))
-  ) {
-    return Math.max(Number(timeLog.totalWorkedSeconds), 0);
-  }
-
-  return calculateWorkedSeconds(timeLog);
-}
-
-function getTimeLogIdleSeconds(timeLog) {
-  if (
-    timeLog.status === "stopped" &&
-    Number.isFinite(Number(timeLog.totalIdleSeconds))
-  ) {
-    return Math.max(Number(timeLog.totalIdleSeconds), 0);
-  }
-
-  const now = Date.now();
-  return (timeLog.pauses || []).reduce((total, pause) => {
-    if (pause.reason !== "idle" || !pause.pausedAt) {
-      return total;
-    }
-
-    const end = pause.resumedAt
-      ? new Date(pause.resumedAt).getTime()
-      : now;
-    const start = new Date(pause.pausedAt).getTime();
-
-    return total + Math.max(0, Math.floor((end - start) / 1000));
-  }, 0);
-}
-
 function appendTimesheetCell(row, value) {
   const cell = document.createElement("td");
   cell.textContent = value;
   row.appendChild(cell);
 }
 
+function validTimelineTime(value) {
+  const time = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isFinite(time) ? time : null;
+}
+
+function buildTimeLogTimeline(timeLog, now = Date.now()) {
+  const sessionStart = validTimelineTime(timeLog?.startedAt);
+  if (sessionStart === null) return [];
+  const stoppedAt = validTimelineTime(timeLog?.stoppedAt);
+  const sessionEnd = stoppedAt ?? now;
+  if (sessionEnd < sessionStart) return [];
+
+  const pauses = [...(timeLog.pauses || [])]
+    .map((pause) => ({
+      ...pause,
+      startMs: validTimelineTime(pause.pausedAt),
+      endMs: validTimelineTime(pause.resumedAt),
+    }))
+    .filter((pause) => pause.startMs !== null)
+    .sort((first, second) => first.startMs - second.startMs);
+  const counters = { work: 0, break: 0, idle: 0 };
+  const entries = [];
+  let cursor = sessionStart;
+
+  const addEntry = (type, startMs, endMs, open = false) => {
+    if (endMs < startMs) return;
+    counters[type] += 1;
+    entries.push({
+      type,
+      sequence: counters[type],
+      start: new Date(startMs),
+      end: open ? null : new Date(endMs),
+      milliseconds: Math.max(0, endMs - startMs),
+      seconds: Math.max(0, Math.floor((endMs - startMs) / 1000)),
+      open,
+    });
+  };
+
+  pauses.forEach((pause) => {
+    const pauseStart = Math.min(sessionEnd, Math.max(sessionStart, pause.startMs));
+    if (pauseStart > cursor) addEntry("work", cursor, pauseStart);
+    const openPause = pause.endMs === null && stoppedAt === null;
+    const pauseEnd = Math.min(sessionEnd, Math.max(pauseStart, pause.endMs ?? sessionEnd));
+    addEntry(isIdlePauseReason(pause.reason) ? "idle" : "break", pauseStart, pauseEnd, openPause);
+    cursor = Math.max(cursor, pauseEnd);
+  });
+
+  if (cursor < sessionEnd || (entries.length === 0 && cursor === sessionEnd)) {
+    addEntry("work", cursor, sessionEnd, stoppedAt === null);
+  }
+
+  const workEntries = entries.filter((entry) => entry.type === "work");
+  const timestampWorkedSeconds = Math.floor(
+    workEntries.reduce((total, entry) => total + entry.milliseconds, 0) / 1000
+  );
+  const targetWorkedSeconds = timeLog.status === "stopped"
+    && Number.isFinite(Number(timeLog.totalWorkedSeconds))
+    ? Math.floor(Math.max(0, Number(timeLog.totalWorkedSeconds)))
+    : timestampWorkedSeconds;
+  if (targetWorkedSeconds > 0 && workEntries.length === 0) {
+    const reconciliationEntry = {
+      type: "work",
+      sequence: 1,
+      start: new Date(sessionStart),
+      end: new Date(sessionStart),
+      milliseconds: 0,
+      seconds: 0,
+      open: false,
+      reconciled: true,
+    };
+    entries.unshift(reconciliationEntry);
+    workEntries.push(reconciliationEntry);
+  }
+  let workRemainder = targetWorkedSeconds
+    - workEntries.reduce((total, entry) => total + entry.seconds, 0);
+  const remainderOrder = [...workEntries].sort(
+    (first, second) => (second.milliseconds % 1000) - (first.milliseconds % 1000)
+  );
+  for (let index = 0; workRemainder > 0 && remainderOrder.length; index += 1) {
+    remainderOrder[index % remainderOrder.length].seconds += 1;
+    workRemainder -= 1;
+  }
+  const reductionOrder = [...workEntries].sort((first, second) => second.seconds - first.seconds);
+  for (let index = 0; workRemainder < 0 && reductionOrder.some((entry) => entry.seconds > 0); index += 1) {
+    const entry = reductionOrder[index % reductionOrder.length];
+    if (entry.seconds > 0) {
+      entry.seconds -= 1;
+      workRemainder += 1;
+    }
+  }
+  return entries;
+}
+
+function appendTimelineTypeCell(row, entry, timeLog) {
+  const cell = document.createElement("td");
+  const badge = document.createElement("span");
+  badge.className = `timesheet-entry-badge timesheet-entry-${entry.type}`;
+  badge.textContent = entry.type;
+  cell.appendChild(badge);
+  if (entry.type === "work") {
+    const project = document.createElement("span");
+    project.className = "timesheet-entry-project";
+    project.textContent = timeLog.project?.projectName || "Unassigned";
+    cell.appendChild(project);
+  }
+  row.appendChild(cell);
+}
+
+function buildChronologicalTimeline(timeLogs, now = Date.now()) {
+  return timeLogs
+    .flatMap((timeLog, timeLogIndex) =>
+      buildTimeLogTimeline(timeLog, now).map((entry, entryIndex) => ({
+        timeLog,
+        entry,
+        timeLogIndex,
+        entryIndex,
+      }))
+    )
+    .sort((first, second) =>
+      first.entry.start.getTime() - second.entry.start.getTime()
+      || first.timeLogIndex - second.timeLogIndex
+      || first.entryIndex - second.entryIndex
+    );
+}
+
+function summarizeTimeline(timeline) {
+  return timeline.reduce((totals, { entry }) => {
+    if (entry.type === "work") totals.workSeconds += entry.seconds;
+    if (entry.type === "idle") totals.idleSeconds += entry.seconds;
+    if (entry.type === "break" && !entry.open) totals.breakSeconds += entry.seconds;
+    return totals;
+  }, { workSeconds: 0, breakSeconds: 0, idleSeconds: 0 });
+}
+
 function renderTodayTimesheet(timeLogs) {
-  const totalSeconds = timeLogs.reduce(
-    (total, timeLog) => total + getTimeLogWorkedSeconds(timeLog),
-    0
-  );
-  const totalIdleSeconds = timeLogs.reduce(
-    (total, timeLog) => total + getTimeLogIdleSeconds(timeLog),
-    0
-  );
+  const timeline = buildChronologicalTimeline(timeLogs);
+  const {
+    workSeconds: totalSeconds,
+    idleSeconds: totalIdleSeconds,
+    breakSeconds: totalBreakSeconds,
+  } = summarizeTimeline(timeline);
   const taskIds = new Set(
     timeLogs.map((timeLog) =>
       String(timeLog.task?._id || timeLog.task || "unassigned")
@@ -712,46 +974,41 @@ function renderTodayTimesheet(timeLogs) {
     year: "numeric",
   }).format(new Date());
   todayTotal.textContent = formatDuration(totalSeconds);
+  todayBreak.textContent = formatDuration(totalBreakSeconds);
   todayIdle.textContent = formatDuration(totalIdleSeconds);
   todaySessions.textContent = String(timeLogs.length);
   todayTasks.textContent = String(taskIds.size);
   todayTimesheetBody.textContent = "";
   todayTimesheetEmpty.hidden = timeLogs.length > 0;
 
-  timeLogs.forEach((timeLog) => {
-    const row = document.createElement("tr");
-    const status = timeLog.status || "unknown";
+  timeline.forEach(({ timeLog, entry }) => {
+      const row = document.createElement("tr");
+      row.className = `timesheet-timeline-row timesheet-${entry.type}-row`;
+      appendTimelineTypeCell(row, entry, timeLog);
+      appendTimesheetCell(
+        row,
+        entry.type === "work"
+          ? `${timeLog.task?.taskName || "Task"} · Work ${entry.sequence}`
+          : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`
+      );
+      appendTimesheetCell(row, formatTime(entry.start));
+      appendTimesheetCell(row, entry.end ? formatTime(entry.end) : "In progress");
 
-    appendTimesheetCell(
-      row,
-      timeLog.project?.projectName || "Unassigned"
-    );
-    appendTimesheetCell(
-      row,
-      timeLog.task?.taskName || "Unassigned"
-    );
-    appendTimesheetCell(row, formatTime(timeLog.startedAt));
-    appendTimesheetCell(
-      row,
-      timeLog.stoppedAt ? formatTime(timeLog.stoppedAt) : "Active"
-    );
+      const status = entry.open
+        ? entry.type === "break" ? "break" : entry.type === "idle" ? "paused" : "running"
+        : "completed";
+      const statusCell = document.createElement("td");
+      const statusBadge = document.createElement("span");
+      statusBadge.className = `timesheet-status timesheet-status-${status}`;
+      statusBadge.textContent = entry.open
+        ? entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running"
+        : "Completed";
+      statusCell.appendChild(statusBadge);
+      row.appendChild(statusCell);
 
-    const statusCell = document.createElement("td");
-    const statusBadge = document.createElement("span");
-    statusBadge.className = `timesheet-status timesheet-status-${status}`;
-    statusBadge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-    statusCell.appendChild(statusBadge);
-    row.appendChild(statusCell);
-
-    appendTimesheetCell(
-      row,
-      formatDuration(getTimeLogIdleSeconds(timeLog))
-    );
-    appendTimesheetCell(
-      row,
-      formatDuration(getTimeLogWorkedSeconds(timeLog))
-    );
-    todayTimesheetBody.appendChild(row);
+      appendTimesheetCell(row, entry.type === "idle" ? formatDuration(entry.seconds) : "—");
+      appendTimesheetCell(row, formatDuration(entry.seconds));
+      todayTimesheetBody.appendChild(row);
   });
 }
 
@@ -786,8 +1043,12 @@ async function loadTodayTimesheet() {
       return;
     }
 
+    // An overnight session started before midnight but still active (not yet
+    // stopped) should always show in "today's" view, even though its
+    // startedAt falls on the previous calendar day. Completed sessions keep
+    // their existing start-day attribution.
     const todaysTimeLogs = (data.timeLogs || []).filter((timeLog) =>
-      isToday(timeLog.startedAt)
+      isToday(timeLog.startedAt) || timeLog.status === "running" || timeLog.status === "paused"
     );
 
     renderTodayTimesheet(todaysTimeLogs);
@@ -813,35 +1074,46 @@ function formatDuration(totalSeconds) {
     .join(":");
 }
 
-function calculateWorkedSeconds(timeLog) {
-  const now = new Date();
-  const startedAt = new Date(timeLog.startedAt);
+function calculateCurrentWorkSeconds(timeLog, now = Date.now()) {
+  const startedAt = validTimelineTime(timeLog?.startedAt);
+  if (startedAt === null) return 0;
 
-  let pausedMilliseconds = 0;
+  const intentionalBreaks = (timeLog.pauses || [])
+    .filter((pause) => ["break", "manual"].includes(pause.reason) && pause.pausedAt)
+    .sort((first, second) =>
+      new Date(first.pausedAt).getTime() - new Date(second.pausedAt).getTime()
+    );
+  const activeBreak = [...intentionalBreaks].reverse().find((pause) => !pause.resumedAt);
+  const lastCompletedBreak = [...intentionalBreaks].reverse().find((pause) => pause.resumedAt);
+  const segmentStart = lastCompletedBreak
+    ? validTimelineTime(lastCompletedBreak.resumedAt)
+    : startedAt;
+  if (segmentStart === null) return 0;
 
-  for (const pause of timeLog.pauses || []) {
-    const pausedAt = new Date(pause.pausedAt);
-
-    const pauseEnd = pause.resumedAt
-      ? new Date(pause.resumedAt)
+  const openPause = [...(timeLog.pauses || [])]
+    .reverse()
+    .find((pause) => pause.pausedAt && !pause.resumedAt);
+  const segmentEnd = activeBreak
+    ? validTimelineTime(activeBreak.pausedAt)
+    : openPause
+      ? validTimelineTime(openPause.pausedAt)
       : now;
+  const resolvedEnd = segmentEnd ?? now;
+  const idleMilliseconds = (timeLog.pauses || []).reduce((total, pause) => {
+    if (!isIdlePauseReason(pause.reason) || !pause.pausedAt) return total;
+    const pauseStart = Math.max(segmentStart, validTimelineTime(pause.pausedAt) ?? resolvedEnd);
+    const pauseEnd = Math.min(
+      resolvedEnd,
+      pause.resumedAt ? validTimelineTime(pause.resumedAt) ?? resolvedEnd : resolvedEnd
+    );
+    return total + Math.max(0, pauseEnd - pauseStart);
+  }, 0);
 
-    pausedMilliseconds +=
-      pauseEnd.getTime() - pausedAt.getTime();
-  }
-
-  const elapsedMilliseconds =
-    now.getTime() - startedAt.getTime();
-
-  return Math.max(
-    Math.floor(
-      (elapsedMilliseconds - pausedMilliseconds) / 1000
-    ),
-    0
-  );
+  return Math.max(0, Math.floor((resolvedEnd - segmentStart - idleMilliseconds) / 1000));
 }
 
 function calculateBreakSeconds(timeLog) {
+  if (!isIntentionalBreak(timeLog)) return 0;
   const now = Date.now();
   const currentBreak = [...(timeLog?.pauses || [])]
     .reverse()
@@ -852,19 +1124,43 @@ function calculateBreakSeconds(timeLog) {
 
 function updateBreakUI(timeLog = currentTimeLog) {
   const onBreak = isIntentionalBreak(timeLog);
-  if (breakClock) breakClock.hidden = !onBreak;
-  if (breakDuration) breakDuration.textContent = formatDuration(calculateBreakSeconds(timeLog));
-  if (breakTimerButton) breakTimerButton.textContent = onBreak ? "End Break" : "Break";
+  if (breakClock) breakClock.hidden = false;
+  const currentBreakDuration = formatDuration(calculateBreakSeconds(timeLog));
+  if (breakDuration) breakDuration.textContent = currentBreakDuration;
+  if (timesheetBreakDuration) timesheetBreakDuration.textContent = currentBreakDuration;
+  if (breakTimerButton) breakTimerButton.textContent = onBreak ? "End Break" : "Start Break";
+}
+
+// Notes can only be attached when a new timer is started (there is no
+// "update note on a running timer" endpoint), so the note controls stay
+// disabled - never hidden, so the feature is still discoverable - whenever
+// a timer is already running or paused.
+function updateNoteControlsUI(timeLog = currentTimeLog) {
+  const timerActive = Boolean(timeLog);
+  if (addNoteButton) {
+    addNoteButton.disabled = timerActive;
+    addNoteButton.title = timerActive
+      ? "Notes can only be added when starting a new timer."
+      : "";
+  }
+  if (timerNote) {
+    timerNote.disabled = timerActive;
+  }
+}
+
+function stopLiveDuration() {
+  if (timerInterval !== null) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
 }
 
 function startLiveDuration(timeLog) {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-  }
+  stopLiveDuration();
 
   const updateDuration = () => {
     const workedSeconds =
-      calculateWorkedSeconds(timeLog);
+      calculateCurrentWorkSeconds(timeLog);
 
     timerDuration.textContent =
       formatDuration(workedSeconds);
@@ -905,6 +1201,7 @@ async function loadActiveTimer() {
       return;
     }
 
+    stopLiveDuration();
     if (!data.timeLog) {
       currentTimeLog = null;
       automaticIdlePause = false;
@@ -912,6 +1209,7 @@ async function loadActiveTimer() {
       timerStatus.textContent = "Not Started";
       timerDuration.textContent = "00:00:00";
       updateBreakUI(null);
+      updateNoteControlsUI(null);
 
       startTimerButton.disabled = false;
       pauseTimerButton.disabled = true;
@@ -930,7 +1228,7 @@ async function loadActiveTimer() {
     timerStatus.textContent =
       timeLog.status === "paused"
         ? getOpenPauseReason(timeLog) === "idle"
-          ? "Paused due to inactivity"
+          ? "Idle"
           : "On Break"
         : "Working";
     updateBreakUI(timeLog);
@@ -954,6 +1252,7 @@ async function loadActiveTimer() {
 
     projectSelect.disabled = true;
     taskSelect.disabled = true;
+    updateNoteControlsUI(timeLog);
 
     startTimerButton.disabled = true;
 
@@ -966,7 +1265,7 @@ async function loadActiveTimer() {
       pauseTimerButton.disabled = getOpenPauseReason(timeLog) === "idle";
 
       const workedSeconds =
-        calculateWorkedSeconds(timeLog);
+        calculateCurrentWorkSeconds(timeLog);
 
       timerDuration.textContent =
         formatDuration(workedSeconds);
@@ -1012,16 +1311,14 @@ async function stopTimer() {
       return;
     }
 
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
+    stopLiveDuration();
 
     currentTimeLog = null;
     automaticIdlePause = false;
     activeTaskIdleLogout = false;
     timerStatus.textContent = "Stopped";
     updateBreakUI(null);
+    updateNoteControlsUI(null);
 
     timerDuration.textContent = formatDuration(
       data.timeLog.totalWorkedSeconds || 0
@@ -1088,26 +1385,24 @@ async function pauseTimer(reason = "manual") {
       return;
     }
 
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
+    stopLiveDuration();
 
     currentTimeLog = data.timeLog;
     automaticIdlePause = reason === "idle";
 
     const workedSeconds =
-      calculateWorkedSeconds(data.timeLog);
+      calculateCurrentWorkSeconds(data.timeLog);
 
     timerDuration.textContent =
       formatDuration(workedSeconds);
 
     timerStatus.textContent = reason === "idle" ? "Idle" : "On Break";
     updateBreakUI(data.timeLog);
+    updateNoteControlsUI(data.timeLog);
     if (reason === "break") startLiveDuration(data.timeLog);
 
     timerMessage.textContent =
-      data.message || "Timer paused successfully.";
+      reason === "break" ? "Break started successfully." : data.message || "Timer paused successfully.";
 
     startTimerButton.disabled = true;
     pauseTimerButton.disabled = reason === "idle";
@@ -1162,13 +1457,15 @@ async function resumeTimer(reason = "manual") {
       return;
     }
 
+    stopLiveDuration();
     currentTimeLog = data.timeLog;
     automaticIdlePause = false;
     timerStatus.textContent = "Working";
     updateBreakUI(data.timeLog);
+    updateNoteControlsUI(data.timeLog);
 
     timerMessage.textContent =
-      data.message || "Timer resumed successfully.";
+      reason === "break" ? "Break ended successfully." : data.message || "Timer resumed successfully.";
 
     startTimerButton.disabled = true;
     pauseTimerButton.disabled = false;
@@ -1179,6 +1476,7 @@ async function resumeTimer(reason = "manual") {
     taskSelect.disabled = true;
 
     startLiveDuration(data.timeLog);
+    if (reason === "break") void loadTodayTimesheet();
   } catch (error) {
     timerMessage.textContent =
       "Unable to reach the backend server.";
@@ -1224,6 +1522,7 @@ async function startTimer() {
         body: JSON.stringify({
           project: projectId,
           task: taskId,
+          note: (timerNote?.value || "").trim() || undefined,
         }),
       }
     );
@@ -1247,6 +1546,7 @@ async function startTimer() {
       || taskSelect.selectedOptions[0]?.dataset.idleLogout === "true";
     automaticIdlePause = false;
     updateBreakUI(data.timeLog);
+    updateNoteControlsUI(data.timeLog);
     startLiveDuration(data.timeLog);
 
     timerMessage.textContent =
@@ -1260,6 +1560,11 @@ async function startTimer() {
 
     projectSelect.disabled = true;
     taskSelect.disabled = true;
+
+    if (timerNote) {
+      timerNote.value = "";
+      timerNote.hidden = true;
+    }
   } catch (error) {
     timerMessage.textContent =
       "Unable to reach the backend server.";
@@ -1271,8 +1576,6 @@ async function startTimer() {
 projectSelect?.addEventListener(
   "change",
   async () => {
-    debugWorkSelection("Project selected:", projectSelect.value);
-
     // Keep the new project; only the previous project's task is cleared.
     setSelectedProjectId(projectSelect.value, "employee changed project");
     setSelectedTaskId("", "employee changed project");
@@ -1283,7 +1586,6 @@ projectSelect?.addEventListener(
 );
 
 taskSelect?.addEventListener("change", () => {
-  debugWorkSelection("Task selected:", taskSelect.value);
   setSelectedTaskId(taskSelect.value, "employee changed task");
 });
 
@@ -1333,15 +1635,20 @@ loginForm?.addEventListener(
             "Content-Type": "application/json",
           },
 
-          body: JSON.stringify(useRememberedSession ? { rememberedSessionToken } : { email, password }),
+          body: JSON.stringify(useRememberedSession
+            ? { rememberedSessionToken, ...DEVICE_INFO }
+            : { email, password, ...DEVICE_INFO }),
           signal: AbortSignal.timeout(15000),
         }
       );
 
-      const data = await response.json();
+      let data = await response.json();
       console.debug(`[desktop-auth] Login response: ${response.status} ${response.url}`);
 
-      if (!response.ok) {
+      if (response.status === 409 && data.code === "DEVICE_APPROVAL_REQUIRED") {
+        data = await waitForDeviceApproval(data.loginRequest);
+        if (!data) return;
+      } else if (!response.ok) {
         if (useRememberedSession && [401, 403].includes(response.status)) {
           localStorage.removeItem("rememberedSessionToken");
           localStorage.removeItem("rememberedUser");
@@ -1426,14 +1733,24 @@ stopTimerButton?.addEventListener(
 breakTimerButton?.addEventListener("click", () => runTimerAction(() =>
   isIntentionalBreak() ? resumeTimer("break") : pauseTimer("break")
 ));
-logoutButton?.addEventListener("click", () => signOut(logoutPending));
+logoutButton?.addEventListener("click", () => signOut(false));
+keepThisDeviceButton?.addEventListener("click", () => decideDeviceLogin("deny"));
+allowNewDeviceButton?.addEventListener("click", () => decideDeviceLogin("allow"));
 
 async function initializeApp() {
   const storedUser = getStoredUser();
   const token = getToken();
   if (isLoginPage && sessionStorage.getItem("inactivityLogout")) {
-    message.textContent = "You were logged out after 3 minutes of inactivity.";
+    const logoutMinutes = Number(sessionStorage.getItem("inactivityLogoutMinutes"));
+    message.textContent = Number.isFinite(logoutMinutes) && logoutMinutes > 0
+      ? `You were logged out after ${logoutMinutes} minute${logoutMinutes === 1 ? "" : "s"} of inactivity.`
+      : "You were logged out after a period of inactivity.";
     sessionStorage.removeItem("inactivityLogout");
+    sessionStorage.removeItem("inactivityLogoutMinutes");
+  }
+  if (isLoginPage && sessionStorage.getItem("sessionEndedMessage")) {
+    message.textContent = sessionStorage.getItem("sessionEndedMessage");
+    sessionStorage.removeItem("sessionEndedMessage");
   }
 
   if (isLoginPage && !token && localStorage.getItem("rememberedSessionToken")) {
@@ -1477,10 +1794,12 @@ async function initializeApp() {
       // Monitoring still starts with safe defaults while connectivity recovers.
       timerMessage.textContent = "CRM could not refresh your session. Please check your connection.";
     }
+    restoreWorkSelection();
     showLoggedInView(storedUser);
 
     await loadIdlePolicy();
     startIdleMonitor();
+    void monitorDeviceLoginRequests();
     await loadProjects();
     if (logoutPending || !getToken()) return;
     await loadActiveTimer();

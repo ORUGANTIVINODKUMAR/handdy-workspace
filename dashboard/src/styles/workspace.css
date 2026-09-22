@@ -556,3 +556,12 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
   .crm-content .projects-footer { align-items:flex-start; flex-direction:column; }
   .crm-content .projects-pagination { width:100%; justify-content:flex-start; overflow-x:auto; padding-bottom:3px; }
 }
+.crm-device-modal { position:fixed; inset:0; z-index:10000; display:grid; place-items:center; padding:24px; background:rgba(12,42,33,.58); backdrop-filter:blur(3px); }
+.crm-device-modal section { width:min(480px,100%); padding:30px; border-radius:16px; background:#fff; box-shadow:0 24px 70px rgba(12,48,36,.28); }
+.crm-device-modal h2 { margin:6px 0 14px; color:#173c31; }
+.crm-device-modal p { color:#526a61; line-height:1.55; }
+.crm-device-modal section>div { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+.crm-device-modal button { min-height:42px; padding:0 16px; border:0; border-radius:9px; background:#e6f0eb; color:#24483c; font-weight:700; cursor:pointer; }
+.crm-device-modal button:last-child { background:#176c51; color:#fff; }
+.crm-device-modal button:disabled { opacity:.6; cursor:wait; }
+.crm-device-modal .crm-device-error { color:#a52d2d; }

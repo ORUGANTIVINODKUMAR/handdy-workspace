@@ -4,6 +4,10 @@ const {
   register,
   login,
   quickLogin,
+  waitForLoginRequest,
+  getPendingLoginRequest,
+  decidePendingLoginRequest,
+  cancelLoginRequest,
   getProfile,
   updateProfile,
   forgotPassword,
@@ -47,12 +51,16 @@ router.post(
 );
 router.post("/login", loginLimiter, login);
 router.post("/quick-login", loginLimiter, quickLogin);
+router.post("/login-requests/:requestId/wait", waitForLoginRequest);
+router.post("/login-requests/:requestId/cancel", cancelLoginRequest);
 
 router.post("/forgot-password", passwordResetLimiter, forgotPassword);
 router.post("/reset-password", passwordResetLimiter, resetPassword);
 
 // Protected current-user routes
 router.post("/logout", protect, logout);
+router.get("/login-requests/pending", protect, getPendingLoginRequest);
+router.post("/login-requests/:requestId/decision", protect, decidePendingLoginRequest);
 router.put("/change-password", protect, changePassword);
 
 router.get("/me", protect, getProfile);

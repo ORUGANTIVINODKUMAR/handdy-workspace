@@ -67,17 +67,62 @@ const validateTaskRelations = async ({ project, teams, assignedTo, user }) => {
   return null;
 };
 
+const prepareTaskCreation = async (user, body) => {
+  const taskType = body.taskType || "work";
+  if (taskType === "work" && !body.project) {
+    return { error: "Select a project for this work task." };
+  }
+
+  const teamResolution = await getTeamsForTask(user, body.teams || body.team);
+  if (!teamResolution.teams) return { error: teamResolution.error };
+
+  let project = body.project;
+  if (!project) {
+    const resolution = await resolveTeamsProject(teamResolution.teamIds);
+    if (resolution.status === "resolved") project = resolution.projectId;
+  }
+
+  const normalizedAssignments = normalizeAssignments(body.assignedTo);
+  const relationError = await validateTaskRelations({
+    project,
+    teams: teamResolution.teamIds,
+    assignedTo: normalizedAssignments,
+    user,
+  });
+  if (relationError) return { error: relationError };
+
+  return {
+    taskType,
+    project: project || null,
+    team: teamResolution.teamIds[0],
+    teams: teamResolution.teamIds,
+    assignedTo: body.assignToAllEmployees === true ? [] : normalizedAssignments,
+    assignToAllEmployees: body.assignToAllEmployees === true,
+    isActive: body.isActive !== undefined ? body.isActive : true,
+    idleLogout: Boolean(body.idleLogout),
+    createdBy: user._id,
+  };
+};
+
 const getTaskVisibility = async (user) => {
   if (["admin", "manager", "hr"].includes(user.role)) return null;
 
   if (user.role === "employee") {
-    if (!user.team) return { _id: null };
-    const activeTeam = await Team.exists({ _id: user.team, isActive: true });
-    if (!activeTeam) return { _id: null };
+    // Being individually named in assignedTo must stand on its own —
+    // it should not require the employee to currently have an active
+    // team. assignToAllEmployees, by contrast, opens the task to a whole
+    // team, so that path still needs an active team match. Gating both
+    // behind "has an active team" (as before) meant an employee with no
+    // team, or whose team was deactivated, lost visibility into tasks
+    // they were explicitly assigned to.
+    const hasActiveTeam = user.team
+      ? Boolean(await Team.exists({ _id: user.team, isActive: true }))
+      : false;
+    const teamMatch = { $or: [{ team: user.team }, { teams: user.team }] };
     return {
-      $and: [
-        { $or: [{ team: user.team }, { teams: user.team }] },
-        { $or: [{ assignToAllEmployees: true }, { assignedTo: user._id }] },
+      $or: [
+        { assignedTo: user._id },
+        ...(hasActiveTeam ? [{ $and: [teamMatch, { assignToAllEmployees: true }] }] : []),
       ],
     };
   }
@@ -203,6 +248,53 @@ const createTask = async (req, res) => {
       success: true,
       message: "Task created successfully.",
       task: populatedTask,
+    });
+  } catch (error) {
+    return handleTaskError(res, error);
+  }
+};
+
+// Create several task names with one shared access/project configuration.
+const createTasksBulk = async (req, res) => {
+  try {
+    const taskNames = Array.isArray(req.body.taskNames)
+      ? req.body.taskNames.map((name) => String(name || "").trim())
+      : [];
+
+    if (taskNames.length < 2 || taskNames.some((name) => !name)) {
+      return res.status(400).json({ success: false, message: "Enter at least two task names." });
+    }
+    if (taskNames.length > 25) {
+      return res.status(400).json({ success: false, message: "Create no more than 25 tasks at once." });
+    }
+    if (new Set(taskNames.map((name) => name.toLowerCase())).size !== taskNames.length) {
+      return res.status(400).json({ success: false, message: "Task names in the same batch must be unique." });
+    }
+
+    const creation = await prepareTaskCreation(req.user, req.body);
+    if (creation.error) {
+      return res.status(400).json({ success: false, message: creation.error });
+    }
+
+    const usedCodes = new Set();
+    const tasks = [];
+    for (const taskName of taskNames) {
+      let taskCode;
+      do taskCode = await generateTaskCode(); while (usedCodes.has(taskCode));
+      usedCodes.add(taskCode);
+      tasks.push({
+        taskCode,
+        taskName,
+        description: req.body.description?.trim() || "",
+        ...creation,
+      });
+    }
+
+    const createdTasks = await Task.insertMany(tasks);
+    return res.status(201).json({
+      success: true,
+      message: `${createdTasks.length} tasks created successfully.`,
+      tasks: createdTasks,
     });
   } catch (error) {
     return handleTaskError(res, error);
@@ -680,6 +772,7 @@ const handleTaskError = (res, error) => {
 
 module.exports = {
   createTask,
+  createTasksBulk,
   getAllTasks,
   getTaskById,
   updateTask,

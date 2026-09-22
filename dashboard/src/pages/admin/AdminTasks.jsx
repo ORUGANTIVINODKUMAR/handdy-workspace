@@ -5,12 +5,9 @@ import { Pencil, Trash2 } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import TaskForm from "../../components/tasks/TaskForm";
 import "../../styles/adminTasks.css";
-import { API_BASE_URL } from "../../api/axiosInstance";
+import { deleteTask, getTasks } from "../../api/taskApi";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useDataRefresh from "../../hooks/useDataRefresh";
-
-const API_URL = `${API_BASE_URL}/tasks`;
-
-const getToken = () => localStorage.getItem("token");
 
 const getTaskName = (task) =>
   task.taskName || task.name || task.taskCode || "-";
@@ -78,45 +75,27 @@ function AdminTasks() {
   // LOAD TASKS
   // ==============================
 
-  const loadTasks = async () => {
+  const loadTasks = async ({ background = false } = {}) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError("");
 
-      const token = getToken();
-
-      const response = await fetch(API_URL, {
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Unable to load tasks."
-        );
-      }
+      const data = await getTasks();
 
       setTasks(data.tasks || []);
     } catch (err) {
       console.error(err);
 
-      setError(
-        err.message || "Unable to load tasks."
-      );
+      setError(getApiErrorMessage(err, "Unable to load tasks."));
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
   useEffect(() => {
     void loadTasks();
   }, []);
-  useDataRefresh(loadTasks);
+  useDataRefresh(() => loadTasks({ background: true }));
 
   // ==============================
   // FILTER + SORT
@@ -302,40 +281,14 @@ function AdminTasks() {
       setError("");
       setMessage("");
 
-      const token = getToken();
-
-      const response = await fetch(
-        `${API_URL}/${taskId}`,
-        {
-          method: "DELETE",
-
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response
-        .json()
-        .catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Unable to delete task."
-        );
-      }
+      await deleteTask(taskId);
 
       setMessage(
         "Task deleted successfully."
       );
       setTasks((previous) => previous.filter((item) => (item._id || item.id) !== taskId));
     } catch (err) {
-      setError(
-        err.message ||
-          "Unable to delete task."
-      );
+      setError(getApiErrorMessage(err, "Unable to delete task."));
     }
   };
 

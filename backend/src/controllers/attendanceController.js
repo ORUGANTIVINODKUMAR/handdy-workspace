@@ -1,6 +1,7 @@
 const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const { getDateKey, getPagination } = require("../utils/requestUtils");
+const sendErrorResponse = require("../utils/sendErrorResponse");
 
 // Check in
 const checkIn = async (req, res) => {
@@ -40,10 +41,7 @@ const checkIn = async (req, res) => {
                 message: "You have already checked in today.",
             });
         }
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to check in.");
     }
 };
 // Check out
@@ -90,10 +88,7 @@ const checkOut = async (req, res) => {
             attendance,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to check out.");
     }
 };
 // Get today's attendance
@@ -112,10 +107,7 @@ const getTodayAttendance = async (req, res) => {
             attendance: attendance || null,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch today's attendance.");
     }
 };
 // Get attendance history
@@ -157,10 +149,7 @@ const getAttendanceHistory = async (req, res) => {
             attendance,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch attendance history.");
     }
 };
 // Get today's attendance for employees assigned to the logged-in Team Lead
@@ -201,10 +190,7 @@ const getMyTeamTodayAttendance = async (req, res) => {
             teamAttendance,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch team attendance.");
     }
 };
 // Team Lead - attendance history for assigned team only
@@ -284,10 +270,7 @@ const getMyTeamAttendanceHistory = async (req, res) => {
             attendance,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch team attendance history.");
     }
 };
 // Admin - Get company-wide attendance history
@@ -348,10 +331,7 @@ const getAllAttendanceHistory = async (req, res) => {
             attendance,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch attendance history.");
     }
 };
 

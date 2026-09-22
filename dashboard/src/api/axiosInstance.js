@@ -28,7 +28,12 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.data?.code === "ACCOUNT_INACTIVE") {
+      if (error.response?.data?.code === "SESSION_REVOKED") {
+        sessionStorage.setItem("sessionEndedMessage", error.response.data.message || "This account is now active on another device.");
+      } else if (error.response?.data?.code === "ACCOUNT_INACTIVE") {
+        sessionStorage.setItem("sessionEndedMessage", "Your account is inactive. Please contact the administrator.");
+      }
       localStorage.removeItem("user");
       localStorage.removeItem("token");
 

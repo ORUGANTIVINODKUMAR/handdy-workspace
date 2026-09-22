@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
   createTask,
+  createTasksBulk,
   getAllTasks,
   getTaskById,
   updateTask,
@@ -29,6 +30,13 @@ router.post(
   protect,
   authorizeRoles("admin", "team_lead", "manager", "hr"),
   createTask
+);
+
+router.post(
+  "/bulk",
+  protect,
+  authorizeRoles("admin", "team_lead", "manager", "hr"),
+  createTasksBulk
 );
 
 // ==============================================

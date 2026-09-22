@@ -1,5 +1,6 @@
 const Shift = require("../models/Shift");
 const { escapeRegExp, getPagination } = require("../utils/requestUtils");
+const sendErrorResponse = require("../utils/sendErrorResponse");
 
 // ==============================
 // CREATE SHIFT
@@ -28,14 +29,7 @@ const createShift = async (
         shift,
       });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-
-        message:
-          error.message,
-      });
+    return sendErrorResponse(res, error, "Unable to create shift.");
   }
 };
 
@@ -121,14 +115,7 @@ const getAllShifts = async (
         shifts,
       });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-
-        message:
-          error.message,
-      });
+    return sendErrorResponse(res, error, "Unable to fetch shifts.");
   }
 };
 
@@ -167,14 +154,7 @@ const getShiftById = async (
         shift,
       });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-
-        message:
-          error.message,
-      });
+    return sendErrorResponse(res, error, "Unable to fetch shift.");
   }
 };
 
@@ -227,14 +207,7 @@ const updateShift = async (
           updatedShift,
       });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-
-        message:
-          error.message,
-      });
+    return sendErrorResponse(res, error, "Unable to update shift.");
   }
 };
 
@@ -274,14 +247,7 @@ const deleteShift = async (
           "Shift deactivated successfully.",
       });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-
-        message:
-          error.message,
-      });
+    return sendErrorResponse(res, error, "Unable to deactivate shift.");
   }
 };
 

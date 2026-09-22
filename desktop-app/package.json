@@ -1,10 +1,12 @@
 {
   "name": "handdy-desktop-app",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Employee Time & Attendance System Desktop App",
   "main": "main.js",
   "scripts": {
-    "test": "node --test --test-isolation=none test/*.test.js",
+    "test": "node --test --test-isolation=none test/*.test.js && npm run test:electron && npm run test:dashboard",
+    "test:electron": "set \"ELECTRON_RUN_AS_NODE=\" && electron test/electron-inactivity-smoke.cjs",
+    "test:dashboard": "set \"VITE_API_URL=/api\" && npm --prefix ../dashboard run build && set \"ELECTRON_RUN_AS_NODE=\" && electron test/dashboard-lifecycle-smoke.cjs",
     "start": "set \"ELECTRON_RUN_AS_NODE=\" && electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win"

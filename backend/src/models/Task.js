@@ -90,6 +90,13 @@ const taskSchema = new mongoose.Schema(
   }
 );
 
+// Speed up task filtering/visibility queries (getAllTasks, startTimer's task
+// lookup, resolveTeamsProject, etc.) which commonly filter by these fields.
+taskSchema.index({ team: 1 });
+taskSchema.index({ teams: 1 });
+taskSchema.index({ assignedTo: 1 });
+taskSchema.index({ project: 1 });
+
 const Task = mongoose.model("Task", taskSchema);
 
 module.exports = Task;

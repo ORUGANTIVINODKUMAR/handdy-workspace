@@ -111,9 +111,9 @@ function AdminEmployees() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // LOAD EMPLOYEES
-  const fetchEmployees = useCallback(async (isCurrent = () => true) => {
+  const fetchEmployees = useCallback(async (isCurrent = () => true, background = false) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError("");
 
       const params = { page, limit };
@@ -145,7 +145,7 @@ function AdminEmployees() {
         )
       );
     } finally {
-      if (isCurrent()) setLoading(false);
+      if (isCurrent() && !background) setLoading(false);
     }
   }, [search, teamFilter, statusFilter, page, limit]);
 
@@ -156,7 +156,7 @@ function AdminEmployees() {
       active = false;
     };
   }, [fetchEmployees]);
-  useDataRefresh(fetchEmployees);
+  useDataRefresh(() => fetchEmployees(undefined, true));
 
   useEffect(() => {
     const fetchTeams = async () => {

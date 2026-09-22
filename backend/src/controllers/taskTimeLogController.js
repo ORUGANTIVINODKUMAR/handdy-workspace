@@ -4,12 +4,29 @@ const Task = require("../models/Task");
 const Employee = require("../models/Employee");
 const Team = require("../models/Team");
 const { getPagination } = require("../utils/requestUtils");
+const { getBillingDateRange } = require("../utils/billingUtils");
+const sendErrorResponse = require("../utils/sendErrorResponse");
+
+const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
+
+// Builds a `startedAt` range filter from optional startDate/endDate query
+// params (YYYY-MM-DD), using APP_TIMEZONE day boundaries — the same helper
+// scheduleController.js uses — instead of the server's local time, so a
+// report filter means the same calendar day everywhere it's deployed.
+const buildStartedAtRangeFilter = (startDate, endDate) => {
+  if (!startDate && !endDate) return null;
+  const range = getBillingDateRange(startDate || endDate, endDate || startDate, APP_TIMEZONE);
+  const filter = {};
+  if (startDate) filter.$gte = range.start;
+  if (endDate) filter.$lt = range.endExclusive;
+  return filter;
+};
 
 // Start Timer
 const startTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
-        const { project, task } = req.body;
+        const { project, task, note } = req.body;
 
         if (!project || !task) {
             return res.status(400).json({
@@ -31,23 +48,26 @@ const startTimer = async (req, res) => {
             ? Boolean(await Team.exists({ _id: req.user.team, isActive: true }))
             : false;
         const teamMatch = { $or: [{ team: req.user.team }, { teams: req.user.team }] };
+        const isElevatedRole = ["admin", "manager", "hr"].includes(req.user.role);
         // A team lead's own team already proves they lead the task's team, so
         // they don't also need to appear in assignedTo (they never can — see
         // validateTaskRelations, which restricts assignedTo to role:"employee").
         const isTeamLead = req.user.role === "team_lead";
-        const assignmentScope = !hasActiveTeam
-            ? { _id: null }
+        // Being individually named in a task's assignedTo must be sufficient
+        // on its own — it must not require the requester to currently have
+        // an active team, and must not be gated behind the team-match check
+        // the way assignToAllEmployees (which opens a task to a whole team)
+        // legitimately is. Elevated roles (admin/manager/hr), who normally
+        // carry no team at all, follow the same no-restriction convention
+        // used by getTaskVisibility in taskController.js.
+        const assignmentScope = isElevatedRole
+            ? {}
             : isTeamLead
-                ? teamMatch
+                ? (hasActiveTeam ? teamMatch : { _id: null })
                 : {
-                    $and: [
-                        teamMatch,
-                        {
-                            $or: [
-                                { assignToAllEmployees: true },
-                                { assignedTo: employeeId },
-                            ],
-                        },
+                    $or: [
+                        { assignedTo: employeeId },
+                        ...(hasActiveTeam ? [{ $and: [teamMatch, { assignToAllEmployees: true }] }] : []),
                     ],
                 };
 
@@ -82,6 +102,7 @@ const startTimer = async (req, res) => {
             employee: employeeId,
             project,
             task,
+            note: typeof note === "string" ? note.trim().slice(0, 2000) : undefined,
             startedAt: new Date(),
             status: "running",
             isActiveTimer: true,
@@ -102,10 +123,7 @@ const startTimer = async (req, res) => {
                 message: "You already have an active timer.",
             });
         }
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to start timer.");
     }
 };
 // Pause Timer
@@ -130,18 +148,15 @@ const pauseTimer = async (req, res) => {
             }
         }
 
-        if (runningTimer) {
-            const projectExists = await Project.findById(runningTimer.project).select("teams");
-            const projectTeams = (projectExists?.teams || []).map(String);
-            const isLegacyUnrestrictedProject = projectTeams.length === 0;
-            const projectAssignedToUserTeam = req.user.team && projectTeams.includes(String(req.user.team));
-            if (!isLegacyUnrestrictedProject && !projectAssignedToUserTeam) {
-                return res.status(403).json({
-                    success: false,
-                    message: "This project is not assigned to your team.",
-                });
-            }
-        }
+        // Deliberately no re-check here that runningTimer's project is still
+        // assigned to the user's team. That check used to 403 pause when a
+        // team/project reassignment happened mid-session, but resume/stop
+        // have no equivalent check — so a user who hit the 403 on pause
+        // could never end their own already-running timer. Eligibility is
+        // enforced once, up front, in startTimer's assignmentScope; a later
+        // reassignment shouldn't be able to trap a timer the user legitimately
+        // started. (This only affects control of an already-running timer —
+        // it does not loosen who can *start* a new one.)
 
         const activeTimer = await TaskTimeLog.findOneAndUpdate(
             {
@@ -176,10 +191,7 @@ const pauseTimer = async (req, res) => {
             timeLog: activeTimer,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to pause timer.");
     }
 };
 // Resume Timer
@@ -232,10 +244,7 @@ const resumeTimer = async (req, res) => {
             timeLog: pausedTimer,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to resume timer.");
     }
 };
 // Stop Timer
@@ -306,10 +315,7 @@ const stopTimer = async (req, res) => {
             timeLog: activeTimer,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to stop timer.");
     }
 };
 // Get logged-in user's personal time-log history
@@ -332,20 +338,9 @@ const getMyTimeLogs = async (req, res) => {
         };
 
         // Date range filter
-        if (startDate || endDate) {
-            filter.startedAt = {};
-
-            if (startDate) {
-                const start = new Date(startDate);
-                start.setHours(0, 0, 0, 0);
-                filter.startedAt.$gte = start;
-            }
-
-            if (endDate) {
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                filter.startedAt.$lte = end;
-            }
+        const startedAtFilter = buildStartedAtRangeFilter(startDate, endDate);
+        if (startedAtFilter) {
+            filter.startedAt = startedAtFilter;
         }
 
         // Project filter
@@ -382,10 +377,7 @@ const getMyTimeLogs = async (req, res) => {
             timeLogs,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch time logs.");
     }
 };
 // Get Active Timer
@@ -405,10 +397,7 @@ const getActiveTimer = async (req, res) => {
             timeLog: activeTimer || null,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch active timer.");
     }
 };
 
@@ -435,7 +424,7 @@ const getLiveTimers = async (req, res) => {
 
         return res.status(200).json({ success: true, count: timeLogs.length, timeLogs });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return sendErrorResponse(res, error, "Unable to fetch live timers.");
     }
 };
 // Get time logs for employees assigned to the logged-in Team Lead
@@ -461,18 +450,9 @@ const getMyTeamTimeLogs = async (req, res) => {
             }
             filter.employee = employee;
         }
-        if (startDate || endDate) {
-            filter.startedAt = {};
-            if (startDate) {
-                const start = new Date(startDate);
-                start.setHours(0, 0, 0, 0);
-                filter.startedAt.$gte = start;
-            }
-            if (endDate) {
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                filter.startedAt.$lte = end;
-            }
+        const startedAtFilter = buildStartedAtRangeFilter(startDate, endDate);
+        if (startedAtFilter) {
+            filter.startedAt = startedAtFilter;
         }
         if (project) filter.project = project;
         if (task) filter.task = task;
@@ -500,10 +480,7 @@ const getMyTeamTimeLogs = async (req, res) => {
             timeLogs,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch team time logs.");
     }
 };
 
@@ -514,18 +491,9 @@ const getAllTimeLogs = async (req, res) => {
         const { startDate, endDate, employee, project, task, status } = req.query;
         const filter = {};
 
-        if (startDate || endDate) {
-            filter.startedAt = {};
-            if (startDate) {
-                const start = new Date(startDate);
-                start.setHours(0, 0, 0, 0);
-                filter.startedAt.$gte = start;
-            }
-            if (endDate) {
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                filter.startedAt.$lte = end;
-            }
+        const startedAtFilter = buildStartedAtRangeFilter(startDate, endDate);
+        if (startedAtFilter) {
+            filter.startedAt = startedAtFilter;
         }
 
         if (employee) filter.employee = employee;
@@ -552,10 +520,7 @@ const getAllTimeLogs = async (req, res) => {
             timeLogs,
         });
     } catch (error) {
-        return res.status(error.name === "CastError" ? 400 : 500).json({
-            success: false,
-            message: error.name === "CastError" ? "A report filter is invalid." : error.message,
-        });
+        return sendErrorResponse(res, error, "Unable to fetch time logs.");
     }
 };
 module.exports = {

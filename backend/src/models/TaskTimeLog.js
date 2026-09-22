@@ -53,6 +53,12 @@ const taskTimeLogSchema = new mongoose.Schema(
       default: null,
     },
 
+    note: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+    },
+
     pauses: {
       type: [pauseSchema],
       default: [],

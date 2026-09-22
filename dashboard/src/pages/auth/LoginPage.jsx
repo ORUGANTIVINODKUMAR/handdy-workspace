@@ -44,6 +44,7 @@ function LoginPage() {
     user,
     isAuthenticated,
     isAuthLoading,
+    loginApprovalMessage,
   } = useAuth();
 
   const [formData, setFormData] =
@@ -53,7 +54,11 @@ function LoginPage() {
     });
 
   const [error, setError] =
-    useState("");
+    useState(() => {
+      const sessionMessage = sessionStorage.getItem("sessionEndedMessage") || "";
+      sessionStorage.removeItem("sessionEndedMessage");
+      return sessionMessage;
+    });
 
   const [loading, setLoading] =
     useState(false);
@@ -207,6 +212,12 @@ function LoginPage() {
         {error && (
           <div className="auth-error">
             {error}
+          </div>
+        )}
+
+        {!error && loginApprovalMessage && (
+          <div className="auth-error" role="status">
+            {loginApprovalMessage}
           </div>
         )}
 

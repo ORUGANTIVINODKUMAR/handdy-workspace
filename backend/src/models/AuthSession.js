@@ -1,0 +1,28 @@
+const mongoose = require("mongoose");
+
+const authSessionSchema = new mongoose.Schema({
+  employee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", required: true, index: true },
+  sessionId: { type: String, required: true, unique: true, index: true },
+  deviceId: { type: String, required: true },
+  deviceName: { type: String, required: true, maxlength: 160 },
+  clientType: { type: String, enum: ["desktop", "web"], default: "desktop" },
+  status: {
+    type: String,
+    enum: ["pending", "active", "revoked", "logged_out", "expired", "denied"],
+    required: true,
+    default: "pending",
+  },
+  loginAt: { type: Date, default: null },
+  lastActivity: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true },
+  revokedAt: { type: Date, default: null },
+  revokeReason: { type: String, default: "" },
+}, { timestamps: true });
+
+authSessionSchema.index(
+  { employee: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: "active" } },
+);
+authSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+module.exports = mongoose.model("AuthSession", authSessionSchema);

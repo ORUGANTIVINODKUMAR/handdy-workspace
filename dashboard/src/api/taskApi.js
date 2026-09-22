@@ -1,5 +1,15 @@
 import axiosInstance from "./axiosInstance";
 
+export const getTasks = async () => {
+  const response = await axiosInstance.get("/tasks");
+  return response.data;
+};
+
+export const deleteTask = async (taskId) => {
+  const response = await axiosInstance.delete(`/tasks/${taskId}`);
+  return response.data;
+};
+
 export const getTasksByProject = async (projectId) => {
   const response = await axiosInstance.get("/tasks", {
     params: {

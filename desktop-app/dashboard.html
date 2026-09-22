@@ -31,13 +31,14 @@
             </div>
             <div class="timesheet-summary" aria-label="Today's timesheet summary">
               <div><span>Total tracked</span><strong id="todayTotal">00:00:00</strong></div>
+              <div class="timesheet-break-summary"><span>Current break</span><strong id="timesheetBreakDuration">00:00:00</strong><span class="break-total-label">Total break today</span><b id="todayBreak">00:00:00</b></div>
               <div><span>Idle time</span><strong id="todayIdle">00:00:00</strong></div>
               <div><span>Sessions</span><strong id="todaySessions">0</strong></div>
               <div><span>Tasks</span><strong id="todayTasks">0</strong></div>
             </div>
             <div class="timesheet-table-wrap">
               <table class="timesheet-table">
-                <thead><tr><th>Project</th><th>Task</th><th>Started</th><th>Finished</th><th>Status</th><th>Idle</th><th>Duration</th></tr></thead>
+                <thead><tr><th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Status</th><th>Idle</th><th>Duration</th></tr></thead>
                 <tbody id="todayTimesheetBody"></tbody>
               </table>
               <p id="todayTimesheetEmpty" class="empty-timesheet" hidden>No task time has been recorded today.</p>
@@ -45,6 +46,19 @@
             <p id="timesheetMessage" class="inline-message" role="status"></p>
           </article>
         </section>
+      </section>
+      <section id="deviceLoginModal" class="device-login-modal" hidden role="dialog" aria-modal="true" aria-labelledby="deviceLoginTitle">
+        <div class="device-login-card">
+          <p class="section-eyebrow">SECURITY CHECK</p>
+          <h2 id="deviceLoginTitle">Another device is trying to sign in</h2>
+          <p><strong id="requestingDeviceName">Unknown device</strong> requested access to this account.</p>
+          <p class="device-login-warning">Keeping this device rejects the new login. Allowing it signs this device out, without stopping the running timer.</p>
+          <p id="deviceLoginMessage" class="inline-message" role="status"></p>
+          <div class="device-login-actions">
+            <button type="button" id="keepThisDeviceButton" class="secondary-action">Keep This Device</button>
+            <button type="button" id="allowNewDeviceButton">Allow New Device</button>
+          </div>
+        </div>
       </section>
     </main>
     <script src="./renderer.js"></script>

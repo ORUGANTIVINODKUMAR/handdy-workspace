@@ -10,6 +10,12 @@
 .admin-task-basics { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .admin-task-basics label, .admin-task-employee-panel label { display: grid; gap: 8px; color: #29463c; font-size: 14px; font-weight: 700; }
 .admin-task-basics input, .admin-task-basics select, .admin-task-employee-panel input { height: 50px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c8ddd3; border-radius: 9px; color: #173c31; font: inherit; }
+.admin-task-name-list { gap: 12px; }
+.admin-task-name-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.admin-task-name-row label { min-width: 0; }
+.admin-task-name-add, .admin-task-name-remove { min-height: 40px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
+.admin-task-name-add { justify-self: start; padding: 0 14px; border: 1px dashed #72ae94; background: #f7fbf9; color: #176344; }
+.admin-task-name-remove { padding: 0 13px; border: 1px solid #e5b9b9; background: #fff7f7; color: #a53f3f; }
 .admin-task-options { display: flex; align-items: center; gap: 26px; padding: 17px 19px; border: 1px solid #e1ebe6; border-radius: 11px; background: #fbfdfc; }
 .admin-task-options > div { display: flex; align-items: center; gap: 16px; }.admin-task-options label { display: inline-flex; align-items: center; gap: 7px; color: #29463c; font-size: 14px; }.admin-task-options input { accent-color: #18775c; }
 .admin-task-idle { margin-left: auto; }
@@ -25,7 +31,7 @@
 .admin-task-assignment-toggle { display: flex; gap: 10px; margin-bottom: 15px; }.admin-task-assignment-toggle button { padding: 10px 14px; border: 1px solid #c8ddd3; border-radius: 8px; background: #fff; color: #295145; font: inherit; font-weight: 700; cursor: pointer; }.admin-task-assignment-toggle button.selected { border-color: #18775c; background: #18775c; color: #fff; }
 .admin-task-employee-panel { padding: 16px; border-radius: 11px; background: #f7fbf9; }.admin-task-employee-panel > div:first-child { display: flex; align-items: end; justify-content: space-between; gap: 15px; margin-bottom: 14px; }.admin-task-employee-panel label { flex: 1; max-width: 360px; }.admin-task-employee-panel > div:first-child > span { color: #176344; font-size: 13px; font-weight: 750; }.admin-task-employee-list small { display: block; color: #6b8177; font-size: 12px; font-weight: 400; }
 .admin-add-task-card footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 22px; border-top: 1px solid #e1ebe6; }.admin-add-task-cancel, .admin-add-task-save { min-height: 44px; padding: 0 18px; border-radius: 9px; font: inherit; font-weight: 750; cursor: pointer; }.admin-add-task-cancel { border: 1px solid #c8ddd3; background: #fff; color: #295145; }.admin-add-task-save { border: 0; background: #18775c; color: #fff; }.admin-add-task-save:disabled { opacity: .65; cursor: not-allowed; }
-@media (max-width: 720px) { .admin-add-task-card { padding: 20px; }.admin-task-basics { grid-template-columns: 1fr; }.admin-task-options { align-items: flex-start; flex-direction: column; }.admin-task-idle { margin-left: 0; }.admin-task-employee-panel > div:first-child { align-items: stretch; flex-direction: column; } }
+@media (max-width: 720px) { .admin-add-task-card { padding: 20px; }.admin-task-basics { grid-template-columns: 1fr; }.admin-task-name-row { grid-template-columns: 1fr; }.admin-task-name-remove { justify-self:start; }.admin-task-options { align-items: flex-start; flex-direction: column; }.admin-task-idle { margin-left: 0; }.admin-task-employee-panel > div:first-child { align-items: stretch; flex-direction: column; } }
 
 /* Team choices must remain calm and readable in every saved colour theme. */
 .admin-task-selection-copy { display: block; margin-top: 5px; color: #6b8177; font-size: 13px; font-weight: 500; }

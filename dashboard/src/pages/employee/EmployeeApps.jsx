@@ -21,7 +21,12 @@ function EmployeeApps() {
   const [release, setRelease] = useState(DEFAULT_RELEASE);
   const [releaseError, setReleaseError] = useState("");
   const [loading, setLoading] = useState(true);
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  let storedUser;
+  try {
+    storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    storedUser = {};
+  }
   const employeeName = storedUser.fullName || storedUser.name || "Employee";
 
   useEffect(() => {

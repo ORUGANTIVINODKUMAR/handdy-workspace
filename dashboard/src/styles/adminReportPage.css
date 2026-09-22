@@ -13,6 +13,7 @@
 .admin-report-results > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -22px -22px 0; padding: 20px 22px; border-bottom: 1px solid var(--border-light); }
 .admin-report-results > header strong { display: inline-flex; align-items: center; gap: 7px; color: var(--primary); font-size: 13px; }
 .admin-report-totals { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.admin-report-totals .admin-report-break-total { color: var(--danger); }
 .admin-report-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
 .admin-report-export-actions { display: flex; align-items: center; gap: 8px; }
 .admin-report-export-actions .report-export-button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--border-light); background: var(--surface); color: var(--text-primary); white-space: nowrap; }
@@ -28,6 +29,16 @@
 .admin-report-table-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .admin-report-table-wrap th, .admin-report-table-wrap td { padding: 12px 14px; border-bottom: 1px solid var(--table-border); text-align: left; }
 .admin-report-table-wrap th { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
+.admin-report-table-wrap .report-timeline-row td:first-child { border-left: 3px solid var(--success); }
+.admin-report-table-wrap .report-break-row td { color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); border-bottom-color: color-mix(in srgb, var(--danger) 18%, var(--table-border)); }
+.admin-report-table-wrap .report-break-row:hover td { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+.admin-report-table-wrap .report-break-row td:first-child { border-left-color: var(--danger); }
+.admin-report-table-wrap .report-idle-row td { color: var(--warning); background: color-mix(in srgb, var(--warning) 7%, var(--surface)); }
+.admin-report-table-wrap .report-idle-row td:first-child { border-left-color: var(--warning); }
+.report-entry-project { display: flex; align-items: center; gap: 8px; }
+.report-entry-badge { display: inline-flex; align-items: center; flex: 0 0 auto; padding: 4px 8px; border: 1px solid color-mix(in srgb, var(--success) 24%, transparent); border-radius: 999px; color: var(--success); background: color-mix(in srgb, var(--success) 8%, var(--surface)); font-size: 10px; font-weight: 750; text-transform: uppercase; }
+.report-entry-badge.break { border-color: color-mix(in srgb, var(--danger) 24%, transparent); color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
+.report-entry-badge.idle { border-color: color-mix(in srgb, var(--warning) 24%, transparent); color: var(--warning); background: color-mix(in srgb, var(--warning) 8%, var(--surface)); }
 @media (max-width: 1100px) { .admin-report-filter { align-items: stretch; flex-direction: column; } .admin-report-results > header { align-items: flex-start; } .admin-report-header-actions { align-items: flex-end; flex-direction: column; } }
 @media (max-width: 650px) { .admin-report-controls { align-items: stretch; flex-direction: column; } .admin-report-controls select, .admin-report-controls input, .admin-report-controls button { width: 100%; } .admin-report-results > header, .admin-report-header-actions { align-items: stretch; flex-direction: column; } .admin-report-export-actions { display: grid; grid-template-columns: 1fr 1fr; } .admin-report-export-actions .report-export-button { width: 100%; } }
 

@@ -20,9 +20,9 @@ function AdminTeams() {
   const [teamName, setTeamName] = useState("");
   const [teamLeadId, setTeamLeadId] = useState("");
 
-  const loadTeams = async () => {
+  const loadTeams = async ({ background = false } = {}) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError("");
       const { data } = await axiosInstance.get("/teams");
       setTeams((data.teams || []).map((team) => ({
@@ -35,14 +35,14 @@ function AdminTeams() {
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Unable to load teams."));
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
   useEffect(() => {
     void loadTeams();
   }, []);
-  useDataRefresh(loadTeams);
+  useDataRefresh(() => loadTeams({ background: true }));
 
   useEffect(() => {
     axiosInstance.get("/employees", { params: { role: "team_lead", isActive: "true", limit: 100 } })

@@ -11,6 +11,7 @@ import {
   quickLoginUser,
   getCurrentUser,
   logoutUser,
+  waitForLoginApproval,
 } from "../api/authApi";
 import { stopTimer } from "../api/timerApi";
 
@@ -70,6 +71,7 @@ function AuthProvider({ children }) {
 
   const [isAuthLoading, setIsAuthLoading] =
     useState(true);
+  const [loginApprovalMessage, setLoginApprovalMessage] = useState("");
 
   const [rememberedUser, setRememberedUser] = useState(() => {
     try { return normalizeUser(JSON.parse(localStorage.getItem("rememberedUser"))); } catch { return null; }
@@ -82,10 +84,6 @@ function AuthProvider({ children }) {
   const clearAuth = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    ["activeTimer", "currentTimeLog", "timerState", "timerStartedAt", "timerElapsedSeconds"].forEach((key) => {
-      localStorage.removeItem(key);
-      sessionStorage.removeItem(key);
-    });
 
     setToken(null);
     setUser(null);
@@ -163,14 +161,33 @@ function AuthProvider({ children }) {
   // LOGIN
   // ==========================================
 
+  const resolveLoginAttempt = async (attempt) => {
+    setLoginApprovalMessage("");
+    try {
+      return await attempt();
+    } catch (error) {
+      const pending = error?.response?.status === 409
+        && error?.response?.data?.code === "DEVICE_APPROVAL_REQUIRED"
+        && error?.response?.data?.loginRequest;
+      if (!pending) throw error;
+      setLoginApprovalMessage(`Waiting for approval on ${pending.activeDevice?.deviceName || "the active device"}...`);
+      while (true) {
+        const response = await waitForLoginApproval(pending);
+        if (response?.code === "DEVICE_APPROVAL_PENDING") continue;
+        setLoginApprovalMessage("");
+        return response;
+      }
+    }
+  };
+
   const login = async (
     email,
     password
   ) => {
-    const response = await loginUser({
+    const response = await resolveLoginAttempt(() => loginUser({
       email,
       password,
-    });
+    }));
 
     const newToken =
       response?.token;
@@ -213,7 +230,7 @@ function AuthProvider({ children }) {
     const rememberedSessionToken = localStorage.getItem("rememberedSessionToken");
     if (!rememberedSessionToken) throw new Error("No remembered session is available.");
     try {
-      const response = await quickLoginUser(rememberedSessionToken);
+      const response = await resolveLoginAttempt(() => quickLoginUser(rememberedSessionToken));
       const loggedInUser = normalizeUser(response?.user);
       if (!response?.token || !response?.rememberedSessionToken || !loggedInUser) throw new Error("Invalid quick login response from server.");
       localStorage.setItem("token", response.token);
@@ -225,9 +242,11 @@ function AuthProvider({ children }) {
       setRememberedUser(loggedInUser);
       return loggedInUser;
     } catch (error) {
-      localStorage.removeItem("rememberedSessionToken");
-      localStorage.removeItem("rememberedUser");
-      setRememberedUser(null);
+      if ([401, 410].includes(error?.response?.status)) {
+        localStorage.removeItem("rememberedSessionToken");
+        localStorage.removeItem("rememberedUser");
+        setRememberedUser(null);
+      }
       throw error;
     }
   };
@@ -270,6 +289,7 @@ function AuthProvider({ children }) {
     login,
     quickLogin,
     rememberedUser,
+    loginApprovalMessage,
     logout,
     clearAuth,
   };

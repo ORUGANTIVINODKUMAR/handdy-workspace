@@ -8,27 +8,36 @@ function AttendanceHistory() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let isCurrent = true;
+
     const loadAttendanceHistory = async () => {
       try {
-        setIsLoading(true);
-        setError("");
-
         const data = await getAttendanceHistory();
 
-        setRecords(data.attendance || []);
+        if (isCurrent) {
+          setRecords(data.attendance || []);
+        }
       } catch (requestError) {
-        setError(
-          getApiErrorMessage(
-            requestError,
-            "Unable to load attendance history."
-          )
-        );
+        if (isCurrent) {
+          setError(
+            getApiErrorMessage(
+              requestError,
+              "Unable to load attendance history."
+            )
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadAttendanceHistory();
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   const formatDate = (date) => {

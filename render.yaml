@@ -17,6 +17,12 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
+      - key: AUTH_SESSION_LIFETIME_MS
+        value: 604800000
+      - key: AUTH_SESSION_OFFLINE_GRACE_MS
+        value: 300000
+      - key: LOGIN_REQUEST_LIFETIME_MS
+        value: 120000
       - key: APP_TIMEZONE
         value: Asia/Kolkata
       - key: CORS_ORIGINS

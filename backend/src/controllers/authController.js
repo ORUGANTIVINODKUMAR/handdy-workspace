@@ -9,6 +9,16 @@ const {
   hashResetToken,
 } = require("../utils/passwordResetUtils");
 const { createRememberedSession, hashRememberedSession } = require("../utils/rememberedSessionUtils");
+const AuthSession = require("../models/AuthSession");
+const DeviceLoginRequest = require("../models/DeviceLoginRequest");
+const {
+  normalizeDevice,
+  beginLoginSession,
+  findRequestForRequester,
+  findPendingForSession,
+  decideLoginRequest,
+  revokeEmployeeSessions,
+} = require("../services/authSessionService");
 
 const issueRememberedSession = (employee) => {
   const session = createRememberedSession();
@@ -19,6 +29,52 @@ const issueRememberedSession = (employee) => {
   employee.rememberedSessions.push({ tokenHash: session.tokenHash, expiresAt: session.expiresAt });
   return session.token;
 };
+
+const buildSessionResponse = (session) => ({
+  sessionId: session.sessionId,
+  deviceId: session.deviceId,
+  deviceName: session.deviceName,
+  clientType: session.clientType,
+  loginAt: session.loginAt,
+  expiresAt: session.expiresAt,
+});
+
+const completeLogin = async (employee, session, { consumedRememberedHash } = {}) => {
+  if (consumedRememberedHash) {
+    employee.rememberedSessions = (employee.rememberedSessions || [])
+      .filter((item) => item.tokenHash !== consumedRememberedHash);
+    if (employee.rememberedSessionTokenHash === consumedRememberedHash) {
+      employee.rememberedSessionTokenHash = null;
+      employee.rememberedSessionExpires = null;
+    }
+  }
+  employee.lastLoginAt = new Date();
+  const rememberedSessionToken = issueRememberedSession(employee);
+  await employee.save();
+  return {
+    success: true,
+    message: "Login successful.",
+    token: generateToken(employee._id, employee.tokenVersion, session),
+    rememberedSessionToken,
+    session: buildSessionResponse(session),
+    user: buildUserResponse(employee),
+  };
+};
+
+const pendingLoginResponse = (res, result) => res.status(409).json({
+  success: false,
+  code: "DEVICE_APPROVAL_REQUIRED",
+  message: `Approval is required on ${result.activeSession.deviceName}.`,
+  loginRequest: {
+    requestId: result.request.requestId,
+    requestToken: result.requestToken,
+    expiresAt: result.request.expiresAt,
+    activeDevice: {
+      deviceName: result.activeSession.deviceName,
+      lastActivity: result.activeSession.lastActivity,
+    },
+  },
+});
 
 // ======================================================
 // BUILD SAFE USER RESPONSE
@@ -214,16 +270,11 @@ const register = async (req, res) => {
 
     await syncEmployeeTeam(employee, team);
 
-    const token =
-      generateToken(employee._id, employee.tokenVersion);
-
     return res.status(201).json({
       success: true,
 
       message:
         "Employee registered successfully.",
-
-      token,
 
       user:
         buildUserResponse(employee),
@@ -295,29 +346,10 @@ const login = async (req, res) => {
       });
     }
 
-    employee.lastLoginAt =
-      new Date();
+    const sessionResult = await beginLoginSession(employee._id, normalizeDevice(req.body, req));
+    if (sessionResult.kind === "pending") return pendingLoginResponse(res, sessionResult);
 
-    const rememberedSessionToken = issueRememberedSession(employee);
-
-    await employee.save();
-
-    const token =
-      generateToken(employee._id, employee.tokenVersion);
-
-    return res.status(200).json({
-      success: true,
-
-      message:
-        "Login successful.",
-
-      token,
-
-      rememberedSessionToken,
-
-      user:
-        buildUserResponse(employee),
-    });
+    return res.status(200).json(await completeLogin(employee, sessionResult.session));
   } catch (error) {
     return handleControllerError(
       res,
@@ -345,21 +377,134 @@ const quickLogin = async (req, res) => {
     if (!employee || !employee.isActive) {
       return res.status(employee && !employee.isActive ? 403 : 401).json({ success: false, message: "Your remembered session is no longer valid." });
     }
-    employee.rememberedSessions = (employee.rememberedSessions || []).filter((session) => session.tokenHash !== tokenHash);
-    if (employee.rememberedSessionTokenHash === tokenHash) {
-      employee.rememberedSessionTokenHash = null;
-      employee.rememberedSessionExpires = null;
+    const sessionResult = await beginLoginSession(employee._id, normalizeDevice(req.body, req));
+    if (sessionResult.kind === "pending") return pendingLoginResponse(res, sessionResult);
+
+    return res.status(200).json(await completeLogin(employee, sessionResult.session, {
+      consumedRememberedHash: tokenHash,
+    }));
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+// A requesting device holds this authenticated-by-secret request open, avoiding
+// rapid polling while the current device's user decides.
+const waitForLoginRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const requestToken = req.body?.requestToken;
+    const deadline = Date.now() + 20_000;
+    let request;
+
+    do {
+      request = await findRequestForRequester(requestId, requestToken);
+      if (!request) {
+        return res.status(404).json({ success: false, code: "LOGIN_REQUEST_NOT_FOUND", message: "This login request is not valid." });
+      }
+      if (request.status !== "pending" && request.status !== "approving") break;
+      await wait(500);
+    } while (Date.now() < deadline);
+
+    if (request.status === "pending" || request.status === "approving") {
+      return res.status(202).json({ success: false, code: "DEVICE_APPROVAL_PENDING", status: request.status, expiresAt: request.expiresAt });
     }
-    const nextRememberedSessionToken = issueRememberedSession(employee);
-    employee.lastLoginAt = new Date();
-    await employee.save();
+    if (request.status !== "approved") {
+      const expired = request.status === "expired";
+      return res.status(expired ? 410 : 403).json({
+        success: false,
+        code: expired ? "DEVICE_APPROVAL_EXPIRED" : "DEVICE_LOGIN_DENIED",
+        status: request.status,
+        message: expired ? "The login request expired. Please try again." : "The current device kept the active session.",
+      });
+    }
+
+    const [employee, session] = await Promise.all([
+      Employee.findById(request.employee).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions"),
+      AuthSession.findOne({ _id: request.requestedSession, status: "active", expiresAt: { $gt: new Date() } }),
+    ]);
+    if (!employee?.isActive || !session) {
+      return res.status(403).json({ success: false, code: "DEVICE_LOGIN_UNAVAILABLE", message: "The approved session is no longer available." });
+    }
+
+    return res.status(200).json(await completeLogin(employee, session));
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+const getPendingLoginRequest = async (req, res) => {
+  try {
+    const deadline = Date.now() + 20_000;
+    do {
+      const activeSession = await AuthSession.findOne({ _id: req.authSession._id, status: "active" });
+      if (!activeSession) {
+        return res.status(401).json({ success: false, code: "SESSION_REVOKED", message: "This device session is no longer active." });
+      }
+      const request = await findPendingForSession(activeSession);
+      if (request) {
+        return res.status(200).json({
+          success: true,
+          loginRequest: {
+            requestId: request.requestId,
+            deviceId: request.deviceId,
+            deviceName: request.deviceName,
+            clientType: request.clientType,
+            requestedAt: request.createdAt,
+            expiresAt: request.expiresAt,
+          },
+        });
+      }
+      await wait(500);
+    } while (Date.now() < deadline);
+
+    return res.status(200).json({ success: true, loginRequest: null });
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+const decidePendingLoginRequest = async (req, res) => {
+  try {
+    const decision = req.body?.decision;
+    if (!["allow", "deny"].includes(decision)) {
+      return res.status(400).json({ success: false, message: "Decision must be allow or deny." });
+    }
+    const request = await decideLoginRequest({
+      requestId: req.params.requestId,
+      currentSession: req.authSession,
+      decision: decision === "allow" ? "allow" : "deny",
+    });
+    if (!request) {
+      return res.status(404).json({ success: false, code: "LOGIN_REQUEST_NOT_FOUND", message: "This login request has expired or was already handled." });
+    }
     return res.status(200).json({
       success: true,
-      message: "Login successful.",
-      token: generateToken(employee._id, employee.tokenVersion),
-      rememberedSessionToken: nextRememberedSessionToken,
-      user: buildUserResponse(employee),
+      decision,
+      sessionEnded: decision === "allow",
+      message: decision === "allow" ? "The new device is now authorized." : "The new device login was denied.",
     });
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+const cancelLoginRequest = async (req, res) => {
+  try {
+    const request = await findRequestForRequester(req.params.requestId, req.body?.requestToken);
+    if (!request) return res.status(404).json({ success: false, message: "Login request not found." });
+    if (request.status === "pending") {
+      request.status = "cancelled";
+      request.resolvedAt = new Date();
+      await request.save();
+      await AuthSession.updateOne(
+        { _id: request.requestedSession, status: "pending" },
+        { $set: { status: "denied", revokedAt: new Date(), revokeReason: "request_cancelled" } },
+      );
+    }
+    return res.status(200).json({ success: true });
   } catch (error) {
     return handleControllerError(res, error);
   }
@@ -680,6 +825,7 @@ const resetPassword = async (req, res) => {
     employee.rememberedSessions = [];
 
     await employee.save();
+    await revokeEmployeeSessions(employee._id, "password_reset");
 
     return res.status(200).json({
       success: true,
@@ -715,6 +861,13 @@ const changePassword = async (req, res) => {
       "+password +tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires"
     );
 
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found.",
+      });
+    }
+
     const passwordMatches = await employee.comparePassword(currentPassword);
 
     if (!passwordMatches) {
@@ -734,7 +887,15 @@ const changePassword = async (req, res) => {
 
     // Bumping tokenVersion invalidates other sessions; issue this session a
     // fresh token in the same response so the caller isn't logged out too.
-    const token = generateToken(employee._id, employee.tokenVersion);
+    await AuthSession.updateMany(
+      { employee: employee._id, _id: { $ne: req.authSession._id }, status: { $in: ["active", "pending"] } },
+      { $set: { status: "revoked", revokedAt: new Date(), revokeReason: "password_changed" } },
+    );
+    await DeviceLoginRequest.updateMany(
+      { employee: employee._id, status: { $in: ["pending", "approving"] } },
+      { $set: { status: "cancelled", resolvedAt: new Date() } },
+    );
+    const token = generateToken(employee._id, employee.tokenVersion, req.authSession);
 
     return res.status(200).json({
       success: true,
@@ -750,8 +911,14 @@ const changePassword = async (req, res) => {
 // LOGOUT EMPLOYEE
 // ======================================================
 const logout = async (req, res) => {
-  // Access tokens are held separately by each client. Local logout must not
-  // invalidate an employee's concurrent dashboard or desktop session.
+  await AuthSession.updateOne(
+    { _id: req.authSession._id, status: "active" },
+    { $set: { status: "logged_out", revokedAt: new Date(), revokeReason: "user_logout" } },
+  );
+  await DeviceLoginRequest.updateMany(
+    { existingSession: req.authSession._id, status: { $in: ["pending", "approving"] } },
+    { $set: { status: "cancelled", resolvedAt: new Date() } },
+  );
 
   return res.status(200).json({
     success: true,
@@ -768,6 +935,10 @@ module.exports = {
   register,
   login,
   quickLogin,
+  waitForLoginRequest,
+  getPendingLoginRequest,
+  decidePendingLoginRequest,
+  cancelLoginRequest,
   getProfile,
   updateProfile,
   forgotPassword,

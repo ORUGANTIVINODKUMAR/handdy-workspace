@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Clock3, FileDown, FileSearch, Search, Sheet } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getEmployees } from "../../api/employeeApi";
@@ -12,52 +13,20 @@ import {
 } from "../../api/reportApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import { exportReportExcel, exportReportPdf } from "../../utils/reportExport";
+import useDataRefresh from "../../hooks/useDataRefresh";
+import { buildTimeLogTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
+import { getIdleSeconds, getWorkedSeconds, localDate } from "../../utils/timeLogReportHelpers";
+import { readReportState, writeReportState } from "../../utils/reportPersistence";
+import useAuth from "../../context/useAuth";
 
 import "../../styles/adminReportPage.css";
 import ReportSummary from "../../components/dashboard/ReportSummary";
-
-const localDate = () => {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 10);
-};
 
 const formatDuration = (seconds = 0) => {
   const safeSeconds = Math.max(0, Number(seconds) || 0);
   const hours = Math.floor(safeSeconds / 3600);
   const minutes = Math.floor((safeSeconds % 3600) / 60);
   return `${hours}h ${minutes}m`;
-};
-
-const getPauseSeconds = (record, reason) => {
-  const now = Date.now();
-
-  return (record.pauses || []).reduce((total, pause) => {
-    if (!pause.pausedAt || (reason && pause.reason !== reason)) return total;
-    const end = pause.resumedAt ? new Date(pause.resumedAt).getTime() : now;
-    const start = new Date(pause.pausedAt).getTime();
-    return total + Math.max(0, Math.floor((end - start) / 1000));
-  }, 0);
-};
-
-const getWorkedSeconds = (record) => {
-  if (record.status === "stopped") {
-    return Math.max(0, Number(record.totalWorkedSeconds) || 0);
-  }
-
-  if (!record.startedAt) return 0;
-  const end = record.stoppedAt ? new Date(record.stoppedAt).getTime() : Date.now();
-  const elapsed = Math.max(0, Math.floor((end - new Date(record.startedAt).getTime()) / 1000));
-  return Math.max(0, elapsed - getPauseSeconds(record));
-};
-
-const getIdleSeconds = (record) => {
-  if (record.status === "stopped" && record.totalIdleSeconds !== undefined) {
-    return Math.max(0, Number(record.totalIdleSeconds) || 0);
-  }
-
-  return getPauseSeconds(record, "idle");
 };
 
 const buildGroupedRows = (records, groupBy) => {
@@ -106,15 +75,30 @@ function AdminReportPage({
   trackingLabel = "tracking activity",
   allowEmployeeFilter = scope === "company",
 }) {
-  const [fromDate, setFromDate] = useState(localDate);
-  const [toDate, setToDate] = useState(localDate);
-  const [employee, setEmployee] = useState("");
-  const [project, setProject] = useState("");
+  const { pathname } = useLocation();
+  const { user } = useAuth();
+  const reportStorageKey = `crm-report:${user?._id || user?.email || "user"}:${pathname}`;
+  const [savedReportState] = useState(() => readReportState(reportStorageKey));
+  const restoredReportRef = useRef(false);
+  const latestReportRequestRef = useRef(0);
+  const [fromDate, setFromDate] = useState(() => savedReportState.fromDate || localDate());
+  const [toDate, setToDate] = useState(() => savedReportState.toDate || localDate());
+  const [employee, setEmployee] = useState(() => savedReportState.employee || "");
+  const [project, setProject] = useState(() => savedReportState.project || "");
+  // Snapshot of the filters that were active when "Generate" last succeeded.
+  // The silent background poll must replay this snapshot, not whatever is
+  // currently sitting in the (possibly half-edited) filter inputs.
+  const appliedFiltersRef = useRef({
+    fromDate: savedReportState.fromDate || localDate(),
+    toDate: savedReportState.toDate || localDate(),
+    employee: savedReportState.employee || "",
+    project: savedReportState.project || "",
+  });
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [hasRun, setHasRun] = useState(false);
+  const [hasRun, setHasRun] = useState(() => Boolean(savedReportState.hasRun));
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState("");
   const [exportError, setExportError] = useState("");
@@ -152,6 +136,10 @@ function AdminReportPage({
     () => records.reduce((sum, record) => sum + getIdleSeconds(record), 0),
     [records]
   );
+  const totalBreakSeconds = useMemo(
+    () => sumTimelineSeconds(records, "break"),
+    [records],
+  );
   const teamRows = useMemo(
     () => buildGroupedRows(records, "employee"),
     [records]
@@ -172,28 +160,42 @@ function AdminReportPage({
       ? "projects"
       : "records";
 
-  const runReport = async () => {
-    setHasRun(true);
-    setError("");
+  const loadReport = useCallback(async ({ silent = false } = {}) => {
+    const requestId = ++latestReportRequestRef.current;
+    const isCurrent = () => latestReportRequestRef.current === requestId;
 
-    if (!fromDate || !toDate || toDate < fromDate) {
-      setRecords([]);
-      setError("Select a valid From and To date.");
+    // Silent (background) refreshes must replay the filters captured the
+    // last time "Generate" succeeded, never the live (possibly half-edited)
+    // filter inputs, so in-progress edits never silently change the table.
+    const activeFilters = silent
+      ? appliedFiltersRef.current
+      : { fromDate, toDate, employee, project };
+
+    if (!silent) {
+      setHasRun(true);
+      setError("");
+    }
+
+    if (!activeFilters.fromDate || !activeFilters.toDate || activeFilters.toDate < activeFilters.fromDate) {
+      if (!silent) {
+        setRecords([]);
+        setError("Select a valid From and To date.");
+      }
       return;
     }
 
     if (mode === "tracking") {
-      setRecords([]);
+      if (!silent) setRecords([]);
       return;
     }
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const params = {
-        startDate: fromDate,
-        endDate: toDate,
-        employee: employee || undefined,
-        project: project || undefined,
+        startDate: activeFilters.fromDate,
+        endDate: activeFilters.toDate,
+        employee: activeFilters.employee || undefined,
+        project: activeFilters.project || undefined,
         limit: 100,
       };
       const data = mode === "attendance"
@@ -203,18 +205,46 @@ function AdminReportPage({
         : scope === "personal"
           ? await getMyTimeLogs(params)
           : await getAdminTimeLogs(params);
+
+      if (!isCurrent()) return;
       setRecords(
         mode === "attendance" ? data.attendance || [] : data.timeLogs || []
       );
+      if (!silent) appliedFiltersRef.current = activeFilters;
     } catch (requestError) {
-      setRecords([]);
-      setError(
-        getApiErrorMessage(requestError, "Unable to generate this report.")
-      );
+      if (!isCurrent()) return;
+      if (!silent) {
+        setRecords([]);
+        setError(
+          getApiErrorMessage(requestError, "Unable to generate this report.")
+        );
+      }
     } finally {
-      setLoading(false);
+      if (isCurrent() && !silent) setLoading(false);
     }
-  };
+  }, [employee, fromDate, mode, project, scope, toDate]);
+
+  const runReport = () => loadReport();
+  useEffect(() => {
+    writeReportState(reportStorageKey, {
+      fromDate,
+      toDate,
+      employee,
+      project,
+      hasRun,
+    });
+  }, [employee, fromDate, hasRun, project, reportStorageKey, toDate]);
+
+  useEffect(() => {
+    if (restoredReportRef.current) return;
+    restoredReportRef.current = true;
+    if (savedReportState.hasRun) void loadReport();
+  }, [loadReport, savedReportState.hasRun]);
+
+  useDataRefresh(() => {
+    if (hasRun) return loadReport({ silent: true });
+    return undefined;
+  }, 5_000);
 
   const getExportData = () => {
     if (mode === "attendance") {
@@ -256,18 +286,22 @@ function AdminReportPage({
     return {
       columns: [
         ...(scope === "company" ? ["Employee"] : []),
-        "Project", "Task", "Started", "Finished", "Worked", "Idle", "Status",
+        "Entry type", "Project", "Task", "Started", "Finished", "Duration", "Idle", "Status",
       ],
-      rows: records.map((record) => [
-        ...(scope === "company" ? [record.employee?.fullName || "-"] : []),
-        record.project?.projectName || "-",
-        record.task?.taskName || "-",
-        record.startedAt ? new Date(record.startedAt).toLocaleString() : "-",
-        record.stoppedAt ? new Date(record.stoppedAt).toLocaleString() : "Active",
-        formatDuration(getWorkedSeconds(record)),
-        formatDuration(getIdleSeconds(record)),
-        record.status || "-",
-      ]),
+      rows: records.flatMap((record) => {
+        const employeeCell = scope === "company" ? [record.employee?.fullName || "-"] : [];
+        return buildTimeLogTimeline(record).map((entry) => [
+          ...employeeCell,
+          entry.type === "break" ? "Break" : entry.type === "idle" ? "Idle" : "Work",
+          record.project?.projectName || "-",
+          entry.type === "work" ? `${record.task?.taskName || "Task"} - Work ${entry.sequence}` : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`,
+          new Date(entry.start).toLocaleString(),
+          entry.end ? new Date(entry.end).toLocaleString() : "In progress",
+          formatDuration(entry.durationSeconds),
+          entry.type === "idle" ? formatDuration(entry.durationSeconds) : "-",
+          entry.isOpen ? (entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running") : "Completed",
+        ]);
+      }),
     };
   };
 
@@ -287,6 +321,7 @@ function AdminReportPage({
           { label: "Records", value: records.length },
           ...(mode === "time" ? [
             { label: "Worked", value: formatDuration(totalSeconds) },
+            { label: "Break", value: formatDuration(totalBreakSeconds) },
             { label: "Idle", value: formatDuration(totalIdleSeconds) },
           ] : []),
         ],
@@ -304,10 +339,13 @@ function AdminReportPage({
   return (
     <DashboardLayout title={title}>
       <div className="admin-report-page">
-        <ReportSummary items={[
+        <ReportSummary items={mode === "time" ? [
           { label: "Records", value: hasRun ? records.length : "—" },
-          { label: "Worked time", value: hasRun && mode === "time" ? formatDuration(totalSeconds) : "—" },
-          { label: "Idle time", value: hasRun && mode === "time" ? formatDuration(totalIdleSeconds) : "—" },
+          { label: "Worked time", value: hasRun ? formatDuration(totalSeconds) : "—" },
+          { label: "Break time", value: hasRun ? formatDuration(totalBreakSeconds) : "—", help: "Intentional timer breaks" },
+          { label: "Idle time", value: hasRun ? formatDuration(totalIdleSeconds) : "—" },
+        ] : [
+          { label: "Records", value: hasRun ? records.length : "—" },
           { label: "Report scope", value: scope === "personal" ? "Personal" : "Company", help: "Access follows your role" },
         ]} />
         <section className="admin-report-filter card">
@@ -375,6 +413,7 @@ function AdminReportPage({
               {mode === "time" && (
                 <div className="admin-report-totals">
                   <strong><Clock3 size={16} />Worked {formatDuration(totalSeconds)}</strong>
+                  <strong className="admin-report-break-total"><Clock3 size={16} />Break {formatDuration(totalBreakSeconds)}</strong>
                   <strong><Activity size={16} />Idle {formatDuration(totalIdleSeconds)}</strong>
                 </div>
               )}
@@ -453,9 +492,22 @@ function AdminReportPage({
           {!error && mode === "time" && records.length > 0 && variant === "detailed" && (
             <div className="admin-report-table-wrap">
               <table>
-                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Project</th><th>Task</th><th>Started</th><th>Finished</th><th>Worked</th><th>Idle</th><th>Status</th></tr></thead>
+                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th></tr></thead>
                 <tbody>{records.map((record) => (
-                  <tr key={record._id}>{scope === "company" && <td>{record.employee?.fullName || "—"}</td>}<td>{record.project?.projectName || "—"}</td><td>{record.task?.taskName || "—"}</td><td>{new Date(record.startedAt).toLocaleString()}</td><td>{record.stoppedAt ? new Date(record.stoppedAt).toLocaleString() : "Active"}</td><td>{formatDuration(getWorkedSeconds(record))}</td><td>{formatDuration(getIdleSeconds(record))}</td><td>{record.status}</td></tr>
+                  <Fragment key={record._id}>
+                    {buildTimeLogTimeline(record).map((entry) => (
+                      <tr className={`report-timeline-row report-${entry.type}-row`} key={`${record._id}-${entry.type}-${entry.sequence}`}>
+                        {scope === "company" && <td>{record.employee?.fullName || "—"}</td>}
+                        <td><div className="report-entry-project"><span className={`report-entry-badge ${entry.type}`}>{entry.type}</span>{entry.type === "work" && <span>{record.project?.projectName || "—"}</span>}</div></td>
+                        <td>{entry.type === "work" ? `${record.task?.taskName || "Task"} · Work ${entry.sequence}` : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`}</td>
+                        <td><strong>{new Date(entry.start).toLocaleString()}</strong></td>
+                        <td><strong>{entry.end ? new Date(entry.end).toLocaleString() : "In progress"}</strong></td>
+                        <td>{formatDuration(entry.durationSeconds)}</td>
+                        <td>{entry.type === "idle" ? formatDuration(entry.durationSeconds) : "—"}</td>
+                        <td>{entry.isOpen ? (entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running") : "Completed"}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}</tbody>
               </table>
             </div>
