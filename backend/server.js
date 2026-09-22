@@ -30,11 +30,6 @@ const ensureDefaultProjects = async () => {
   for (const projectName of DEFAULT_PROJECT_NAMES) {
     const existingProject = await Project.findOne({ projectName });
     if (existingProject) {
-      if (existingProject.deletedAt || existingProject.status !== "Active") {
-        existingProject.deletedAt = null;
-        existingProject.status = "Active";
-        await existingProject.save();
-      }
       continue;
     }
 

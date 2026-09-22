@@ -154,6 +154,10 @@ if (addNoteButton) {
   });
 }
 
+if (timerNote) {
+  timerNote.addEventListener("blur", saveNote);
+}
+
 function getToken() {
   return localStorage.getItem("token");
 }
@@ -168,6 +172,24 @@ function getOpenPauseReason(timeLog) {
 
 function isIntentionalBreak(timeLog = currentTimeLog) {
   return timeLog?.status === "paused" && ["break", "manual"].includes(getOpenPauseReason(timeLog));
+}
+
+// A task can itself be typed "break" (e.g. Lunch), in which case every
+// second it runs is break time by definition - not a pause layered on top
+// of a work task. This is the same classification billingUtils.js uses to
+// keep break tasks out of billable/worked totals.
+function isBreakTask(timeLog = currentTimeLog) {
+  return timeLog?.task?.taskType === "break";
+}
+
+function runningStatusLabel(timeLog = currentTimeLog) {
+  return isBreakTask(timeLog) ? "On Break" : "Working";
+}
+
+function setClassState(element, className, enabled) {
+  if (!element?.classList) return;
+  if (enabled) element.classList.add(className);
+  else element.classList.remove(className);
 }
 
 // Shared classification used by both the "Idle time" total and the timeline
@@ -820,6 +842,19 @@ function appendTimesheetCell(row, value) {
   row.appendChild(cell);
 }
 
+function appendSegmentCell(row, label, note) {
+  const cell = document.createElement("td");
+  cell.appendChild(document.createTextNode(label));
+  if (note) {
+    cell.title = note;
+    const noteEl = document.createElement("div");
+    noteEl.className = "timesheet-note";
+    noteEl.textContent = note;
+    cell.appendChild(noteEl);
+  }
+  row.appendChild(cell);
+}
+
 function validTimelineTime(value) {
   const time = value ? new Date(value).getTime() : Number.NaN;
   return Number.isFinite(time) ? time : null;
@@ -985,11 +1020,12 @@ function renderTodayTimesheet(timeLogs) {
       const row = document.createElement("tr");
       row.className = `timesheet-timeline-row timesheet-${entry.type}-row`;
       appendTimelineTypeCell(row, entry, timeLog);
-      appendTimesheetCell(
+      appendSegmentCell(
         row,
         entry.type === "work"
           ? `${timeLog.task?.taskName || "Task"} · Work ${entry.sequence}`
-          : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`
+          : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`,
+        entry.type === "work" ? timeLog.note : null
       );
       appendTimesheetCell(row, formatTime(entry.start));
       appendTimesheetCell(row, entry.end ? formatTime(entry.end) : "In progress");
@@ -1113,6 +1149,9 @@ function calculateCurrentWorkSeconds(timeLog, now = Date.now()) {
 }
 
 function calculateBreakSeconds(timeLog) {
+  // The whole session is break time when it's running on a break-typed
+  // task - not just the time spent paused inside a work task.
+  if (isBreakTask(timeLog)) return calculateCurrentWorkSeconds(timeLog);
   if (!isIntentionalBreak(timeLog)) return 0;
   const now = Date.now();
   const currentBreak = [...(timeLog?.pauses || [])]
@@ -1123,28 +1162,61 @@ function calculateBreakSeconds(timeLog) {
 }
 
 function updateBreakUI(timeLog = currentTimeLog) {
-  const onBreak = isIntentionalBreak(timeLog);
+  const onBreak = isBreakTask(timeLog) || isIntentionalBreak(timeLog);
   if (breakClock) breakClock.hidden = false;
   const currentBreakDuration = formatDuration(calculateBreakSeconds(timeLog));
   if (breakDuration) breakDuration.textContent = currentBreakDuration;
   if (timesheetBreakDuration) timesheetBreakDuration.textContent = currentBreakDuration;
-  if (breakTimerButton) breakTimerButton.textContent = onBreak ? "End Break" : "Start Break";
+  if (breakTimerButton) {
+    // A break-typed task (e.g. Lunch) is already break time for its whole
+    // run - there is no separate pause/resume to trigger through this
+    // button, so it reads "On Break" rather than an actionable "End Break".
+    breakTimerButton.textContent = isIntentionalBreak(timeLog)
+      ? "End Break"
+      : isBreakTask(timeLog)
+        ? "On Break"
+        : "Start Break";
+    setClassState(breakTimerButton, "is-on-break", onBreak);
+  }
+  setClassState(timerStatus, "status-break", onBreak);
+  setClassState(breakClock, "is-on-break", onBreak);
 }
 
-// Notes can only be attached when a new timer is started (there is no
-// "update note on a running timer" endpoint), so the note controls stay
-// disabled - never hidden, so the feature is still discoverable - whenever
-// a timer is already running or paused.
+// Notes can be entered before starting a timer, and edited any time while
+// it's running or paused - saveNote() PATCHes the edit to the active timer.
+// Skip refreshing the value while the user is actively typing in it so a
+// background poll can't clobber an in-progress edit.
 function updateNoteControlsUI(timeLog = currentTimeLog) {
-  const timerActive = Boolean(timeLog);
-  if (addNoteButton) {
-    addNoteButton.disabled = timerActive;
-    addNoteButton.title = timerActive
-      ? "Notes can only be added when starting a new timer."
-      : "";
+  if (timerNote && document.activeElement !== timerNote) {
+    timerNote.value = timeLog?.note || "";
   }
-  if (timerNote) {
-    timerNote.disabled = timerActive;
+}
+
+async function saveNote() {
+  if (!timerNote || !currentTimeLog) return;
+  const token = getToken();
+  if (!token) return;
+
+  const note = timerNote.value.trim();
+  if (note === (currentTimeLog.note || "")) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/time-logs/note`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ note }),
+    });
+
+    const data = await response.json();
+    if (response.ok && data.timeLog) {
+      currentTimeLog = data.timeLog;
+    }
+  } catch {
+    // Best-effort: the note stays in the textarea either way, so the next
+    // successful save (or the next active-timer reload) picks it up.
   }
 }
 
@@ -1162,8 +1234,10 @@ function startLiveDuration(timeLog) {
     const workedSeconds =
       calculateCurrentWorkSeconds(timeLog);
 
+    // A break-typed task never accrues "worked" time - its elapsed time is
+    // shown under the break clock instead (see calculateBreakSeconds).
     timerDuration.textContent =
-      formatDuration(workedSeconds);
+      formatDuration(isBreakTask(timeLog) ? 0 : workedSeconds);
     updateBreakUI(timeLog);
   };
 
@@ -1230,7 +1304,7 @@ async function loadActiveTimer() {
         ? getOpenPauseReason(timeLog) === "idle"
           ? "Idle"
           : "On Break"
-        : "Working";
+        : runningStatusLabel(timeLog);
     updateBreakUI(timeLog);
 
     // Restore the running work from the backend record (the only place the
@@ -1460,7 +1534,7 @@ async function resumeTimer(reason = "manual") {
     stopLiveDuration();
     currentTimeLog = data.timeLog;
     automaticIdlePause = false;
-    timerStatus.textContent = "Working";
+    timerStatus.textContent = runningStatusLabel(data.timeLog);
     updateBreakUI(data.timeLog);
     updateNoteControlsUI(data.timeLog);
 
@@ -1539,7 +1613,7 @@ async function startTimer() {
       return;
     }
 
-    timerStatus.textContent = "Working";
+    timerStatus.textContent = runningStatusLabel(data.timeLog);
 
     currentTimeLog = data.timeLog;
     activeTaskIdleLogout = data.timeLog.task?.idleLogout === true
@@ -1560,11 +1634,6 @@ async function startTimer() {
 
     projectSelect.disabled = true;
     taskSelect.disabled = true;
-
-    if (timerNote) {
-      timerNote.value = "";
-      timerNote.hidden = true;
-    }
   } catch (error) {
     timerMessage.textContent =
       "Unable to reach the backend server.";
@@ -1730,9 +1799,14 @@ stopTimerButton?.addEventListener(
   "click",
   () => runTimerAction(stopTimer)
 );
-breakTimerButton?.addEventListener("click", () => runTimerAction(() =>
-  isIntentionalBreak() ? resumeTimer("break") : pauseTimer("break")
-));
+breakTimerButton?.addEventListener("click", () => {
+  // A break-typed task is already break time for its whole run; there is
+  // no pause/resume to trigger for it.
+  if (isBreakTask()) return;
+  return runTimerAction(() =>
+    isIntentionalBreak() ? resumeTimer("break") : pauseTimer("break")
+  );
+});
 logoutButton?.addEventListener("click", () => signOut(false));
 keepThisDeviceButton?.addEventListener("click", () => decideDeviceLogin("deny"));
 allowNewDeviceButton?.addEventListener("click", () => decideDeviceLogin("allow"));

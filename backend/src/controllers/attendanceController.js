@@ -10,6 +10,19 @@ const checkIn = async (req, res) => {
 
         const today = getDateKey();
 
+        const openAttendance = await Attendance.findOne({
+            employee: employeeId,
+            checkIn: { $ne: null },
+            checkOut: null,
+        }).sort({ checkIn: -1 });
+
+        if (openAttendance) {
+            return res.status(409).json({
+                success: false,
+                message: "You already have an open attendance session. Check out before checking in again.",
+            });
+        }
+
         const existingAttendance = await Attendance.findOne({
             employee: employeeId,
             date: today,
@@ -48,24 +61,17 @@ const checkIn = async (req, res) => {
 const checkOut = async (req, res) => {
     try {
         const employeeId = req.user._id;
-        const today = getDateKey();
 
         const attendance = await Attendance.findOne({
             employee: employeeId,
-            date: today,
-        });
+            checkIn: { $ne: null },
+            checkOut: null,
+        }).sort({ checkIn: -1 });
 
         if (!attendance) {
             return res.status(400).json({
                 success: false,
                 message: "You must check in before checking out.",
-            });
-        }
-
-        if (attendance.checkOut) {
-            return res.status(400).json({
-                success: false,
-                message: "You have already checked out today.",
             });
         }
 
@@ -99,8 +105,11 @@ const getTodayAttendance = async (req, res) => {
 
         const attendance = await Attendance.findOne({
             employee: employeeId,
-            date: today,
-        });
+            $or: [
+                { date: today },
+                { checkIn: { $ne: null }, checkOut: null },
+            ],
+        }).sort({ checkIn: -1 });
 
         return res.status(200).json({
             success: true,

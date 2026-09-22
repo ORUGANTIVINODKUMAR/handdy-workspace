@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const { getDateKeyInTimezone } = require("../utils/billingUtils");
+
+const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
 
 const scheduleSchema = new mongoose.Schema(
   {
@@ -31,6 +34,11 @@ const scheduleSchema = new mongoose.Schema(
       required: true,
     },
 
+    scheduleDateKey: {
+      type: String,
+      match: /^\d{4}-\d{2}-\d{2}$/,
+    },
+
     notes: {
       type: String,
       trim: true,
@@ -54,10 +62,21 @@ const scheduleSchema = new mongoose.Schema(
   }
 );
 
-// Matches the query pattern in scheduleController.js's hasConflictingSchedule
-// (employee + date range lookup) and getAllSchedules (date-sorted, often
-// filtered by employee).
+scheduleSchema.pre("validate", function setScheduleDateKey() {
+  if (this.date) this.scheduleDateKey = getDateKeyInTimezone(this.date, APP_TIMEZONE);
+});
+
 scheduleSchema.index({ employee: 1, date: 1 });
+scheduleSchema.index(
+  { employee: 1, scheduleDateKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: "Active",
+      scheduleDateKey: { $type: "string" },
+    },
+  },
+);
 
 const Schedule = mongoose.model("Schedule", scheduleSchema);
 

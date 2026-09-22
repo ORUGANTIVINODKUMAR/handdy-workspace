@@ -39,6 +39,7 @@
 .report-entry-badge { display: inline-flex; align-items: center; flex: 0 0 auto; padding: 4px 8px; border: 1px solid color-mix(in srgb, var(--success) 24%, transparent); border-radius: 999px; color: var(--success); background: color-mix(in srgb, var(--success) 8%, var(--surface)); font-size: 10px; font-weight: 750; text-transform: uppercase; }
 .report-entry-badge.break { border-color: color-mix(in srgb, var(--danger) 24%, transparent); color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
 .report-entry-badge.idle { border-color: color-mix(in srgb, var(--warning) 24%, transparent); color: var(--warning); background: color-mix(in srgb, var(--warning) 8%, var(--surface)); }
+.report-entry-note { max-width: 220px; overflow-wrap: anywhere; color: var(--text-muted); font-style: italic; }
 @media (max-width: 1100px) { .admin-report-filter { align-items: stretch; flex-direction: column; } .admin-report-results > header { align-items: flex-start; } .admin-report-header-actions { align-items: flex-end; flex-direction: column; } }
 @media (max-width: 650px) { .admin-report-controls { align-items: stretch; flex-direction: column; } .admin-report-controls select, .admin-report-controls input, .admin-report-controls button { width: 100%; } .admin-report-results > header, .admin-report-header-actions { align-items: stretch; flex-direction: column; } .admin-report-export-actions { display: grid; grid-template-columns: 1fr 1fr; } .admin-report-export-actions .report-export-button { width: 100%; } }
 

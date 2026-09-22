@@ -38,6 +38,7 @@ label,.work-summary span { color:#385048; font-size:13px; font-weight:700; } inp
 .timesheet-entry-project { color:inherit; }
 .timesheet-status-break { color:#b42318; background:#ffe4e1; }
 .timesheet-status-completed { color:#4e5f58; background:#edf1ef; }
+.timesheet-note { margin-top:4px; overflow-wrap:anywhere; white-space:normal; color:var(--muted); font-size:11px; font-style:italic; font-weight:400; }
 @media (max-width:850px) { body { min-width:0; }.timer-header { grid-template-columns:1fr auto; }.timer-navigation { order:3; grid-column:1/-1; justify-content:center; }.timer-nav-item { padding:10px 3px; }.timer-stage { width:calc(100% - 28px); margin:28px auto; }.timer-workspace { grid-template-columns:1fr; }.work-card { padding:28px; }.clock-card { min-height:300px; }.timesheet-summary { grid-template-columns:1fr; } }
 @media (max-width:650px) { .timesheet-heading { flex-direction:column; }.timesheet-actions { width:100%; flex-wrap:wrap; }.timesheet-actions button,.dashboard-link { flex:1; } }
 @media (max-width:520px) { .timer-header { padding:0 15px; }.timer-brand { font-size:22px; }.timer-navigation { gap:18px; }.account-button { padding:8px 4px; }.work-card,.panel { padding:22px; }.timer-note-row { gap:24px; } }
@@ -186,6 +187,13 @@ body[data-page="dashboard"] .clock-actions { width:100%; display:grid; grid-temp
 body[data-page="dashboard"] .clock-actions button { width:100%; min-width:0; min-height:42px; }
 body[data-page="dashboard"] #breakTimerButton { background:#e6efff; color:#244786; }
 body[data-page="dashboard"] #breakTimerButton:disabled { background:rgba(255,255,255,.1); color:#8fa1c6; }
+/* On-break state reads as a warning (red), distinct from the normal
+   blue "active/working" button and status colors. */
+body[data-page="dashboard"] #breakTimerButton.is-on-break { background:#e2495c; color:#fff; }
+body[data-page="dashboard"] #breakTimerButton.is-on-break:disabled { background:rgba(226,73,92,.35); color:#fbdfe2; }
+body[data-page="dashboard"] .clock-status.status-break { color:#ff9fac; font-weight:700; }
+.break-clock.is-on-break { border-color:rgba(226,73,92,.5); background:rgba(226,73,92,.14); }
+.break-clock.is-on-break strong { color:#ff9fac; }
 @media(max-width:850px) {
   body[data-page="dashboard"] .timer-header { padding:12px 20px 0; }
   body[data-page="dashboard"] .timer-stage { width:calc(100% - 28px); margin:28px auto; }

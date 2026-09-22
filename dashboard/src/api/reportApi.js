@@ -1,31 +1,41 @@
 import axiosInstance from "./axiosInstance";
 
-export const getAdminTimeLogs = async (params = {}) => {
-  const response = await axiosInstance.get("/time-logs/admin", { params });
-  return response.data;
+const getAllReportPages = async (path, collectionKey, params = {}) => {
+  const records = [];
+  let firstPage = null;
+
+  for (let page = 1; ; page += 1) {
+    const response = await axiosInstance.get(path, {
+      params: { ...params, page, limit: 100 },
+    });
+    const data = response.data;
+    if (!firstPage) firstPage = data;
+    records.push(...(data[collectionKey] || []));
+    if (page >= Math.max(Number(data.totalPages) || 1, 1)) break;
+  }
+
+  return {
+    ...(firstPage || {}),
+    page: 1,
+    count: records.length,
+    [collectionKey]: records,
+  };
 };
 
-export const getTeamTimeLogs = async (params = {}) => {
-  const response = await axiosInstance.get("/time-logs/team", { params });
-  return response.data;
-};
+export const getAdminTimeLogs = (params = {}) =>
+  getAllReportPages("/time-logs/admin", "timeLogs", params);
 
-export const getMyTimeLogs = async (params = {}) => {
-  const response = await axiosInstance.get("/time-logs/history", { params });
-  return response.data;
-};
+export const getTeamTimeLogs = (params = {}) =>
+  getAllReportPages("/time-logs/team", "timeLogs", params);
 
-export const getAdminAttendance = async (params = {}) => {
-  const response = await axiosInstance.get("/attendance/admin/history", { params });
-  return response.data;
-};
+export const getMyTimeLogs = (params = {}) =>
+  getAllReportPages("/time-logs/history", "timeLogs", params);
 
-export const getTeamAttendance = async (params = {}) => {
-  const response = await axiosInstance.get("/attendance/team/history", { params });
-  return response.data;
-};
+export const getAdminAttendance = (params = {}) =>
+  getAllReportPages("/attendance/admin/history", "attendance", params);
 
-export const getMyAttendance = async (params = {}) => {
-  const response = await axiosInstance.get("/attendance/history", { params });
-  return response.data;
-};
+export const getTeamAttendance = (params = {}) =>
+  getAllReportPages("/attendance/team/history", "attendance", params);
+
+export const getMyAttendance = (params = {}) =>
+  getAllReportPages("/attendance/history", "attendance", params);

@@ -4,6 +4,7 @@ const {
   startTimer,
   pauseTimer,
   resumeTimer,
+  updateNote,
   stopTimer,
   getActiveTimer,
   getMyTeamTimeLogs,
@@ -44,6 +45,7 @@ router.post("/start", protect, startTimer);
 router.post("/pause", protect, pauseTimer);
 router.post("/resume", protect, resumeTimer);
 router.post("/stop", protect, stopTimer);
+router.patch("/note", protect, updateNote);
 router.get("/active", protect, getActiveTimer);
 router.get("/history", protect, getMyTimeLogs);
 router.get("/my", protect, getMyTimeLogs);

@@ -37,6 +37,22 @@ const hasConflictingSchedule = async ({ employee, date, excludeId }) => {
   return Boolean(await Schedule.exists(filter));
 };
 
+const sendScheduleError = (res, error, fallbackMessage) => {
+  if (error?.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      message: "This employee already has an active schedule for that date.",
+    });
+  }
+  if (error?.name === "ValidationError" || error?.name === "RangeError") {
+    return res.status(400).json({
+      success: false,
+      message: "Schedule date and fields must be valid.",
+    });
+  }
+  return sendErrorResponse(res, error, fallbackMessage);
+};
+
 // ======================================
 // CREATE SCHEDULE
 // ======================================
@@ -56,6 +72,7 @@ const createSchedule = async (req, res) => {
 
     const schedule = await Schedule.create({
       ...req.body,
+      scheduleDateKey: getDateKeyInTimezone(new Date(req.body.date), APP_TIMEZONE),
       createdBy: req.user._id,
     });
 
@@ -73,7 +90,7 @@ const createSchedule = async (req, res) => {
       schedule: populatedSchedule,
     });
   } catch (error) {
-    return sendErrorResponse(res, error, "Unable to create schedule.");
+    return sendScheduleError(res, error, "Unable to create schedule.");
   }
 };
 
@@ -213,10 +230,16 @@ const updateSchedule = async (req, res) => {
       });
     }
 
+    const nextDate = new Date(req.body.date ?? schedule.date);
+    const update = {
+      ...req.body,
+      scheduleDateKey: getDateKeyInTimezone(nextDate, APP_TIMEZONE),
+    };
+
     const updatedSchedule =
       await Schedule.findByIdAndUpdate(
         req.params.id,
-        req.body,
+        update,
         {
           returnDocument: "after",
           runValidators: true,
@@ -236,7 +259,7 @@ const updateSchedule = async (req, res) => {
       schedule: updatedSchedule,
     });
   } catch (error) {
-    return sendErrorResponse(res, error, "Unable to update schedule.");
+    return sendScheduleError(res, error, "Unable to update schedule.");
   }
 };
 

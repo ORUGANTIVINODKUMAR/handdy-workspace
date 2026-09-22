@@ -6,6 +6,16 @@ export const getEmployees = async (params = {}) => {
   return response.data;
 };
 
+export const getAllEmployees = async (params = {}) => {
+  const employees = [];
+  for (let page = 1; ; page += 1) {
+    const data = await getEmployees({ ...params, page, limit: 100 });
+    employees.push(...(data.employees || []));
+    if (page >= Math.max(Number(data.totalPages) || 1, 1)) break;
+  }
+  return employees;
+};
+
 // Admin - get one employee
 export const getEmployeeById = async (employeeId) => {
   const response = await axiosInstance.get(`/employees/${employeeId}`);

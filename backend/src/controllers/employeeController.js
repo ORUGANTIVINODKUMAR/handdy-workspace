@@ -17,7 +17,7 @@ const populateEmployeeRates = (query) => query.populate(
 // true admin) can update basic details, team, and project rates, but can
 // never touch these — that boundary is what keeps the permission from
 // becoming a privilege-escalation or account-takeover path.
-const FIELDS_RESTRICTED_TO_ADMIN = ["role", "isActive", "password", "permissions"];
+const FIELDS_RESTRICTED_TO_ADMIN = ["email", "role", "isActive", "password", "permissions"];
 
 const alphaAccountIsProtected = (_actor, target) => isAlphaRole(target?.role);
 
@@ -155,7 +155,7 @@ const updateEmployee = async (req, res) => {
       if (restrictedField) {
         return res.status(403).json({
           success: false,
-          message: "Only an administrator can change role, status, password, or permissions.",
+          message: "Only an administrator can change email, role, status, password, or permissions.",
         });
       }
     }

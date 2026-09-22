@@ -21,3 +21,6 @@ Thumbs.db
 # npm
 npm-debug.log*
 
+# Locally generated desktop installer (GitHub rejects files over 100 MB)
+dashboard/public/downloads/CRM-Setup.zip
+

@@ -3,8 +3,8 @@ import { Activity, Clock3, FileDown, FileSearch, Search, Sheet } from "lucide-re
 import { useLocation } from "react-router-dom";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
-import { getEmployees } from "../../api/employeeApi";
-import { getAllProjects } from "../../api/projectApi";
+import { getAllEmployees } from "../../api/employeeApi";
+import { getAllActiveProjects } from "../../api/projectApi";
 import {
   getAdminAttendance,
   getAdminTimeLogs,
@@ -110,14 +110,14 @@ function AdminReportPage({
       try {
         const [employeeData, projectData] = await Promise.all([
           allowEmployeeFilter
-            ? getEmployees({ limit: 100 })
-            : Promise.resolve({ employees: [] }),
+            ? getAllEmployees()
+            : Promise.resolve([]),
           mode === "time"
-            ? getAllProjects({ limit: 100 })
-            : Promise.resolve({ projects: [] }),
+            ? getAllActiveProjects()
+            : Promise.resolve([]),
         ]);
-        setEmployees(employeeData.employees || []);
-        setProjects(projectData.projects || []);
+        setEmployees(employeeData);
+        setProjects(projectData);
       } catch (requestError) {
         setError(
           getApiErrorMessage(requestError, "Unable to load report filters.")
@@ -196,7 +196,6 @@ function AdminReportPage({
         endDate: activeFilters.toDate,
         employee: activeFilters.employee || undefined,
         project: activeFilters.project || undefined,
-        limit: 100,
       };
       const data = mode === "attendance"
         ? scope === "personal"
