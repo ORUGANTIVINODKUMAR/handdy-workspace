@@ -8,6 +8,10 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import {
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 import useAuth
   from "../../context/useAuth";
@@ -62,6 +66,9 @@ function LoginPage() {
     });
 
   const [loading, setLoading] =
+    useState(false);
+
+  const [showPassword, setShowPassword] =
     useState(false);
 
   // ==========================================
@@ -263,15 +270,27 @@ function LoginPage() {
               Password
             </label>
 
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              autoComplete="current-password"
-              required
-            />
+            <div className="auth-password-control">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={handleChange}
+                autoComplete="current-password"
+                required
+              />
+
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+              </button>
+            </div>
           </div>
 
           <Link to="/forgot-password" className="auth-forgot-link">

@@ -316,4 +316,44 @@
   }
 
 }
+
+.auth-password-control {
+  position: relative;
+}
+
+.auth-password-control input {
+  padding-right: 52px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+
+  display: grid;
+  place-items: center;
+
+  width: 38px;
+  height: 38px;
+  padding: 0;
+
+  transform: translateY(-50%);
+
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #5f6f8f;
+
+  cursor: pointer;
+}
+
+.auth-password-toggle:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
 }
