@@ -90,4 +90,96 @@ html[data-theme] .admin-task-employee-list .admin-task-employee-option:focus-vis
   outline-offset: 2px;
 }
 
+/* Keep task selectors readable when a page/theme applies primary-button colours. */
+html[data-theme] :is(.crm-content, .tl-page) .admin-task-project-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px;
+}
+
+html[data-theme] :is(.crm-content, .tl-page) :is(
+  .admin-task-team-option,
+  .admin-task-project-option,
+  .admin-task-employee-option
+) {
+  justify-content: flex-start;
+  min-height: 60px;
+  border: 1px solid #c8ddd3 !important;
+  background: #ffffff !important;
+  color: #173c31 !important;
+  text-align: left;
+  filter: none !important;
+}
+
+html[data-theme] :is(.crm-content, .tl-page) :is(
+  .admin-task-team-option,
+  .admin-task-project-option,
+  .admin-task-employee-option
+):hover {
+  border-color: #72ae94 !important;
+  background: #f7fbf9 !important;
+}
+
+html[data-theme] :is(.crm-content, .tl-page) :is(
+  .admin-task-team-option,
+  .admin-task-project-option,
+  .admin-task-employee-option
+).selected {
+  border-color: #18775c !important;
+  background: #e8f5ee !important;
+  color: #145b42 !important;
+}
+
+html[data-theme] :is(.crm-content, .tl-page) .admin-task-project-option strong {
+  display: block;
+  overflow: hidden;
+  color: #173c31 !important;
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-theme] :is(.crm-content, .tl-page) .admin-task-project-option small {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: #668176 !important;
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-theme] :is(.crm-content, .tl-page) :is(
+  .admin-task-team-option,
+  .admin-task-project-option,
+  .admin-task-employee-option
+) i {
+  border-color: #8db8a6 !important;
+  background: #ffffff !important;
+  color: transparent !important;
+}
+
+html[data-theme] :is(.crm-content, .tl-page) :is(
+  .admin-task-team-option,
+  .admin-task-project-option,
+  .admin-task-employee-option
+).selected i {
+  border-color: #18775c !important;
+  background: #18775c !important;
+  color: #ffffff !important;
+}
+
+@media (max-width: 1100px) {
+  html[data-theme] :is(.crm-content, .tl-page) .admin-task-project-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 700px) {
+  html[data-theme] :is(.crm-content, .tl-page) .admin-task-project-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 }
