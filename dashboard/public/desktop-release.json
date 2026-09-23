@@ -1,19 +1,20 @@
 {
-  "latestVersion": "1.2.3",
+  "latestVersion": "1.2.4",
   "minimumSupportedVersion": "1.1.0",
   "mandatory": false,
   "platform": "Windows 10 and 11 (64-bit)",
   "fileName": "CRM-Setup.exe",
   "fileSize": "106 MB",
-  "sha256": "DABBC5688E376C9A6A25051C479A507AB4CACCA637662EE97D7CC770B929BD1C",
+  "sha256": "7AE884642CA612AD432C2A831D88F9D4D56709FC0D067FE4993BFFF6D3518C17",
   "downloadUrl": "/downloads/CRM-Setup.exe",
   "releasePageUrl": "/employee/app",
-  "releaseDate": "2026-09-17",
-  "message": "A new CRM desktop version is available. Open the dashboard to download and install it.",
+  "releaseDate": "2026-09-23",
+  "message": "CRM 1.2.4 is available with the latest desktop features and production configuration.",
   "releaseNotes": [
     "Secure single-device login asks the active computer before transferring an account.",
     "Approved devices restore the existing task timer and break state without creating a duplicate timer.",
     "Today's desktop timesheet displays work and break segments in chronological order.",
-    "Selected project, task and dashboard view remain selected while the app refreshes."
+    "Selected project, task and dashboard view remain selected while the app refreshes.",
+    "Includes the latest desktop source used by the current CRM workspace."
   ]
 }
