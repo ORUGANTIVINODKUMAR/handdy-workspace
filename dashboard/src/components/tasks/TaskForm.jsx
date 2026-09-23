@@ -56,7 +56,10 @@ function TaskForm({
   const [projects, setProjects] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
 
-  const [projectId, setProjectId] = useState(toId(initialTask?.project));
+  const [projectIds, setProjectIds] = useState(() => {
+    const initialProjectId = toId(initialTask?.project);
+    return initialProjectId ? [initialProjectId] : [];
+  });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -98,10 +101,9 @@ function TaskForm({
   }), [projects, teamsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (projectId && !availableProjects.some((project) => project._id === projectId)) {
-      setProjectId("");
-    }
-  }, [availableProjects, projectId]);
+    const availableProjectIds = new Set(availableProjects.map((project) => project._id));
+    setProjectIds((current) => current.filter((projectId) => availableProjectIds.has(projectId)));
+  }, [availableProjects]);
 
   const availableEmployees = useMemo(() => {
     const pool =
@@ -122,7 +124,16 @@ function TaskForm({
       previous.includes(teamId) ? previous.filter((id) => id !== teamId) : [...previous, teamId]
     );
     setAssignedTo([]);
-    setProjectId("");
+    setProjectIds([]);
+  };
+
+  const toggleProject = (projectId) => {
+    setProjectIds((current) => {
+      if (mode === "edit") return [projectId];
+      return current.includes(projectId)
+        ? current.filter((id) => id !== projectId)
+        : [...current, projectId];
+    });
   };
 
   const toggleEmployee = (employeeId) => {
@@ -148,8 +159,8 @@ function TaskForm({
       setError("Select at least one team.");
       return;
     }
-    if (taskType === "work" && !projectId) {
-      setError("Select a project for this work task.");
+    if (taskType === "work" && projectIds.length === 0) {
+      setError("Select at least one project for this work task.");
       return;
     }
     if (assignType === "employee" && assignedTo.length === 0) {
@@ -161,7 +172,7 @@ function TaskForm({
       taskName: taskName.trim(),
       taskType,
       teams,
-      project: projectId || null,
+      project: projectIds[0] || null,
       assignToAllEmployees: assignType === "team",
       assignedTo: assignType === "team" ? [] : assignedTo,
       idleLogout,
@@ -173,8 +184,8 @@ function TaskForm({
       const response =
         mode === "edit"
           ? await axiosInstance.put(`/tasks/${initialTask._id}`, payload)
-          : taskNames.length > 1
-            ? await axiosInstance.post("/tasks/bulk", { ...payload, taskNames })
+          : taskNames.length > 1 || projectIds.length > 1
+            ? await axiosInstance.post("/tasks/bulk", { ...payload, taskNames, projects: projectIds })
             : await axiosInstance.post("/tasks", payload);
       onSaved(response.data.tasks || response.data.task);
     } catch (requestError) {
@@ -307,18 +318,40 @@ function TaskForm({
       <div className="admin-task-project">
         <div className="admin-task-section-heading">
           <div>
-            <p>PROJECT</p>
-            <h3>Select project</h3>
-            <span className="admin-task-selection-copy">Projects are limited to the selected team assignments.</span>
+            <p>PROJECTS</p>
+            <h3>{mode === "create" ? "Select projects" : "Select project"}</h3>
+            <span className="admin-task-selection-copy">
+              {mode === "create"
+                ? "Choose one or more projects. A task entry will be created for each selected project."
+                : "Projects are limited to the selected team assignments."}
+            </span>
           </div>
+          <span className="admin-task-selection-count">{projectIds.length} selected</span>
         </div>
-        <label>
-          Project
-          <select value={projectId} onChange={(event) => setProjectId(event.target.value)} required={taskType === "work"} disabled={teams.length === 0}>
-            <option value="">{teams.length === 0 ? "Select a team first" : "Select project"}</option>
-            {availableProjects.map((project) => <option key={project._id} value={project._id}>{project.projectName}</option>)}
-          </select>
-        </label>
+        {teams.length === 0 ? (
+          <p className="admin-task-project-empty">Select a team first.</p>
+        ) : (
+          <div className="admin-task-project-grid">
+            {availableProjects.map((project) => {
+              const selected = projectIds.includes(project._id);
+              return (
+                <button
+                  type="button"
+                  key={project._id}
+                  className={`admin-task-project-option ${selected ? "selected" : ""}`}
+                  onClick={() => toggleProject(project._id)}
+                  aria-pressed={selected}
+                >
+                  <i aria-hidden="true">{selected ? "✓" : ""}</i>
+                  <span>
+                    <strong>{project.projectName}</strong>
+                    {project.projectCode && <small>{project.projectCode}</small>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         {teams.length > 0 && availableProjects.length === 0 && <p className="admin-task-project-empty">No active project is assigned to every selected team.</p>}
       </div>
 
@@ -393,8 +426,8 @@ function TaskForm({
         <button type="submit" className="admin-add-task-save" disabled={saving}>
           {saving
             ? "Saving..."
-            : mode === "create" && additionalTaskNames.length > 0
-              ? `Save ${additionalTaskNames.length + 1} tasks`
+            : mode === "create" && (additionalTaskNames.length > 0 || projectIds.length > 1)
+              ? `Save ${(additionalTaskNames.length + 1) * Math.max(projectIds.length, 1)} tasks`
               : saveLabel || "Save task"}
         </button>
       </footer>

@@ -59,10 +59,55 @@ test("bulk task creation reuses one configuration for every task name", async ()
   }
 });
 
+test("bulk task creation creates each task name for every selected project", async () => {
+  const originals = {
+    teamFind: Team.find,
+    projectFindOne: Project.findOne,
+    taskExists: Task.exists,
+    insertMany: Task.insertMany,
+  };
+  let inserted;
+  Team.find = async () => [{ _id: "team-1" }];
+  Project.findOne = () => ({ select: () => ({ lean: async () => ({ teams: ["team-1"] }) }) });
+  Task.exists = async () => false;
+  Task.insertMany = async (tasks) => { inserted = tasks; return tasks; };
+
+  try {
+    const res = response();
+    await createTasksBulk({
+      user: { _id: "admin-1", role: "admin" },
+      body: {
+        taskNames: ["Research", "Review"],
+        projects: ["project-1", "project-2"],
+        taskType: "work",
+        teams: ["team-1"],
+        assignToAllEmployees: true,
+      },
+    }, res);
+
+    assert.equal(res.statusCode, 201);
+    assert.equal(inserted.length, 4);
+    assert.deepEqual(
+      inserted.map((task) => [task.taskName, task.project]),
+      [
+        ["Research", "project-1"],
+        ["Review", "project-1"],
+        ["Research", "project-2"],
+        ["Review", "project-2"],
+      ]
+    );
+  } finally {
+    Team.find = originals.teamFind;
+    Project.findOne = originals.projectFindOne;
+    Task.exists = originals.taskExists;
+    Task.insertMany = originals.insertMany;
+  }
+});
+
 test("bulk task creation rejects empty, duplicate, and oversized name batches", async () => {
   for (const [taskNames, message] of [
-    [["Only one"], "Enter at least two task names."],
-    [["One", ""], "Enter at least two task names."],
+    [["Only one"], "Select at least two tasks or projects for bulk creation."],
+    [["One", ""], "Select at least two tasks or projects for bulk creation."],
     [["Review", " review "], "Task names in the same batch must be unique."],
     [Array.from({ length: 26 }, (_, index) => `Task ${index}`), "Create no more than 25 tasks at once."],
   ]) {

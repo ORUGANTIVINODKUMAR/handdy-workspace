@@ -255,40 +255,52 @@ const createTask = async (req, res) => {
   }
 };
 
-// Create several task names with one shared access/project configuration.
+// Create task-name/project combinations with one shared access configuration.
 const createTasksBulk = async (req, res) => {
   try {
     const taskNames = Array.isArray(req.body.taskNames)
       ? req.body.taskNames.map((name) => String(name || "").trim())
       : [];
+    const requestedProjects = normalizeAssignments(req.body.projects);
+    const projectIds = requestedProjects.length
+      ? requestedProjects
+      : [req.body.project].filter(Boolean).map(String);
+    const taskCount = taskNames.length * Math.max(projectIds.length, 1);
 
-    if (taskNames.length < 2 || taskNames.some((name) => !name)) {
-      return res.status(400).json({ success: false, message: "Enter at least two task names." });
+    if (taskNames.length === 0 || taskNames.some((name) => !name) || taskCount < 2) {
+      return res.status(400).json({ success: false, message: "Select at least two tasks or projects for bulk creation." });
     }
-    if (taskNames.length > 25) {
+    if (taskCount > 25) {
       return res.status(400).json({ success: false, message: "Create no more than 25 tasks at once." });
     }
     if (new Set(taskNames.map((name) => name.toLowerCase())).size !== taskNames.length) {
       return res.status(400).json({ success: false, message: "Task names in the same batch must be unique." });
     }
 
-    const creation = await prepareTaskCreation(req.user, req.body);
-    if (creation.error) {
-      return res.status(400).json({ success: false, message: creation.error });
+    const creationConfigurations = [];
+    const projectsToCreate = projectIds.length ? projectIds : [null];
+    for (const project of projectsToCreate) {
+      const creation = await prepareTaskCreation(req.user, { ...req.body, project });
+      if (creation.error) {
+        return res.status(400).json({ success: false, message: creation.error });
+      }
+      creationConfigurations.push(creation);
     }
 
     const usedCodes = new Set();
     const tasks = [];
-    for (const taskName of taskNames) {
-      let taskCode;
-      do taskCode = await generateTaskCode(); while (usedCodes.has(taskCode));
-      usedCodes.add(taskCode);
-      tasks.push({
-        taskCode,
-        taskName,
-        description: req.body.description?.trim() || "",
-        ...creation,
-      });
+    for (const creation of creationConfigurations) {
+      for (const taskName of taskNames) {
+        let taskCode;
+        do taskCode = await generateTaskCode(); while (usedCodes.has(taskCode));
+        usedCodes.add(taskCode);
+        tasks.push({
+          taskCode,
+          taskName,
+          description: req.body.description?.trim() || "",
+          ...creation,
+        });
+      }
     }
 
     const createdTasks = await Task.insertMany(tasks);
