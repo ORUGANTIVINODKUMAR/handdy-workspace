@@ -435,6 +435,65 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
 .crm-content .password-input-wrap { position:relative; }
 .crm-content .password-input-wrap input { width:100%; padding-right:48px; }
 .crm-content .password-input-wrap .password-visibility { position:absolute; top:50%; right:6px; width:36px; min-width:36px; min-height:34px; padding:0; transform:translateY(-50%); color:var(--text-secondary); background:transparent; border:0; }
+/* Task creation selectors override the shared primary-button treatment. */
+.crm-content .admin-task-team-grid,
+.crm-content .admin-task-project-grid,
+.crm-content .admin-task-employee-list { gap:12px; }
+.crm-content .admin-task-project-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.crm-content :is(.admin-task-team-option,.admin-task-project-option,.admin-task-employee-option) {
+  justify-content:flex-start;
+  min-height:58px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--text-primary);
+  text-align:left;
+  box-shadow:0 1px 2px var(--shadow-color);
+  filter:none;
+  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.crm-content :is(.admin-task-team-option,.admin-task-project-option,.admin-task-employee-option):hover {
+  border-color:color-mix(in srgb,var(--primary) 48%,var(--border));
+  background:color-mix(in srgb,var(--primary) 3%,var(--surface));
+  box-shadow:0 5px 14px var(--shadow-color);
+  transform:translateY(-1px);
+  filter:none;
+}
+.crm-content :is(.admin-task-team-option,.admin-task-project-option,.admin-task-employee-option).selected {
+  border-color:var(--primary);
+  background:color-mix(in srgb,var(--primary) 9%,var(--surface));
+  color:var(--text-primary);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 12%,transparent);
+}
+.crm-content :is(.admin-task-team-option,.admin-task-project-option,.admin-task-employee-option) i {
+  display:grid;
+  flex:0 0 20px;
+  width:20px;
+  height:20px;
+  place-items:center;
+  border:1.5px solid var(--input-border);
+  border-radius:6px;
+  background:var(--surface);
+  color:transparent;
+  font-size:12px;
+  font-style:normal;
+}
+.crm-content :is(.admin-task-team-option,.admin-task-project-option,.admin-task-employee-option).selected i {
+  border-color:var(--primary);
+  background:var(--primary);
+  color:var(--button-text);
+}
+.crm-content .admin-task-project-option > span { display:grid; min-width:0; gap:3px; }
+.crm-content .admin-task-project-option strong { overflow:hidden; color:inherit; font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
+.crm-content .admin-task-project-option small { overflow:hidden; margin:0; color:var(--text-secondary); font-size:10px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.crm-content .admin-task-assignment-option {
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text-primary);
+}
+.crm-content .admin-task-assignment-option:hover { border-color:var(--primary); background:var(--surface-muted); filter:none; }
+.crm-content .admin-task-assignment-option.selected { border-color:var(--primary); background:var(--primary); color:var(--button-text); }
 .remembered-login { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; margin:0 0 22px; padding:14px; border:1px solid var(--border-light); border-radius:12px; background:var(--surface-soft); }
 .remembered-login-avatar { display:grid; place-items:center; width:40px; height:40px; border-radius:50%; color:var(--button-text); background:var(--primary); font-weight:700; }
 .remembered-login strong,.remembered-login span { display:block; }
@@ -443,6 +502,7 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
 .auth-divider { display:flex; align-items:center; gap:12px; margin:0 0 20px; color:var(--text-muted); font-size:11px; }
 .auth-divider::before,.auth-divider::after { content:""; height:1px; flex:1; background:var(--border-light); }
 @media(max-width:700px) {
+  .crm-content .admin-task-project-grid { grid-template-columns:1fr; }
   .crm-content .project-editor-modal .project-client-options,.crm-content .employee-editor-form .employee-form-grid { grid-template-columns:1fr; }
   .crm-content .employee-service-labels { display:none; }
   .crm-content .employee-service-row { grid-template-columns:1fr; align-items:stretch; }
@@ -451,6 +511,9 @@ body,button,input,select,textarea,h1,h2,h3,h4,p,a { font-family: Inter, "Segoe U
   .crm-content .employee-modal .employee-form-actions { margin:4px -20px -20px; padding:16px 20px; }
   .crm-content .employee-editor-form>.employee-form-actions { margin:0; padding:16px 20px 20px; }
   .crm-content .employee-modal .employee-form-actions button { flex:1; min-width:0; }
+}
+@media(min-width:701px) and (max-width:1100px) {
+  .crm-content .admin-task-project-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media(max-width:480px) {
   .crm-content .employee-editor-form>.employee-form-actions { flex-direction:column-reverse; }
