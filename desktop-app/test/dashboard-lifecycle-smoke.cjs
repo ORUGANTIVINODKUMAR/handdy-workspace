@@ -30,7 +30,7 @@ const server = http.createServer((req, res) => {
       if (endpoint === "/employees") body = { employees: [], totalPages: 1, totalEmployees: 0 };
       if (endpoint === "/tasks") body = { tasks: [] };
       res.end(JSON.stringify(body));
-    }, 150);
+    }, endpoint.startsWith("/time-logs/") ? 6500 : 150);
     return;
   }
   const file = url.pathname.startsWith("/assets/") ? path.join(root, path.basename("assets"), path.basename(url.pathname)) : path.join(root, "index.html");
@@ -113,6 +113,16 @@ app.whenReady().then(async () => {
     await delay(500);
     assert.equal(await evaluate("location.pathname"), "/admin/team");
     assert.equal(calls.get("/auth/me"), initialMe + 1);
+    // A manual report slower than the five-second poll must still finish.
+    await evaluate(`document.querySelector('a[href="/admin/timesheets/detailed"]').click()`);
+    await until(`location.pathname === '/admin/timesheets/detailed'`);
+    await until(`[...document.querySelectorAll('button')].some(b => b.textContent.includes('Generate'))`);
+    await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Generate')).click()`);
+    await until(`[...document.querySelectorAll('button')].some(b => b.disabled && b.textContent.includes('Loading'))`);
+    await until(`[...document.querySelectorAll('button')].some(b => !b.disabled && b.textContent.includes('Generate'))`);
+    assert.equal(calls.get('/time-logs/admin'), 1, "polling does not supersede the slow manual report");
+    await evaluate(`document.querySelector('a[href="/admin/team"]').click()`);
+    await until("document.body.textContent.includes('Stable team')");
     pending = true;
     await until("document.body.textContent.includes('Another device is trying to sign in')");
     await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Keep This Device').click()");
@@ -121,7 +131,7 @@ app.whenReady().then(async () => {
     revoked = true;
     await until("location.pathname === '/login'");
     assert.equal(await evaluate("localStorage.getItem('token')"), null);
-    console.log("PASS: Teams stays mounted for 31 seconds of polling; navigation preserves shell; bulk task-name controls work without overlap; manual refresh restores session; device prompt/denial and session revocation remain enforced.");
+    console.log("PASS: Teams polling, navigation, bulk task controls, session restoration, slow report completion, device approval, and session revocation.");
   } catch (error) {
     console.error(error);
     process.exitCode = 1;

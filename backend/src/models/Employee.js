@@ -294,6 +294,15 @@ employeeSchema.index({ team: 1 });
 employeeSchema.index({ teamLead: 1 });
 employeeSchema.index({ role: 1 });
 
+// Previously issued reset links must not survive a password or email change,
+// including administrator edits and self-service profile updates.
+employeeSchema.pre("validate", function invalidatePasswordReset() {
+  if (this.isModified("password") || this.isModified("email")) {
+    this.passwordResetTokenHash = null;
+    this.passwordResetExpires = null;
+  }
+});
+
 // Hash password before saving
 employeeSchema.pre("save", async function () {
   if (!this.isModified("password")) {

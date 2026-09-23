@@ -38,3 +38,9 @@ test("production rejects placeholder JWT secrets", () => {
     /JWT_SECRET/
   );
 });
+
+test("production rejects loopback addresses and malformed reset-link bases", () => {
+  for (const url of ["https://[::1]", "https://127.1", "https://app.localhost", "https://app.example.com?redirect=x", "https://app.example.com/#fragment", "https://user:pass@app.example.com", "https://app.example.com/dashboard"]) {
+    assert.throws(() => validateProductionConfig(productionEnv({ FRONTEND_URL: url })), /FRONTEND_URL/);
+  }
+});

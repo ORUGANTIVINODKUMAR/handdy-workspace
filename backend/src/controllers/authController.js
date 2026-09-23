@@ -130,7 +130,7 @@ const buildUserResponse = (employee) => {
 const handleControllerError = (res, error) => {
   console.error("Auth Controller Error:", error);
 
-  if (error.statusCode) {
+  if (error.statusCode >= 400 && error.statusCode < 500) {
     return res.status(error.statusCode).json({ success: false, message: error.message });
   }
 

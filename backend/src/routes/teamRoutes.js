@@ -52,7 +52,6 @@ router.get(
       return res.status(500).json({
         success: false,
         message:
-          error.message ||
           "Unable to get teams.",
       });
     }
@@ -170,7 +169,6 @@ router.post(
       return res.status(500).json({
         success: false,
         message:
-          error.message ||
           "Unable to create team.",
       });
     }

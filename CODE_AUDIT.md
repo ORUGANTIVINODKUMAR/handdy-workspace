@@ -1,5 +1,53 @@
 # Application audit — 22 September 2026
 
+## Follow-up review and fixes
+
+The follow-up reviewed authentication and password recovery, authorization routes,
+employee/project input handling, session startup, report requests, Electron
+isolation/navigation, production configuration, and dependencies. This is a
+source review plus automated regression verification, not a guarantee that every
+runtime path is defect-free.
+
+Additional confirmed findings fixed:
+
+- **High: outstanding reset links survived security changes.** Employee password
+  and email changes now clear existing password-reset tokens, including admin and
+  self-service changes. Unrelated profile changes preserve valid reset links.
+- **Medium: internal error disclosure remained in middleware and routes.**
+  Authentication middleware, team/client routes, and employee validation now use
+  safe responses. A final Express error handler also covers rejected async routes
+  and malformed/oversized JSON with generic JSON responses and server-side logs.
+- **Medium: slow reports could remain stuck loading.** Background polling no
+  longer supersedes a pending report request in admin and role report pages.
+- **Medium: fresh-database startup could fail.** Session index initialization
+  handles MongoDB's missing-namespace error while still propagating real database
+  failures.
+- **Low: production URL validation gaps.** IPv6 and alternate loopback URLs,
+  embedded credentials, paths, query strings, and fragments are rejected so reset
+  links are constructed from an HTTPS origin.
+
+Current verification: backend 64/64; dashboard 7/7; desktop unit tests 26/26;
+dashboard lint and route audit (66 routes) pass; production build passes; all four
+full npm audits report zero known vulnerabilities. Both Electron smoke checks
+pass, covering timer/break behavior, dashboard lifecycle, and the new slow-report
+regression scenario. The ExcelJS chunk remains 929.55 kB and is already
+loaded on demand.
+
+Deployment checks still required:
+
+- The local `backend/.env` remains ignored and untracked. A secret-safe check
+  confirmed `NODE_ENV` is unset and its JWT value fails production validation.
+  Do not copy that development environment unchanged into production. Configure
+  production environment values in the hosting service.
+- SMTP fields exist locally, but delivery and production credentials were not
+  exercised. Verify a real password-reset email on the deployed HTTPS site.
+- Production MongoDB data, indexes, deployed CSP headers, and installer behavior
+  on a clean target Windows machine were not verified by these local tests.
+- Authentication still uses browser localStorage with CSP mitigation. The tests
+  do not establish immunity to XSS or replace a penetration test.
+
+The historical findings and results below describe the earlier audit.
+
 Repository-wide review of backend authorization, attendance, schedules, timer reports and startup behavior; dashboard report loading; desktop timer behavior; dependency advisories; and the existing automated checks.
 
 ## Fixed findings

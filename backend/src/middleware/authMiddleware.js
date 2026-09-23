@@ -95,9 +95,10 @@ const protect = async (req, res, next) => {
       });
     }
 
+    console.error("Authentication middleware error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Unable to verify your session. Please try again.",
     });
   }
 };

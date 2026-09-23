@@ -29,8 +29,12 @@ const validateProductionConfig = (env = process.env) => {
   } catch {
     throw new Error("FRONTEND_URL must be a valid absolute URL in production.");
   }
-  if (frontendUrl.protocol !== "https:" || ["localhost", "127.0.0.1", "::1"].includes(frontendUrl.hostname)) {
+  const hostname = frontendUrl.hostname.toLowerCase();
+  if (frontendUrl.protocol !== "https:" || hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "[::1]" || /^127\./.test(hostname)) {
     throw new Error("FRONTEND_URL must use HTTPS and must not point to localhost in production.");
+  }
+  if (frontendUrl.username || frontendUrl.password || frontendUrl.search || frontendUrl.hash || frontendUrl.pathname !== "/") {
+    throw new Error("FRONTEND_URL must be an HTTPS origin without credentials, a path, query, or fragment.");
   }
 };
 

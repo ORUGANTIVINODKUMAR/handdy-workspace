@@ -32,6 +32,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   const [savedReportState] = useState(() => readReportState(reportStorageKey));
   const restoredReportRef = useRef(false);
   const latestReportRequestRef = useRef(0);
+  const pendingReportRequestsRef = useRef(0);
   const [fromDate, setFromDate] = useState(() => savedReportState.fromDate || today());
   const [toDate, setToDate] = useState(() => savedReportState.toDate || today());
   // Snapshot of the filters that were active when "Generate" last succeeded.
@@ -55,6 +56,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   );
 
   const loadReport = useCallback(async ({ silent = false } = {}) => {
+    if (silent && pendingReportRequestsRef.current > 0) return;
     const requestId = ++latestReportRequestRef.current;
     const isCurrent = () => latestReportRequestRef.current === requestId;
 
@@ -75,6 +77,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       return;
     }
 
+    pendingReportRequestsRef.current += 1;
     try {
       if (!silent) {
         setLoading(true);
@@ -95,6 +98,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
         setError(getApiErrorMessage(requestError, "Unable to generate this report."));
       }
     } finally {
+      pendingReportRequestsRef.current -= 1;
       if (isCurrent() && !silent) setLoading(false);
     }
   }, [fromDate, isTeamReport, mode, toDate]);

@@ -275,7 +275,14 @@ async function revokeEmployeeSessions(employeeId, reason = "account_security_cha
 }
 
 async function ensureAuthSessionIndexes() {
-  const indexes = await AuthSession.collection.indexes();
+  let indexes;
+  try {
+    indexes = await AuthSession.collection.indexes();
+  } catch (error) {
+    // A fresh database has no session collection until indexes are created.
+    if (error.code !== 26) throw error;
+    indexes = [];
+  }
   const legacyIndex = indexes.find((index) => index.name === "employee_1_status_1" && index.unique);
   if (legacyIndex) await AuthSession.collection.dropIndex(legacyIndex.name);
   await AuthSession.createIndexes();

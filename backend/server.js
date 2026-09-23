@@ -6,6 +6,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
+const errorHandler = require("./src/middleware/errorHandler");
 
 const connectDatabase = require("./src/config/db");
 const { validateProductionConfig } = require("./src/config/productionConfig");
@@ -251,6 +252,8 @@ app.use((req, res) => {
 // ==============================
 // START SERVER
 // ==============================
+app.use(errorHandler);
+
 const startServer = async () => {
   try {
     validateProductionConfig();

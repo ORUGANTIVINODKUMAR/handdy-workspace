@@ -81,6 +81,7 @@ function AdminReportPage({
   const [savedReportState] = useState(() => readReportState(reportStorageKey));
   const restoredReportRef = useRef(false);
   const latestReportRequestRef = useRef(0);
+  const pendingReportRequestsRef = useRef(0);
   const [fromDate, setFromDate] = useState(() => savedReportState.fromDate || localDate());
   const [toDate, setToDate] = useState(() => savedReportState.toDate || localDate());
   const [employee, setEmployee] = useState(() => savedReportState.employee || "");
@@ -161,6 +162,7 @@ function AdminReportPage({
       : "records";
 
   const loadReport = useCallback(async ({ silent = false } = {}) => {
+    if (silent && pendingReportRequestsRef.current > 0) return;
     const requestId = ++latestReportRequestRef.current;
     const isCurrent = () => latestReportRequestRef.current === requestId;
 
@@ -189,6 +191,7 @@ function AdminReportPage({
       return;
     }
 
+    pendingReportRequestsRef.current += 1;
     try {
       if (!silent) setLoading(true);
       const params = {
@@ -219,6 +222,7 @@ function AdminReportPage({
         );
       }
     } finally {
+      pendingReportRequestsRef.current -= 1;
       if (isCurrent() && !silent) setLoading(false);
     }
   }, [employee, fromDate, mode, project, scope, toDate]);
