@@ -3,7 +3,7 @@ services:
     name: handdy-workspace
     runtime: node
     plan: starter
-    buildCommand: npm ci --include=dev --prefix backend && npm ci --include=dev --prefix dashboard && test -s dashboard/public/downloads/CRM-Setup.exe && test "$(stat -c%s dashboard/public/downloads/CRM-Setup.exe)" -gt 100000000 && npm run build --prefix dashboard
+    buildCommand: npm ci --include=dev --prefix backend && npm ci --include=dev --prefix dashboard && npm run build --prefix dashboard
     startCommand: npm start --prefix backend
     healthCheckPath: /health
     envVars:

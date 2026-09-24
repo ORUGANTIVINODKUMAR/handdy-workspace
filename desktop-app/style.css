@@ -141,6 +141,11 @@ body[data-page="dashboard"] .work-summary select,
 body[data-page="dashboard"] .work-card textarea { max-width:520px; min-height:48px; border:1px solid #ced6e4; border-radius:9px; background:#fbfcfe; color:#1f2d46; }
 body[data-page="dashboard"] .work-summary select:focus,
 body[data-page="dashboard"] .work-card textarea:focus { outline:0; border-color:#3b6bc8; box-shadow:0 0 0 3px rgba(59,107,200,.13); }
+.note-save-row { display:flex; align-items:center; gap:12px; width:100%; max-width:520px; margin-top:10px; }
+.note-save-button { min-height:36px; padding:0 18px; border-radius:8px; background:#2858b4; color:#fff; font-size:12px; font-weight:800; }
+.note-save-button:hover { background:#173f91; }
+.note-save-button:disabled { opacity:.65; cursor:wait; }
+.note-save-status { min-height:16px; margin:0; color:#587168; font-size:11px; }
 body[data-page="dashboard"] .text-action { color:#2858b4; text-decoration:none; font-weight:700; }
 body[data-page="dashboard"] .text-action:hover { color:#173f91; }
 body[data-page="dashboard"] .clock-card { padding:36px 28px; background:linear-gradient(155deg,#172a52 0%,#1d3971 100%); }

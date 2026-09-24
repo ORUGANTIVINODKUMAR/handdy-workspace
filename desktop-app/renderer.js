@@ -70,6 +70,9 @@ const clientName = document.getElementById("clientName");
 const currentDate = document.getElementById("currentDate");
 const addNoteButton = document.getElementById("addNoteButton");
 const timerNote = document.getElementById("timerNote");
+const noteActions = document.getElementById("noteActions");
+const saveNoteButton = document.getElementById("saveNoteButton");
+const noteSaveStatus = document.getElementById("noteSaveStatus");
 const deviceLoginModal = document.getElementById("deviceLoginModal");
 const requestingDeviceName = document.getElementById("requestingDeviceName");
 const deviceLoginMessage = document.getElementById("deviceLoginMessage");
@@ -99,6 +102,7 @@ let activeTaskIdleLogout = false;
 let loginInProgress = false;
 let deviceApprovalMonitorActive = false;
 let pendingDeviceLoginRequest = null;
+let noteDirty = false;
 // Idle seconds observed on the previous poll. getSystemIdleTime() counts
 // continuously since the last real input, so a brief activity burst that
 // happens between two polls can already have climbed back past
@@ -150,12 +154,23 @@ document.addEventListener("click", (event) => {
 if (addNoteButton) {
   addNoteButton.addEventListener("click", () => {
     timerNote.hidden = !timerNote.hidden;
+    if (noteActions) noteActions.hidden = timerNote.hidden;
+    addNoteButton.textContent = timerNote.hidden ? "Add note" : "Hide note";
     if (!timerNote.hidden) timerNote.focus();
   });
 }
 
 if (timerNote) {
-  timerNote.addEventListener("blur", saveNote);
+  timerNote.addEventListener("input", () => {
+    noteDirty = true;
+    if (noteSaveStatus) noteSaveStatus.textContent = selectedTaskId
+      ? "Unsaved changes. Click Save note."
+      : "Select a task, then click Save note.";
+  });
+}
+
+if (saveNoteButton) {
+  saveNoteButton.addEventListener("click", saveNote);
 }
 
 function getToken() {
@@ -416,6 +431,30 @@ function getWorkSelectionStorageKey() {
   return `desktop-work-selection:${user?._id || user?.email || "user"}`;
 }
 
+function getNoteDraftStorageKey(projectId = selectedProjectId, taskId = selectedTaskId) {
+  if (!projectId || !taskId) return null;
+  const user = getStoredUser();
+  return `desktop-note-draft:${user?._id || user?.email || "user"}:${projectId}:${taskId}`;
+}
+
+function readNoteDraft() {
+  const key = getNoteDraftStorageKey();
+  return key ? localStorage.getItem(key) || "" : "";
+}
+
+function saveNoteDraft(note) {
+  const key = getNoteDraftStorageKey();
+  if (!key) return;
+  const value = String(note || "").slice(0, 2000);
+  if (value) localStorage.setItem(key, value);
+  else localStorage.removeItem(key);
+}
+
+function clearNoteDraft() {
+  const key = getNoteDraftStorageKey();
+  if (key) localStorage.removeItem(key);
+}
+
 function restoreWorkSelection() {
   try {
     const saved = JSON.parse(localStorage.getItem(getWorkSelectionStorageKey()) || "{}");
@@ -445,7 +484,9 @@ function setSelectedTaskId(taskId, source) {
   const nextTaskId = String(taskId || "");
   if (nextTaskId === selectedTaskId) return;
   selectedTaskId = nextTaskId;
+  noteDirty = false;
   saveWorkSelection();
+  if (!currentTimeLog) updateNoteControlsUI(null);
 }
 
 const hasOption = (select, value) =>
@@ -1187,20 +1228,46 @@ function updateBreakUI(timeLog = currentTimeLog) {
 // Skip refreshing the value while the user is actively typing in it so a
 // background poll can't clobber an in-progress edit.
 function updateNoteControlsUI(timeLog = currentTimeLog) {
-  if (timerNote && document.activeElement !== timerNote) {
-    timerNote.value = timeLog?.note || "";
+  if (timerNote && !noteDirty && document.activeElement !== timerNote) {
+    timerNote.value = timeLog?.note || readNoteDraft();
+  }
+  if (noteSaveStatus && !timeLog && !noteDirty) {
+    noteSaveStatus.textContent = readNoteDraft()
+      ? "Draft saved. It will be attached when the timer starts."
+      : "";
   }
 }
 
 async function saveNote() {
-  if (!timerNote || !currentTimeLog) return;
-  const token = getToken();
-  if (!token) return;
-
-  const note = timerNote.value.trim();
-  if (note === (currentTimeLog.note || "")) return;
-
+  if (!timerNote) return;
+  if (saveNoteButton) {
+    saveNoteButton.disabled = true;
+    saveNoteButton.textContent = "Saving...";
+  }
   try {
+    if (!currentTimeLog) {
+      saveNoteDraft(timerNote.value);
+      noteDirty = !selectedTaskId;
+      if (noteSaveStatus) noteSaveStatus.textContent = selectedTaskId
+        ? "Draft saved. It will be attached when the timer starts."
+        : "Select a task to save this note.";
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      if (noteSaveStatus) noteSaveStatus.textContent = "Sign in again to save the note.";
+      return;
+    }
+
+    const note = timerNote.value.trim();
+    if (note === (currentTimeLog.note || "")) {
+      noteDirty = false;
+      if (noteSaveStatus) noteSaveStatus.textContent = "Note saved.";
+      return;
+    }
+
+    if (noteSaveStatus) noteSaveStatus.textContent = "Saving note...";
     const response = await fetch(`${API_BASE_URL}/time-logs/note`, {
       method: "PATCH",
       headers: {
@@ -1211,12 +1278,19 @@ async function saveNote() {
     });
 
     const data = await response.json();
-    if (response.ok && data.timeLog) {
-      currentTimeLog = data.timeLog;
+    if (!response.ok || !data.timeLog) {
+      throw new Error(data.message || "Unable to save note.");
     }
-  } catch {
-    // Best-effort: the note stays in the textarea either way, so the next
-    // successful save (or the next active-timer reload) picks it up.
+    currentTimeLog = data.timeLog;
+    noteDirty = false;
+    if (noteSaveStatus) noteSaveStatus.textContent = "Note saved.";
+  } catch (error) {
+    if (noteSaveStatus) noteSaveStatus.textContent = error.message || "Unable to save note. Try again.";
+  } finally {
+    if (saveNoteButton) {
+      saveNoteButton.disabled = false;
+      saveNoteButton.textContent = "Save note";
+    }
   }
 }
 
@@ -1596,7 +1670,7 @@ async function startTimer() {
         body: JSON.stringify({
           project: projectId,
           task: taskId,
-          note: (timerNote?.value || "").trim() || undefined,
+          note: readNoteDraft().trim() || undefined,
         }),
       }
     );
@@ -1616,6 +1690,7 @@ async function startTimer() {
     timerStatus.textContent = runningStatusLabel(data.timeLog);
 
     currentTimeLog = data.timeLog;
+    clearNoteDraft();
     activeTaskIdleLogout = data.timeLog.task?.idleLogout === true
       || taskSelect.selectedOptions[0]?.dataset.idleLogout === "true";
     automaticIdlePause = false;

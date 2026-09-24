@@ -53,9 +53,6 @@ import TeamLeadTasks
 import TeamLeadAddTask
   from "../pages/teamLead/TeamLeadAddTask";
 
-import TeamLeadApps
-  from "../pages/teamLead/TeamLeadApps";
-
 import TeamLeadHelp
   from "../pages/teamLead/TeamLeadHelp";
 
@@ -64,9 +61,6 @@ import TeamLeadHelp
 // ==========================================
 // EMPLOYEE IMPORTS
 // ==========================================
-
-import EmployeeApps
-  from "../pages/employee/EmployeeApps";
 
 import EmployeeHelp
   from "../pages/employee/EmployeeHelp";
@@ -228,11 +222,6 @@ function AppRoutes() {
       <Route
         path="/admin/billing"
         element={<AdminStaffOnly><BillingPage /></AdminStaffOnly>}
-      />
-
-      <Route
-        path="/admin/app"
-        element={<AdminStaffOnly><EmployeeApps /></AdminStaffOnly>}
       />
 
       <Route
@@ -722,15 +711,6 @@ function AppRoutes() {
       />
 
       <Route
-        path="/team-lead/apps"
-        element={
-          <TeamLeadOnly>
-            <TeamLeadApps />
-          </TeamLeadOnly>
-        }
-      />
-
-      <Route
         path="/team-lead/help"
         element={
           <TeamLeadOnly>
@@ -776,24 +756,6 @@ function AppRoutes() {
         element={
           <EmployeeOnly>
             <RoleReportPage title="My count report" description="Your timer records and total worked duration." />
-          </EmployeeOnly>
-        }
-      />
-
-      <Route
-        path="/employee/app"
-        element={
-          <EmployeeOnly>
-            <EmployeeApps />
-          </EmployeeOnly>
-        }
-      />
-
-      <Route
-        path="/employee/apps"
-        element={
-          <EmployeeOnly>
-            <EmployeeApps />
           </EmployeeOnly>
         }
       />

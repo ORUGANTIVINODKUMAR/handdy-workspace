@@ -165,25 +165,6 @@ app.use("/api", (req, res) => {
   });
 });
 
-const desktopInstallerPath = path.resolve(dashboardBuildPath, "downloads", "CRM-Setup.exe");
-app.get("/downloads/CRM-Setup.exe", (req, res) => {
-  if (!fs.existsSync(desktopInstallerPath)) {
-    console.error(`Desktop installer not found at: ${desktopInstallerPath}`);
-    return res.status(404).json({
-      success: false,
-      message: "The CRM Windows installer is not available yet.",
-    });
-  }
-
-  return res.download(desktopInstallerPath, "CRM-Setup.exe", {
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Cache-Control": "public, max-age=3600",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
-});
-
 // ==============================
 // HEALTH CHECK
 // ==============================
@@ -192,6 +173,15 @@ app.get("/health", (req, res) => {
     success: true,
     message:
       "Employee Time & Attendance Backend is Running",
+  });
+});
+
+// Desktop installers are distributed directly by the organization, not
+// through the employee web dashboard.
+app.get("/downloads/{*splat}", (req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: "Desktop downloads are not available from the browser.",
   });
 });
 

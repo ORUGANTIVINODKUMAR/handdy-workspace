@@ -289,7 +289,7 @@ function AdminReportPage({
     return {
       columns: [
         ...(scope === "company" ? ["Employee"] : []),
-        "Entry type", "Project", "Task", "Started", "Finished", "Duration", "Idle", "Status",
+        "Entry type", "Project", "Task", "Started", "Finished", "Duration", "Idle", "Status", "Note",
       ],
       rows: records.flatMap((record) => {
         const employeeCell = scope === "company" ? [record.employee?.fullName || "-"] : [];
@@ -303,6 +303,7 @@ function AdminReportPage({
           formatDuration(entry.durationSeconds),
           entry.type === "idle" ? formatDuration(entry.durationSeconds) : "-",
           entry.isOpen ? (entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running") : "Completed",
+          entry.type === "work" ? record.note || "-" : "-",
         ]);
       }),
     };
@@ -495,7 +496,7 @@ function AdminReportPage({
           {!error && mode === "time" && records.length > 0 && variant === "detailed" && (
             <div className="admin-report-table-wrap">
               <table>
-                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th></tr></thead>
+                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th><th>Note</th></tr></thead>
                 <tbody>{records.map((record) => (
                   <Fragment key={record._id}>
                     {buildTimeLogTimeline(record).map((entry) => (
@@ -508,6 +509,7 @@ function AdminReportPage({
                         <td>{formatDuration(entry.durationSeconds)}</td>
                         <td>{entry.type === "idle" ? formatDuration(entry.durationSeconds) : "—"}</td>
                         <td>{entry.isOpen ? (entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running") : "Completed"}</td>
+                        <td className="report-entry-note">{entry.type === "work" ? record.note || "—" : "—"}</td>
                       </tr>
                     ))}
                   </Fragment>

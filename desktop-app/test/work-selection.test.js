@@ -108,6 +108,25 @@ test("newly assigned task appears on refresh without losing the selection", asyn
   assert.equal(h.task.value, "t1");
 });
 
+test("a note is not saved automatically and survives refresh until Save note is used", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  await h.task.choose("t1");
+
+  h.run("timerNote.value = 'Prepare supporting documents'; noteDirty = true");
+  await h.context.refreshDesktopData();
+
+  assert.equal(h.run("timerNote.value"), "Prepare supporting documents");
+  assert.equal(h.run("localStorage.getItem(getNoteDraftStorageKey())"), null);
+
+  await h.context.saveNote();
+  assert.equal(
+    h.run("localStorage.getItem(getNoteDraftStorageKey())"),
+    "Prepare supporting documents"
+  );
+});
+
 test("changing project keeps the new project, clears only the task, and ignores stale task responses", async () => {
   const h = harness();
   await h.context.loadProjects();
