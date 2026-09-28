@@ -10,6 +10,8 @@ import {
   getTeamAttendance,
   getTeamTimeLogs,
 } from "../../api/reportApi";
+import { getAllActiveProjects } from "../../api/projectApi";
+import { getAllActiveTasksByProject } from "../../api/taskApi";
 import TeamLeadSidebar from "../teamLead/TeamLeadSidebar";
 import EmployeeSidebar from "../employee/EmployeeSidebar";
 import ReportSummary from "../../components/dashboard/ReportSummary";
@@ -34,19 +36,69 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   const pendingReportRequestsRef = useRef(0);
   const [fromDate, setFromDate] = useState(() => savedReportState.fromDate || today());
   const [toDate, setToDate] = useState(() => savedReportState.toDate || today());
+  const [project, setProject] = useState(() => savedReportState.project || "");
+  const [task, setTask] = useState(() => savedReportState.task || "");
   // Snapshot of the filters that were active when "Generate" last succeeded.
   // The silent background poll must replay this snapshot, not whatever is
   // currently sitting in the (possibly half-edited) filter inputs.
   const appliedFiltersRef = useRef({
     fromDate: savedReportState.fromDate || today(),
     toDate: savedReportState.toDate || today(),
+    project: savedReportState.project || "",
+    task: savedReportState.task || "",
   });
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasRun, setHasRun] = useState(() => Boolean(savedReportState.hasRun));
   const [error, setError] = useState("");
   const isTeamLead = user?.role === "team_lead";
   const isTeamReport = isTeamLead && scope !== "personal";
+
+  useEffect(() => {
+    if (mode !== "time") return;
+    const loadProjects = async () => {
+      try {
+        setProjects(await getAllActiveProjects());
+      } catch (requestError) {
+        setError(getApiErrorMessage(requestError, "Unable to load report projects."));
+      }
+    };
+    void loadProjects();
+  }, [mode]);
+
+  useEffect(() => {
+    let active = true;
+    if (mode !== "time" || !project) {
+      setTasks([]);
+      setTasksLoading(false);
+      return () => { active = false; };
+    }
+
+    const loadTasks = async () => {
+      setTasksLoading(true);
+      try {
+        const nextTasks = await getAllActiveTasksByProject(project);
+        if (!active) return;
+        setTasks(nextTasks);
+        setTask((currentTask) => currentTask && !nextTasks.some((item) => item._id === currentTask)
+          ? ""
+          : currentTask);
+      } catch (requestError) {
+        if (!active) return;
+        setTasks([]);
+        setTask("");
+        setError(getApiErrorMessage(requestError, "Unable to load tasks for this project."));
+      } finally {
+        if (active) setTasksLoading(false);
+      }
+    };
+
+    void loadTasks();
+    return () => { active = false; };
+  }, [mode, project]);
 
   const totalSeconds = useMemo(() => records.reduce((sum, record) => sum + getWorkedSeconds(record), 0), [records]);
   const totalBreakSeconds = useMemo(
@@ -64,7 +116,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
     // filter inputs, so in-progress edits never silently change the table.
     const activeFilters = silent
       ? appliedFiltersRef.current
-      : { fromDate, toDate };
+      : { fromDate, toDate, project, task };
 
     if (!silent) setHasRun(true);
 
@@ -82,7 +134,12 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
         setLoading(true);
         setError("");
       }
-      const params = { startDate: activeFilters.fromDate, endDate: activeFilters.toDate };
+      const params = {
+        startDate: activeFilters.fromDate,
+        endDate: activeFilters.toDate,
+        project: activeFilters.project || undefined,
+        task: activeFilters.task || undefined,
+      };
       const data = mode === "attendance"
         ? isTeamReport ? await getTeamAttendance(params) : await getMyAttendance(params)
         : isTeamReport ? await getTeamTimeLogs(params) : await getMyTimeLogs(params);
@@ -100,12 +157,12 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       pendingReportRequestsRef.current -= 1;
       if (isCurrent() && !silent) setLoading(false);
     }
-  }, [fromDate, isTeamReport, mode, toDate]);
+  }, [fromDate, isTeamReport, mode, project, task, toDate]);
 
   const runReport = () => loadReport();
   useEffect(() => {
-    writeReportState(reportStorageKey, { fromDate, toDate, hasRun });
-  }, [fromDate, hasRun, reportStorageKey, toDate]);
+    writeReportState(reportStorageKey, { fromDate, toDate, project, task, hasRun });
+  }, [fromDate, hasRun, project, reportStorageKey, task, toDate]);
 
   useEffect(() => {
     if (restoredReportRef.current) return;
@@ -129,6 +186,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       <section className="admin-report-filter card">
         <div><span className="admin-report-kicker">{isTeamReport ? "Team report" : "My report"}</span><h2>{title}</h2><p>{description}</p></div>
         <div className="admin-report-controls">
+          {mode === "time" && <select value={project} onChange={(event) => { setProject(event.target.value); setTask(""); setError(""); }} aria-label="Project"><option value="">All projects</option>{projects.map((item) => <option value={item._id} key={item._id}>{item.projectName}</option>)}</select>}
+          {mode === "time" && <select value={task} onChange={(event) => setTask(event.target.value)} aria-label="Task" disabled={!project || tasksLoading}><option value="">{!project ? "Select project first" : tasksLoading ? "Loading tasks..." : "All tasks"}</option>{tasks.map((item) => <option value={item._id} key={item._id}>{item.taskName}</option>)}</select>}
           <label>From<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
           <label>To<input type="date" min={fromDate} value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
           <button type="button" onClick={runReport} disabled={loading}><Search size={16} />{loading ? "Loading…" : "Generate"}</button>

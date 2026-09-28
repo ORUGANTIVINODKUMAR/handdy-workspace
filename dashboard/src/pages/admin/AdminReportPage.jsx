@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getAllEmployees } from "../../api/employeeApi";
 import { getAllActiveProjects } from "../../api/projectApi";
+import { getAllActiveTasksByProject } from "../../api/taskApi";
 import {
   getAdminAttendance,
   getAdminTimeLogs,
@@ -86,6 +87,7 @@ function AdminReportPage({
   const [toDate, setToDate] = useState(() => savedReportState.toDate || localDate());
   const [employee, setEmployee] = useState(() => savedReportState.employee || "");
   const [project, setProject] = useState(() => savedReportState.project || "");
+  const [task, setTask] = useState(() => savedReportState.task || "");
   // Snapshot of the filters that were active when "Generate" last succeeded.
   // The silent background poll must replay this snapshot, not whatever is
   // currently sitting in the (possibly half-edited) filter inputs.
@@ -94,9 +96,12 @@ function AdminReportPage({
     toDate: savedReportState.toDate || localDate(),
     employee: savedReportState.employee || "",
     project: savedReportState.project || "",
+    task: savedReportState.task || "",
   });
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasRun, setHasRun] = useState(() => Boolean(savedReportState.hasRun));
@@ -128,6 +133,38 @@ function AdminReportPage({
 
     void loadOptions();
   }, [allowEmployeeFilter, mode, scope]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (mode !== "time" || !project) {
+      setTasks([]);
+      setTasksLoading(false);
+      return () => { active = false; };
+    }
+
+    const loadTasks = async () => {
+      setTasksLoading(true);
+      try {
+        const nextTasks = await getAllActiveTasksByProject(project);
+        if (!active) return;
+        setTasks(nextTasks);
+        setTask((currentTask) => currentTask && !nextTasks.some((item) => item._id === currentTask)
+          ? ""
+          : currentTask);
+      } catch (requestError) {
+        if (!active) return;
+        setTasks([]);
+        setTask("");
+        setError(getApiErrorMessage(requestError, "Unable to load tasks for this project."));
+      } finally {
+        if (active) setTasksLoading(false);
+      }
+    };
+
+    void loadTasks();
+    return () => { active = false; };
+  }, [mode, project]);
 
   const totalSeconds = useMemo(
     () => records.reduce((sum, record) => sum + getWorkedSeconds(record), 0),
@@ -171,7 +208,7 @@ function AdminReportPage({
     // filter inputs, so in-progress edits never silently change the table.
     const activeFilters = silent
       ? appliedFiltersRef.current
-      : { fromDate, toDate, employee, project };
+      : { fromDate, toDate, employee, project, task };
 
     if (!silent) {
       setHasRun(true);
@@ -199,6 +236,7 @@ function AdminReportPage({
         endDate: activeFilters.toDate,
         employee: activeFilters.employee || undefined,
         project: activeFilters.project || undefined,
+        task: activeFilters.task || undefined,
       };
       const data = mode === "attendance"
         ? scope === "personal"
@@ -225,7 +263,7 @@ function AdminReportPage({
       pendingReportRequestsRef.current -= 1;
       if (isCurrent() && !silent) setLoading(false);
     }
-  }, [employee, fromDate, mode, project, scope, toDate]);
+  }, [employee, fromDate, mode, project, scope, task, toDate]);
 
   const runReport = () => loadReport();
   useEffect(() => {
@@ -234,9 +272,10 @@ function AdminReportPage({
       toDate,
       employee,
       project,
+      task,
       hasRun,
     });
-  }, [employee, fromDate, hasRun, project, reportStorageKey, toDate]);
+  }, [employee, fromDate, hasRun, project, reportStorageKey, task, toDate]);
 
   useEffect(() => {
     if (restoredReportRef.current) return;
@@ -375,12 +414,31 @@ function AdminReportPage({
             {mode === "time" && (
               <select
                 value={project}
-                onChange={(event) => setProject(event.target.value)}
+                onChange={(event) => {
+                  setProject(event.target.value);
+                  setTask("");
+                  setError("");
+                }}
                 aria-label="Project"
               >
                 <option value="">All projects</option>
                 {projects.map((item) => (
                   <option value={item._id} key={item._id}>{item.projectName}</option>
+                ))}
+              </select>
+            )}
+            {mode === "time" && (
+              <select
+                value={task}
+                onChange={(event) => setTask(event.target.value)}
+                aria-label="Task"
+                disabled={!project || tasksLoading}
+              >
+                <option value="">
+                  {!project ? "Select project first" : tasksLoading ? "Loading tasks..." : "All tasks"}
+                </option>
+                {tasks.map((item) => (
+                  <option value={item._id} key={item._id}>{item.taskName}</option>
                 ))}
               </select>
             )}
