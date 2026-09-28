@@ -49,8 +49,7 @@ export default function AppShell({ children }) {
   }, [isAuthenticated, isAuthLoading, pendingLoginRequest]);
   if (!isAuthenticated || isAuthLoading || /login|password/.test(location.pathname)) return children;
 
-  // HR and Manager both get the full business/operational navigation, same
-  // mechanism as admin/team_lead/employee (driven by workspaceNavigation.js).
+  // Navigation is role-driven; managers have a complete admin-equivalent set.
   const hasDelegatedEmployeeAccess = ["create_employees", "edit_employees"].some(
     (key) => (user?.permissions || []).includes(key),
   );
@@ -60,7 +59,7 @@ export default function AppShell({ children }) {
     ...(user?.role === "team_lead" ? [{ path: "/employees", title: "Team members", group: "Workspace" }] : []),
     // Admin already has this from workspaceNavigation; anyone else only gets
     // it when specifically granted the delegated permission.
-    ...(hasDelegatedEmployeeAccess && !["admin", "alpha"].includes(user?.role)
+    ...(hasDelegatedEmployeeAccess && !["admin", "alpha", "manager"].includes(user?.role)
       ? [{ path: "/admin/employees", title: "Employees", group: "Workspace" }]
       : []),
   ];

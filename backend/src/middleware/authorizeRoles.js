@@ -10,7 +10,7 @@ const authorizeRoles = (...allowedRoles) => {
     }
 
     const allowed = allowedRoles.includes(req.user.role)
-      || (req.user.role === "alpha" && allowedRoles.includes("admin"));
+      || (isAdminRole(req.user.role) && allowedRoles.includes("admin"));
     if (!allowed) {
       return res.status(403).json({
         success: false,
@@ -22,7 +22,7 @@ const authorizeRoles = (...allowedRoles) => {
   };
 };
 
-// Admin always passes. Anyone else needs at least one of the named
+// Admin-level roles always pass. Anyone else needs at least one of the named
 // permissions explicitly granted on their employee record (see
 // Employee.permissions). Used for actions an admin can delegate to a
 // specific non-admin user.

@@ -33,7 +33,7 @@ function EmployeeListPage() {
     try {
       let data;
 
-      if (user?.role === "admin") {
+      if (["admin", "alpha", "manager"].includes(user?.role)) {
         data = await getEmployees({ page, limit });
       } else if (user?.role === "team_lead") {
         data = await getMyTeam({ page, limit });
@@ -88,7 +88,7 @@ function EmployeeListPage() {
             </h2>
           </div>
 
-          {user?.role === "admin" && (
+          {["admin", "alpha", "manager"].includes(user?.role) && (
             <Link
               to="/admin/employees"
               state={{ openAddEmployee: true }}

@@ -47,7 +47,7 @@ function AdminEmployees() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
-  const isAdmin = ["admin", "alpha"].includes(currentUser?.role);
+  const isAdmin = ["admin", "alpha", "manager"].includes(currentUser?.role);
   const currentPermissions = currentUser?.permissions || [];
   const canCreateEmployees = isAdmin || currentPermissions.includes("create_employees");
   const canEditEmployees = isAdmin || currentPermissions.includes("edit_employees");

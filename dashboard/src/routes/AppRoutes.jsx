@@ -102,16 +102,14 @@ import ProtectedRoute
 
 function AdminOnly({ children }) {
   return (
-    <ProtectedRoute allowedRoles={["admin", "alpha"]}>
+    <ProtectedRoute allowedRoles={["admin", "alpha", "manager"]}>
       {children}
     </ProtectedRoute>
   );
 }
 
-// Business/operational admin features Manager and HR also get: reporting,
-// projects, tasks, teams, clients, scheduling, billing. Account/security-
-// sensitive pages (Employees, Idle & logout Settings) stay on AdminOnly —
-// see AdminEmployees and AdminSettings routes below.
+// Manager has full admin access. HR receives the business/operational admin
+// features below, without account or security settings access.
 function AdminStaffOnly({ children }) {
   return (
     <ProtectedRoute allowedRoles={["admin", "alpha", "manager", "hr"]}>
@@ -462,7 +460,7 @@ function AppRoutes() {
         path="/admin/employees"
         element={
           <ProtectedRoute
-            allowedRoles={["admin", "alpha"]}
+            allowedRoles={["admin", "alpha", "manager"]}
             requiredPermissions={["create_employees", "edit_employees"]}
           >
             <AdminEmployees />
@@ -781,9 +779,9 @@ function AppRoutes() {
             allowedRoles={[
               "admin",
               "alpha",
+              "manager",
               "team_lead",
               "employee",
-              "manager",
               "hr",
             ]}
           >
@@ -804,6 +802,7 @@ function AppRoutes() {
             allowedRoles={[
               "admin",
               "alpha",
+              "manager",
               "team_lead",
             ]}
           >
@@ -815,7 +814,7 @@ function AppRoutes() {
       <Route
         path="/employees/:employeeId"
         element={
-          <ProtectedRoute allowedRoles={["admin", "alpha", "team_lead"]}>
+          <ProtectedRoute allowedRoles={["admin", "alpha", "manager", "team_lead"]}>
             <EmployeeDetailsPage />
           </ProtectedRoute>
         }

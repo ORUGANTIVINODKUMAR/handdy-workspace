@@ -35,14 +35,13 @@ export const workspaceNavigation = [
   { path: "/employee/timesheet/count", title: "My count report", role: "employee", group: "Time & attendance" },
   { path: "/employee/help", title: "Help", role: "employee", group: "System" },
 
-  // Manager and HR get the same business/operational modules as admin
-  // (reporting, projects, tasks, teams, clients, and billing).
-  // Employees and Idle & logout Settings stay admin-only — see AppRoutes.jsx.
+  // Manager receives the complete admin navigation plus attendance.
   { path: "/admin/dashboard", title: "Overview", role: "manager", group: "Workspace" },
   { path: "/admin/clients", title: "Clients", role: "manager", group: "Workspace" },
   { path: "/admin/projects", title: "Projects", role: "manager", group: "Workspace" },
   { path: "/admin/tasks", title: "Tasks", role: "manager", group: "Workspace" },
   { path: "/admin/team", title: "Teams", role: "manager", group: "Workspace" },
+  { path: "/admin/employees", title: "Employees", role: "manager", group: "Workspace" },
   { path: "/admin/my-timesheet", title: "My timesheet", role: "manager", group: "Time & attendance" },
   { path: "/admin/my-timesheet/details", title: "My detailed timesheet", role: "manager", group: "Time & attendance" },
   { path: "/admin/my-timesheet/count", title: "My count report", role: "manager", group: "Time & attendance" },
@@ -52,7 +51,10 @@ export const workspaceNavigation = [
   { path: "/attendance", title: "Attendance", role: "manager", group: "Time & attendance" },
   { path: "/admin/billing", title: "Billing", role: "manager", group: "Finance" },
   { path: "/admin/help", title: "Help", role: "manager", group: "System" },
+  { path: "/admin/settings", title: "Idle & logout", role: "manager", group: "System" },
 
+  // HR receives business/operational modules but not employee administration
+  // or idle/logout security settings.
   { path: "/admin/dashboard", title: "Overview", role: "hr", group: "Workspace" },
   { path: "/admin/clients", title: "Clients", role: "hr", group: "Workspace" },
   { path: "/admin/projects", title: "Projects", role: "hr", group: "Workspace" },

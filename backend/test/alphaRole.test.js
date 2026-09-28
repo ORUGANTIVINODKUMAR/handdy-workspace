@@ -16,22 +16,29 @@ const callMiddleware = (middleware, role, permissions = []) => {
   return result;
 };
 
-test("alpha is an admin-level role but remains distinguishable", () => {
+test("alpha and manager are admin-level roles but alpha remains distinguishable", () => {
   assert.equal(isAdminRole("alpha"), true);
   assert.equal(isAdminRole("admin"), true);
+  assert.equal(isAdminRole("manager"), true);
   assert.equal(isAlphaRole("alpha"), true);
   assert.equal(isAlphaRole("admin"), false);
+  assert.equal(isAlphaRole("manager"), false);
 });
 
-test("alpha inherits admin route access while admin cannot enter alpha-only routes", () => {
+test("alpha and manager inherit admin routes without inheriting alpha-only routes", () => {
   assert.equal(callMiddleware(authorizeRoles("admin"), "alpha").nextCalled, true);
+  assert.equal(callMiddleware(authorizeRoles("admin"), "manager").nextCalled, true);
   const adminToAlpha = callMiddleware(authorizeRoles("alpha"), "admin");
+  const managerToAlpha = callMiddleware(authorizeRoles("alpha"), "manager");
   assert.equal(adminToAlpha.nextCalled, false);
   assert.equal(adminToAlpha.statusCode, 403);
+  assert.equal(managerToAlpha.nextCalled, false);
+  assert.equal(managerToAlpha.statusCode, 403);
 });
 
-test("alpha automatically passes delegated access checks", () => {
+test("admin-level roles automatically pass delegated access checks", () => {
   assert.equal(callMiddleware(authorizeAccess("edit_employees"), "alpha").nextCalled, true);
+  assert.equal(callMiddleware(authorizeAccess("edit_employees"), "manager").nextCalled, true);
 });
 
 test("employee schema accepts alpha and stores a per-employee idle override", async () => {

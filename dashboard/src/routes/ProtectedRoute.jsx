@@ -57,7 +57,7 @@ function ProtectedRoute({
     requiredPermissions.length > 0 &&
     requiredPermissions.some((key) => (user.permissions || []).includes(key));
   const hasRoleAccess = allowedRoles.includes(user.role)
-    || (user.role === "alpha" && allowedRoles.includes("admin"));
+    || (["alpha", "manager"].includes(user.role) && allowedRoles.includes("admin"));
 
   // Logged in but wrong role, and no delegated permission covers this route.
   if (
@@ -65,7 +65,7 @@ function ProtectedRoute({
     !hasRoleAccess &&
     !hasRequiredPermission
   ) {
-    if (user.role === "admin" || user.role === "alpha") {
+    if (["admin", "alpha", "manager"].includes(user.role)) {
       return (
         <Navigate
           to="/admin/dashboard"
@@ -94,7 +94,7 @@ function ProtectedRoute({
       );
     }
 
-    if (user.role === "manager" || user.role === "hr") {
+    if (user.role === "hr") {
       return (
         <Navigate
           to="/admin/dashboard"
