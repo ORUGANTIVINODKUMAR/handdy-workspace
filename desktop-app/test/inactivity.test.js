@@ -15,7 +15,7 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
     return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   };
   const localStorage = storage();
-  const state = { idle, outage, timer: timer ? { _id: "existing", status: timer, startedAt: new Date().toISOString(), pauses: [], totalWorkedSeconds: 0 } : null };
+  const state = { idle, outage, timer: timer ? { _id: "existing", status: timer, startedAt: new Date().toISOString(), pauses: [], totalWorkedSeconds: 0 } : null, beforeClose: null, closeReady: 0 };
   const context = vm.createContext({
     console, AbortSignal, Date, localStorage, sessionStorage: storage(),
     setInterval(callback) { intervals.set(++nextInterval, callback); return nextInterval; },
@@ -28,7 +28,12 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
       },
       querySelectorAll: () => [], addEventListener() {},
     },
-    window: { electronAPI: { getSystemIdleTime: async () => state.idle, getIdleDefaults: async () => defaults }, location: { replace: value => calls.push(value) }, addEventListener() {} },
+    window: { electronAPI: {
+      getSystemIdleTime: async () => state.idle,
+      getIdleDefaults: async () => defaults,
+      onBeforeClose: (callback) => { state.beforeClose = callback; },
+      notifyCloseReady: () => { state.closeReady += 1; },
+    }, location: { replace: value => calls.push(value) }, addEventListener() {} },
     fetch: async (url, options = {}) => {
       calls.push(url);
       if (state.outage) throw new Error("offline");
@@ -69,6 +74,32 @@ test("thirty minutes pauses, closes the timer, then logs out exactly once", asyn
   assert.equal(h.context.localStorage.getItem("rememberedSessionToken"), null);
   assert.equal(h.context.localStorage.getItem("rememberedUser"), null);
   assert.equal(h.state.timer.status, "stopped");
+});
+
+test("manual sign-out preserves the remembered account for quick login", async () => {
+  const h = harness({ timer: null });
+  h.context.localStorage.setItem("rememberedSessionToken", "remember-me");
+  h.context.localStorage.setItem("rememberedUser", JSON.stringify({ fullName: "Test Employee" }));
+
+  await h.run("signOut(false)");
+
+  assert.equal(h.context.localStorage.getItem("token"), null);
+  assert.equal(h.context.localStorage.getItem("rememberedSessionToken"), "remember-me");
+  assert.ok(h.context.localStorage.getItem("rememberedUser"));
+  assert.equal(h.calls.filter((url) => url.endsWith("/auth/logout")).length, 1);
+});
+
+test("closing the desktop app stops the backend timer without logging out", async () => {
+  const h = harness({ timer: "running" });
+  assert.equal(typeof h.state.beforeClose, "function");
+
+  await h.state.beforeClose();
+
+  assert.equal(h.state.timer.status, "stopped");
+  assert.equal(h.calls.filter((url) => url.endsWith("/stop")).length, 1);
+  assert.equal(h.calls.filter((url) => url.endsWith("/auth/logout")).length, 0);
+  assert.equal(h.context.localStorage.getItem("token"), "test-only");
+  assert.equal(h.state.closeReady, 1);
 });
 
 test("completed break tasks contribute only to break totals", () => {

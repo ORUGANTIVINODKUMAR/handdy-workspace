@@ -321,13 +321,15 @@ async function signOut(inactivity = false) {
         throw new Error("Timer status unavailable");
       }
     }
+    const rememberedSessionToken = localStorage.getItem("rememberedSessionToken");
     try {
       await fetch(API_BASE_URL + "/auth/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({
-          rememberedSessionToken: localStorage.getItem("rememberedSessionToken"),
-        }),
+        // Manual sign-out ends only the active session and keeps this trusted
+        // device available for password-free return. Inactivity sign-out is a
+        // security boundary, so it also revokes the remembered credential.
+        body: JSON.stringify(inactivity ? { rememberedSessionToken } : {}),
         signal: AbortSignal.timeout(10000),
       });
     } catch {
@@ -339,8 +341,10 @@ async function signOut(inactivity = false) {
     if (timerStatus) timerStatus.textContent = "Idle";
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("rememberedSessionToken");
-    localStorage.removeItem("rememberedUser");
+    if (inactivity) {
+      localStorage.removeItem("rememberedSessionToken");
+      localStorage.removeItem("rememberedUser");
+    }
     ["activeTimer", "currentTimeLog", "timerState", "timerStartedAt", "timerElapsedSeconds"].forEach(key => {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
@@ -460,6 +464,38 @@ function getWorkSelectionStorageKey() {
   const user = getStoredUser();
   return `desktop-work-selection:${user?._id || user?.email || "user"}`;
 }
+
+async function stopTimerForAppClose() {
+  const token = getToken();
+  if (!token) return;
+
+  logoutPending = true;
+  automaticIdlePause = false;
+  try {
+    if (timerAction) await timerAction;
+    const response = await fetch(API_BASE_URL + "/time-logs/stop", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Timer stop failed with HTTP ${response.status}`);
+    }
+    currentTimeLog = null;
+  } catch (error) {
+    console.error("[desktop-close] Unable to stop the active timer:", error.message);
+  } finally {
+    clearSessionLoops();
+  }
+}
+
+window.electronAPI?.onBeforeClose?.(async () => {
+  try {
+    await stopTimerForAppClose();
+  } finally {
+    window.electronAPI.notifyCloseReady?.();
+  }
+});
 
 function getNoteDraftStorageKey(projectId = selectedProjectId, taskId = selectedTaskId) {
   if (!projectId || !taskId) return null;
@@ -1866,6 +1902,8 @@ quickLoginButton?.addEventListener("click", () => {
 });
 
 differentAccountButton?.addEventListener("click", () => {
+  localStorage.removeItem("rememberedSessionToken");
+  localStorage.removeItem("rememberedUser");
   rememberedLogin.hidden = true;
   loginForm.hidden = false;
   message.textContent = "";

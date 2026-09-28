@@ -58,6 +58,18 @@ const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 let lastPromptedVersion = null;
 let mainWindowRef = null;
+const closeReadyWindows = new WeakSet();
+const closeFallbackTimers = new WeakMap();
+
+ipcMain.on("app:close-ready", (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (!window || window.isDestroyed()) return;
+  closeReadyWindows.add(window);
+  const fallbackTimer = closeFallbackTimers.get(window);
+  if (fallbackTimer) clearTimeout(fallbackTimer);
+  closeFallbackTimers.delete(window);
+  window.close();
+});
 
 function compareVersions(firstVersion, secondVersion) {
   const firstParts = String(firstVersion).replace(/^v/i, "").split(".");
@@ -211,11 +223,31 @@ function createWindow() {
   }, UPDATE_CHECK_INTERVAL_MS);
   updateTimer.unref();
 
+  mainWindow.on("close", (event) => {
+    if (closeReadyWindows.has(mainWindow)) return;
+    event.preventDefault();
+
+    if (!closeFallbackTimers.has(mainWindow)) {
+      mainWindow.webContents.send("app:before-close");
+      const fallbackTimer = setTimeout(() => {
+        if (mainWindow.isDestroyed()) return;
+        closeReadyWindows.add(mainWindow);
+        closeFallbackTimers.delete(mainWindow);
+        mainWindow.close();
+      }, 12_000);
+      fallbackTimer.unref();
+      closeFallbackTimers.set(mainWindow, fallbackTimer);
+    }
+  });
+
   // On macOS, window-all-closed doesn't quit the app, so repeated
   // close/reopen cycles would otherwise leak one updateTimer interval per
   // closed window.
   mainWindow.on("closed", () => {
     clearInterval(updateTimer);
+    const fallbackTimer = closeFallbackTimers.get(mainWindow);
+    if (fallbackTimer) clearTimeout(fallbackTimer);
+    closeFallbackTimers.delete(mainWindow);
     if (mainWindowRef === mainWindow) mainWindowRef = null;
   });
 }

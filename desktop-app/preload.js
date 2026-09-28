@@ -10,4 +10,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   apiBaseUrl,
   deviceInfo,
   getSystemIdleTime: () => ipcRenderer.invoke("system:get-idle-time"),
+  onBeforeClose: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on("app:before-close", listener);
+    return () => ipcRenderer.removeListener("app:before-close", listener);
+  },
+  notifyCloseReady: () => ipcRenderer.send("app:close-ready"),
 });
