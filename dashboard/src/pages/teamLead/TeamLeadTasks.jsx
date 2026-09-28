@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SquareX } from "lucide-react";
 import TeamLeadSidebar from "./TeamLeadSidebar";
 import axiosInstance from "../../api/axiosInstance";
+import { getAllTasks } from "../../api/taskApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useDataRefresh from "../../hooks/useDataRefresh";
 import "../../styles/teamLeadSidebar.css";
@@ -20,8 +21,7 @@ function TeamLeadTasks() {
     try {
       setLoading(true);
       setError("");
-      const { data } = await axiosInstance.get("/tasks", { params: { limit: 100 } });
-      setTasks(data.tasks || []);
+      setTasks(await getAllTasks());
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Unable to load tasks."));
     } finally {

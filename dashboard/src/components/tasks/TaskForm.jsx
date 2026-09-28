@@ -235,7 +235,7 @@ function TaskForm({
           </div>
         ))}
 
-        {mode === "create" && additionalTaskNames.length < 24 && (
+        {mode === "create" && (
           <button
             type="button"
             className="admin-task-name-add"

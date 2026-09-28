@@ -1,8 +1,18 @@
 import axiosInstance from "./axiosInstance";
 
-export const getTasks = async () => {
-  const response = await axiosInstance.get("/tasks");
+export const getTasks = async (params = {}) => {
+  const response = await axiosInstance.get("/tasks", { params });
   return response.data;
+};
+
+export const getAllTasks = async (params = {}) => {
+  const tasks = [];
+  for (let page = 1; ; page += 1) {
+    const data = await getTasks({ ...params, page, limit: 100 });
+    tasks.push(...(data.tasks || []));
+    if (page >= Math.max(Number(data.totalPages) || 1, 1)) break;
+  }
+  return tasks;
 };
 
 export const deleteTask = async (taskId) => {

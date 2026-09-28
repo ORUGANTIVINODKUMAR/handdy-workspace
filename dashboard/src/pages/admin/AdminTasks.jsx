@@ -5,7 +5,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import TaskForm from "../../components/tasks/TaskForm";
 import "../../styles/adminTasks.css";
-import { deleteTask, getTasks } from "../../api/taskApi";
+import { deleteTask, getAllTasks } from "../../api/taskApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useDataRefresh from "../../hooks/useDataRefresh";
 
@@ -80,9 +80,7 @@ function AdminTasks() {
       if (!background) setLoading(true);
       setError("");
 
-      const data = await getTasks();
-
-      setTasks(data.tasks || []);
+      setTasks(await getAllTasks());
     } catch (err) {
       console.error(err);
 

@@ -12,7 +12,7 @@ const response = () => ({
   json(body) { this.body = body; return this; },
 });
 
-test("bulk task creation reuses one configuration for every task name", async () => {
+test("bulk task creation reuses one configuration without a fixed batch limit", async () => {
   const originals = {
     teamFind: Team.find,
     projectFindOne: Project.findOne,
@@ -26,11 +26,12 @@ test("bulk task creation reuses one configuration for every task name", async ()
   Task.insertMany = async (tasks) => { inserted = tasks; return tasks.map((task, index) => ({ _id: `task-${index}`, ...task })); };
 
   try {
+    const taskNames = Array.from({ length: 30 }, (_, index) => `Task ${index + 1}`);
     const res = response();
     await createTasksBulk({
       user: { _id: "admin-1", role: "admin" },
       body: {
-        taskNames: ["Research", "Implementation", "Review"],
+        taskNames,
         taskType: "work",
         project: "project-1",
         teams: ["team-1"],
@@ -40,9 +41,9 @@ test("bulk task creation reuses one configuration for every task name", async ()
     }, res);
 
     assert.equal(res.statusCode, 201);
-    assert.equal(res.body.tasks.length, 3);
-    assert.deepEqual(inserted.map((task) => task.taskName), ["Research", "Implementation", "Review"]);
-    assert.equal(new Set(inserted.map((task) => task.taskCode)).size, 3);
+    assert.equal(res.body.tasks.length, 30);
+    assert.deepEqual(inserted.map((task) => task.taskName), taskNames);
+    assert.equal(new Set(inserted.map((task) => task.taskCode)).size, 30);
     for (const task of inserted) {
       assert.equal(task.project, "project-1");
       assert.deepEqual(task.teams, ["team-1"]);
@@ -104,12 +105,11 @@ test("bulk task creation creates each task name for every selected project", asy
   }
 });
 
-test("bulk task creation rejects empty, duplicate, and oversized name batches", async () => {
+test("bulk task creation rejects empty and duplicate name batches", async () => {
   for (const [taskNames, message] of [
     [["Only one"], "Select at least two tasks or projects for bulk creation."],
     [["One", ""], "Select at least two tasks or projects for bulk creation."],
     [["Review", " review "], "Task names in the same batch must be unique."],
-    [Array.from({ length: 26 }, (_, index) => `Task ${index}`), "Create no more than 25 tasks at once."],
   ]) {
     const res = response();
     await createTasksBulk({ user: { _id: "admin-1", role: "admin" }, body: { taskNames } }, res);

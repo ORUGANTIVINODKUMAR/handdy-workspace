@@ -270,9 +270,6 @@ const createTasksBulk = async (req, res) => {
     if (taskNames.length === 0 || taskNames.some((name) => !name) || taskCount < 2) {
       return res.status(400).json({ success: false, message: "Select at least two tasks or projects for bulk creation." });
     }
-    if (taskCount > 25) {
-      return res.status(400).json({ success: false, message: "Create no more than 25 tasks at once." });
-    }
     if (new Set(taskNames.map((name) => name.toLowerCase())).size !== taskNames.length) {
       return res.status(400).json({ success: false, message: "Task names in the same batch must be unique." });
     }
