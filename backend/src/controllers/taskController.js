@@ -317,6 +317,7 @@ const createTasksBulk = async (req, res) => {
 const getAllTasks = async (req, res) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
+    const includeAll = req.query.all === "true";
 
     const search = req.query.search?.trim() || "";
     const taskType =
@@ -399,7 +400,7 @@ const getAllTasks = async (req, res) => {
     const totalTasks =
       await Task.countDocuments(filter);
 
-    const tasks = await Task.find(filter)
+    let taskQuery = Task.find(filter)
       .populate(
         "project",
         "projectCode projectName serviceType"
@@ -413,20 +414,23 @@ const getAllTasks = async (req, res) => {
       .populate("createdBy", "fullName")
       .sort({
         [safeSortBy]: sortOrder,
-      })
-      .skip(skip)
-      .limit(limit);
+      });
+
+    if (!includeAll) {
+      taskQuery = taskQuery.skip(skip).limit(limit);
+    }
+
+    const tasks = await taskQuery;
 
     return res.status(200).json({
       success: true,
 
-      page,
-      limit,
+      page: includeAll ? 1 : page,
+      limit: includeAll ? totalTasks : limit,
 
-      totalPages: Math.max(
-        Math.ceil(totalTasks / limit),
-        1
-      ),
+      totalPages: includeAll
+        ? 1
+        : Math.max(Math.ceil(totalTasks / limit), 1),
 
       count: tasks.length,
       totalTasks,

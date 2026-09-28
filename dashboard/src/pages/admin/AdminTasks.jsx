@@ -602,6 +602,9 @@ function AdminTasks() {
 
           <div className="tasks-table-footer">
             <div className="tasks-page-size">
+              <span className="tasks-record-count">
+                Showing {filteredTasks.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + recordsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks
+              </span>
               <label>
                 Records per page
               </label>

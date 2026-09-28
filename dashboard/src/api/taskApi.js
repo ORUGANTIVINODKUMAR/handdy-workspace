@@ -6,13 +6,8 @@ export const getTasks = async (params = {}) => {
 };
 
 export const getAllTasks = async (params = {}) => {
-  const tasks = [];
-  for (let page = 1; ; page += 1) {
-    const data = await getTasks({ ...params, page, limit: 100 });
-    tasks.push(...(data.tasks || []));
-    if (page >= Math.max(Number(data.totalPages) || 1, 1)) break;
-  }
-  return tasks;
+  const data = await getTasks({ ...params, all: true });
+  return data.tasks || [];
 };
 
 export const deleteTask = async (taskId) => {

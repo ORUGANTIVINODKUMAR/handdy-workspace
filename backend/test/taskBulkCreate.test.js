@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const Task = require("../src/models/Task");
 const Team = require("../src/models/Team");
 const Project = require("../src/models/Project");
-const { createTasksBulk } = require("../src/controllers/taskController");
+const { createTasksBulk, getAllTasks } = require("../src/controllers/taskController");
 
 const response = () => ({
   statusCode: 200,
@@ -115,5 +115,42 @@ test("bulk task creation rejects empty and duplicate name batches", async () => 
     await createTasksBulk({ user: { _id: "admin-1", role: "admin" }, body: { taskNames } }, res);
     assert.equal(res.statusCode, 400);
     assert.equal(res.body.message, message);
+  }
+});
+
+test("task management can request every matching task without pagination", async () => {
+  const originals = {
+    countDocuments: Task.countDocuments,
+    find: Task.find,
+  };
+  const tasks = Array.from({ length: 78 }, (_, index) => ({ _id: `task-${index}` }));
+  let skipCalled = false;
+  let limitCalled = false;
+  const query = {
+    populate() { return this; },
+    sort() { return this; },
+    skip() { skipCalled = true; return this; },
+    limit() { limitCalled = true; return this; },
+    then(resolve) { return Promise.resolve(tasks).then(resolve); },
+  };
+  Task.countDocuments = async () => tasks.length;
+  Task.find = () => query;
+
+  try {
+    const res = response();
+    await getAllTasks({
+      user: { _id: "admin-1", role: "admin" },
+      query: { all: "true" },
+    }, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.tasks.length, 78);
+    assert.equal(res.body.totalTasks, 78);
+    assert.equal(res.body.totalPages, 1);
+    assert.equal(skipCalled, false);
+    assert.equal(limitCalled, false);
+  } finally {
+    Task.countDocuments = originals.countDocuments;
+    Task.find = originals.find;
   }
 });
