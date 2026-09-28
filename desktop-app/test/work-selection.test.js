@@ -39,6 +39,8 @@ function harness() {
     projects: [{ _id: "p1", projectName: "Tax Preparation", clientName: "KCPA" }, { _id: "p2", projectName: "Audit", clientName: "Renau" }],
     tasks: { p1: [{ _id: "t1", taskName: "TAX 1" }, { _id: "t2", taskName: "TAX 2" }], p2: [{ _id: "t3", taskName: "Audit 1" }] },
     failTasks: false,
+    projectPages: null,
+    taskPages: {},
     taskUrls: [],
     pending: null,
   };
@@ -58,13 +60,19 @@ function harness() {
     window: { electronAPI: {}, location: { replace() {} }, addEventListener() {} },
     fetch: async (url) => {
       const json = (body, ok = true) => ({ ok, status: ok ? 200 : 500, json: async () => body });
-      if (url.includes("/projects")) return json({ projects: state.projects });
+      if (url.includes("/projects")) {
+        const page = Number(new URL(url).searchParams.get("page") || 1);
+        const pages = state.projectPages || [state.projects];
+        return json({ projects: pages[page - 1] || [], totalPages: pages.length });
+      }
       if (url.includes("/tasks")) {
         state.taskUrls.push(url);
         if (state.pending) await state.pending;
         if (state.failTasks) return json({ message: "boom" }, false);
         const projectId = new URL(url).searchParams.get("project");
-        return json({ success: true, tasks: state.tasks[projectId] || [] });
+        const page = Number(new URL(url).searchParams.get("page") || 1);
+        const pages = state.taskPages[projectId] || [state.tasks[projectId] || []];
+        return json({ success: true, tasks: pages[page - 1] || [], totalPages: pages.length });
       }
       if (url.includes("/auth/me")) return json({ user: { fullName: "Bhargav Kommanaboina", role: "employee" } });
       return json({ timeLogs: [] });
@@ -106,6 +114,23 @@ test("newly assigned task appears on refresh without losing the selection", asyn
   assert.ok(h.task.options.some((option) => option.value === "t9"));
   assert.equal(h.project.value, "p1");
   assert.equal(h.task.value, "t1");
+});
+
+test("project and task selectors load every API page", async () => {
+  const h = harness();
+  h.state.projectPages = [
+    [{ _id: "p1", projectName: "Tax Preparation", clientName: "KCPA" }],
+    [{ _id: "p2", projectName: "Audit", clientName: "Renau" }],
+  ];
+  h.state.taskPages.p1 = [
+    [{ _id: "t1", taskName: "TAX 1" }],
+    [{ _id: "t2", taskName: "TAX 2" }],
+  ];
+
+  await h.context.loadProjects();
+  assert.deepEqual(h.project.options.map((option) => option.value), ["", "p1", "p2"]);
+  await h.project.choose("p1");
+  assert.deepEqual(h.task.options.map((option) => option.value), ["", "t1", "t2"]);
 });
 
 test("a note is not saved automatically and survives refresh until Save note is used", async () => {

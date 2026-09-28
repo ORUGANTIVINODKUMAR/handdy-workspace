@@ -13,4 +13,19 @@ const createRememberedSession = () => {
 
 const hashRememberedSession = (token) => crypto.createHash("sha256").update(String(token)).digest("hex");
 
-module.exports = { createRememberedSession, hashRememberedSession };
+const revokeRememberedSession = async (EmployeeModel, employeeId, token) => {
+  if (!EmployeeModel || !employeeId || !token || typeof token !== "string") return;
+  const tokenHash = hashRememberedSession(token);
+  await EmployeeModel.updateOne(
+    { _id: employeeId },
+    { $pull: { rememberedSessions: { tokenHash } } }
+  );
+  // Remove the pre-array legacy credential too, while deployments finish
+  // migrating older employee records.
+  await EmployeeModel.updateOne(
+    { _id: employeeId, rememberedSessionTokenHash: tokenHash },
+    { $set: { rememberedSessionTokenHash: null, rememberedSessionExpires: null } }
+  );
+};
+
+module.exports = { createRememberedSession, hashRememberedSession, revokeRememberedSession };

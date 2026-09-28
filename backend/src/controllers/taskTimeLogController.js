@@ -4,7 +4,7 @@ const Task = require("../models/Task");
 const Employee = require("../models/Employee");
 const Team = require("../models/Team");
 const { getPagination } = require("../utils/requestUtils");
-const { getBillingDateRange } = require("../utils/billingUtils");
+const { getBillingDateRange, getDateKeyInTimezone } = require("../utils/billingUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
 const { isAdminRole } = require("../utils/roles");
 
@@ -21,6 +21,14 @@ const getReportRange = (startDate, endDate) => {
     start: startDate ? range.start : null,
     endExclusive: endDate ? range.endExclusive : null,
   };
+};
+
+const getRequestedReportRange = ({ startDate, endDate, today }, now = new Date()) => {
+    const dateKey = today === "true" ? getDateKeyInTimezone(now, APP_TIMEZONE) : null;
+    return {
+        dateKey,
+        range: getReportRange(dateKey || startDate, dateKey || endDate),
+    };
 };
 
 const applyReportRangeFilter = (filter, range) => {
@@ -435,6 +443,7 @@ const getMyTimeLogs = async (req, res) => {
         const {
             startDate,
             endDate,
+            today,
             project,
             task,
             status,
@@ -445,7 +454,11 @@ const getMyTimeLogs = async (req, res) => {
         };
 
         // Date range filter
-        const reportRange = getReportRange(startDate, endDate);
+        const { dateKey: todayDateKey, range: reportRange } = getRequestedReportRange({
+            startDate,
+            endDate,
+            today,
+        });
         applyReportRangeFilter(filter, reportRange);
 
         // Project filter
@@ -467,7 +480,7 @@ const getMyTimeLogs = async (req, res) => {
 
         const rawTimeLogs = await TaskTimeLog.find(filter)
             .populate("project", "projectCode projectName serviceType")
-            .populate("task", "taskCode taskName")
+            .populate("task", "taskCode taskName taskType")
             .sort("-startedAt")
             .skip(skip)
             .limit(limit)
@@ -483,6 +496,8 @@ const getMyTimeLogs = async (req, res) => {
             totalPages: Math.ceil(totalRecords / limit),
             count: timeLogs.length,
             totalRecords,
+            timezone: APP_TIMEZONE,
+            date: todayDateKey || undefined,
             timeLogs,
         });
     } catch (error) {
@@ -648,4 +663,5 @@ module.exports = {
     getMyTimeLogs,
     getAllTimeLogs,
     clipTimeLogToRange,
+    getRequestedReportRange,
 };

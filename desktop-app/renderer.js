@@ -115,6 +115,7 @@ let lastIdleSeconds = 0;
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const DATA_REFRESH_INTERVAL_MS = 10 * 1000;
 const ACTIVE_AGAIN_SECONDS = 2;
+const API_REQUEST_TIMEOUT_MS = 10 * 1000;
 
 const showTimerView = (viewName) => {
   timerViewPanels.forEach((panel) => {
@@ -175,6 +176,30 @@ if (saveNoteButton) {
 
 function getToken() {
   return localStorage.getItem("token");
+}
+
+async function fetchAllPages(endpoint, collectionKey, token, { isCurrent } = {}) {
+  const items = [];
+  let page = 1;
+  let data = {};
+  let response;
+
+  do {
+    const separator = endpoint.includes("?") ? "&" : "?";
+    response = await fetch(`${endpoint}${separator}page=${page}&limit=100`, {
+      method: "GET",
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
+    });
+    data = await response.json();
+    if (!response.ok) return { response, data, items: [] };
+    if (isCurrent && !isCurrent()) return { response, data, items: [], cancelled: true };
+    items.push(...(Array.isArray(data[collectionKey]) ? data[collectionKey] : []));
+    page += 1;
+  } while (page <= Math.max(Number(data.totalPages) || 1, 1));
+
+  return { response, data, items };
 }
 
 function getOpenPauseReason(timeLog) {
@@ -299,7 +324,10 @@ async function signOut(inactivity = false) {
     try {
       await fetch(API_BASE_URL + "/auth/logout", {
         method: "POST",
-        headers: { Authorization: "Bearer " + token },
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({
+          rememberedSessionToken: localStorage.getItem("rememberedSessionToken"),
+        }),
         signal: AbortSignal.timeout(10000),
       });
     } catch {
@@ -311,6 +339,8 @@ async function signOut(inactivity = false) {
     if (timerStatus) timerStatus.textContent = "Idle";
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("rememberedSessionToken");
+    localStorage.removeItem("rememberedUser");
     ["activeTimer", "currentTimeLog", "timerState", "timerStartedAt", "timerElapsedSeconds"].forEach(key => {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
@@ -526,20 +556,14 @@ async function loadProjects() {
 
   try {
     // Only active projects can be started (see POST /time-logs/start).
-    const response = await fetch(
-      `${API_BASE_URL}/projects?limit=100&status=Active`,
-      {
-        method: "GET",
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const { response, data, items: projects, cancelled } = await fetchAllPages(
+      `${API_BASE_URL}/projects?status=Active`,
+      "projects",
+      token,
+      { isCurrent: () => requestId === projectRequestId }
     );
 
-    const data = await response.json();
-
-    if (requestId !== projectRequestId) return false;
+    if (cancelled || requestId !== projectRequestId) return false;
 
     if (!response.ok) {
       // Keep the current options and selection; a failed refresh must not
@@ -549,8 +573,6 @@ async function loadProjects() {
 
       return false;
     }
-
-    const projects = Array.isArray(data.projects) ? data.projects : [];
 
     // Rebuilding the options closes an open dropdown and momentarily shows
     // the placeholder, so only rebuild when the project list really changed.
@@ -609,21 +631,15 @@ async function loadTasks(projectId, { background = false } = {}) {
   }
 
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/tasks?project=${encodeURIComponent(projectId)}&active=true&limit=100`,
-      {
-        method: "GET",
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const { response, data, items: tasks, cancelled } = await fetchAllPages(
+      `${API_BASE_URL}/tasks?project=${encodeURIComponent(projectId)}&active=true`,
+      "tasks",
+      token,
+      { isCurrent: () => requestId === taskRequestId && projectId === selectedProjectId }
     );
 
-    const data = await response.json();
-
     // Ignore responses for a project the employee has already moved away from.
-    if (requestId !== taskRequestId || projectId !== selectedProjectId) return;
+    if (cancelled || requestId !== taskRequestId || projectId !== selectedProjectId) return;
 
     if (!response.ok) {
       if (keepExistingTasks) return;
@@ -633,8 +649,6 @@ async function loadTasks(projectId, { background = false } = {}) {
 
       return;
     }
-
-    const tasks = Array.isArray(data.tasks) ? data.tasks : [];
 
     if (tasks.length === 0) {
       renderTaskPlaceholder("No tasks available for this project");
@@ -866,17 +880,6 @@ function showLoggedOutView() {
   if (appSection) appSection.hidden = true;
 }
 
-function isToday(value) {
-  const date = new Date(value);
-  const now = new Date();
-
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  );
-}
-
 function appendTimesheetCell(row, value) {
   const cell = document.createElement("td");
   cell.textContent = value;
@@ -919,6 +922,7 @@ function buildTimeLogTimeline(timeLog, now = Date.now()) {
   const counters = { work: 0, break: 0, idle: 0 };
   const entries = [];
   let cursor = sessionStart;
+  const activeSegmentType = timeLog.task?.taskType === "break" ? "break" : "work";
 
   const addEntry = (type, startMs, endMs, open = false) => {
     if (endMs < startMs) return;
@@ -936,7 +940,7 @@ function buildTimeLogTimeline(timeLog, now = Date.now()) {
 
   pauses.forEach((pause) => {
     const pauseStart = Math.min(sessionEnd, Math.max(sessionStart, pause.startMs));
-    if (pauseStart > cursor) addEntry("work", cursor, pauseStart);
+    if (pauseStart > cursor) addEntry(activeSegmentType, cursor, pauseStart);
     const openPause = pause.endMs === null && stoppedAt === null;
     const pauseEnd = Math.min(sessionEnd, Math.max(pauseStart, pause.endMs ?? sessionEnd));
     addEntry(isIdlePauseReason(pause.reason) ? "idle" : "break", pauseStart, pauseEnd, openPause);
@@ -944,14 +948,14 @@ function buildTimeLogTimeline(timeLog, now = Date.now()) {
   });
 
   if (cursor < sessionEnd || (entries.length === 0 && cursor === sessionEnd)) {
-    addEntry("work", cursor, sessionEnd, stoppedAt === null);
+    addEntry(activeSegmentType, cursor, sessionEnd, stoppedAt === null);
   }
 
   const workEntries = entries.filter((entry) => entry.type === "work");
   const timestampWorkedSeconds = Math.floor(
     workEntries.reduce((total, entry) => total + entry.milliseconds, 0) / 1000
   );
-  const targetWorkedSeconds = timeLog.status === "stopped"
+  const targetWorkedSeconds = activeSegmentType === "work" && timeLog.status === "stopped"
     && Number.isFinite(Number(timeLog.totalWorkedSeconds))
     ? Math.floor(Math.max(0, Number(timeLog.totalWorkedSeconds)))
     : timestampWorkedSeconds;
@@ -1030,7 +1034,7 @@ function summarizeTimeline(timeline) {
   }, { workSeconds: 0, breakSeconds: 0, idleSeconds: 0 });
 }
 
-function renderTodayTimesheet(timeLogs) {
+function renderTodayTimesheet(timeLogs, reportDate) {
   const timeline = buildChronologicalTimeline(timeLogs);
   const {
     workSeconds: totalSeconds,
@@ -1043,12 +1047,15 @@ function renderTodayTimesheet(timeLogs) {
     )
   );
 
+  const displayDate = /^\d{4}-\d{2}-\d{2}$/.test(reportDate || "")
+    ? new Date(...reportDate.split("-").map((value, index) => Number(value) - (index === 1 ? 1 : 0)))
+    : new Date();
   todayDate.textContent = new Intl.DateTimeFormat(undefined, {
     weekday: "long",
     day: "2-digit",
     month: "long",
     year: "numeric",
-  }).format(new Date());
+  }).format(displayDate);
   todayTotal.textContent = formatDuration(totalSeconds);
   todayBreak.textContent = formatDuration(totalBreakSeconds);
   todayIdle.textContent = formatDuration(totalIdleSeconds);
@@ -1100,17 +1107,19 @@ async function loadTodayTimesheet() {
   refreshTimesheetButton.disabled = true;
 
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/time-logs/history?limit=100`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    // startDate/endDate keep this client compatible with servers deployed
+    // before the company-timezone-aware `today=true` shortcut was added.
+    const now = new Date();
+    const localDateKey = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    const { response, data, items: todaysTimeLogs } = await fetchAllPages(
+      `${API_BASE_URL}/time-logs/history?today=true&startDate=${localDateKey}&endDate=${localDateKey}`,
+      "timeLogs",
+      token
     );
-
-    const data = await response.json();
 
     if (!response.ok) {
       timesheetMessage.textContent =
@@ -1120,15 +1129,7 @@ async function loadTodayTimesheet() {
       return;
     }
 
-    // An overnight session started before midnight but still active (not yet
-    // stopped) should always show in "today's" view, even though its
-    // startedAt falls on the previous calendar day. Completed sessions keep
-    // their existing start-day attribution.
-    const todaysTimeLogs = (data.timeLogs || []).filter((timeLog) =>
-      isToday(timeLog.startedAt) || timeLog.status === "running" || timeLog.status === "paused"
-    );
-
-    renderTodayTimesheet(todaysTimeLogs);
+    renderTodayTimesheet(todaysTimeLogs, data.date);
     timesheetMessage.textContent = "";
   } catch (error) {
     timesheetMessage.textContent =
@@ -1275,6 +1276,7 @@ async function saveNote() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ note }),
+      signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
     });
 
     const data = await response.json();
@@ -1337,6 +1339,7 @@ async function loadActiveTimer() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );
 
@@ -1446,6 +1449,7 @@ async function stopTimer() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );
 
@@ -1509,12 +1513,12 @@ async function pauseTimer(reason = "manual") {
       `${API_BASE_URL}/time-logs/pause`,
       {
         method: "POST",
-        signal: AbortSignal.timeout(10000),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ reason }),
+        signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );
 
@@ -1587,6 +1591,7 @@ async function resumeTimer(reason = "manual") {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ reason }),
+        signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );
 
@@ -1672,6 +1677,7 @@ async function startTimer() {
           task: taskId,
           note: readNoteDraft().trim() || undefined,
         }),
+        signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );
 

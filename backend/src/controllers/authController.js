@@ -9,7 +9,11 @@ const {
   generatePasswordResetToken,
   hashResetToken,
 } = require("../utils/passwordResetUtils");
-const { createRememberedSession, hashRememberedSession } = require("../utils/rememberedSessionUtils");
+const {
+  createRememberedSession,
+  hashRememberedSession,
+  revokeRememberedSession,
+} = require("../utils/rememberedSessionUtils");
 const AuthSession = require("../models/AuthSession");
 const DeviceLoginRequest = require("../models/DeviceLoginRequest");
 const { isAdminRole } = require("../utils/roles");
@@ -923,6 +927,8 @@ const changePassword = async (req, res) => {
 // LOGOUT EMPLOYEE
 // ======================================================
 const logout = async (req, res) => {
+  // End the device session first, so a failure while revoking the remembered
+  // credential can never leave this session active.
   await AuthSession.updateOne(
     { _id: req.authSession._id, status: "active" },
     { $set: { status: "logged_out", revokedAt: new Date(), revokeReason: "user_logout" } },
@@ -931,6 +937,11 @@ const logout = async (req, res) => {
     { existingSession: req.authSession._id, status: { $in: ["pending", "approving"] } },
     { $set: { status: "cancelled", resolvedAt: new Date() } },
   );
+
+  const rememberedSessionToken = req.body?.rememberedSessionToken;
+  if (typeof rememberedSessionToken === "string" && rememberedSessionToken) {
+    await revokeRememberedSession(Employee, req.user._id, rememberedSessionToken);
+  }
 
   return res.status(200).json({
     success: true,

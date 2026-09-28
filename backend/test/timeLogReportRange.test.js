@@ -1,7 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { clipTimeLogToRange } = require("../src/controllers/taskTimeLogController");
+const {
+  clipTimeLogToRange,
+  getRequestedReportRange,
+} = require("../src/controllers/taskTimeLogController");
 
 test("clips an overnight timer and its pauses to the selected report day", () => {
   const log = {
@@ -54,4 +57,15 @@ test("does not double count overlapping pauses in clipped totals", () => {
   assert.equal(clipped.totalPausedSeconds, 1800);
   assert.equal(clipped.totalIdleSeconds, 600);
   assert.equal(clipped.totalWorkedSeconds, 1800);
+});
+
+test("today reports use the configured company date and clip to its boundaries", () => {
+  const { dateKey, range } = getRequestedReportRange(
+    { today: "true" },
+    new Date("2026-09-28T20:00:00.000Z")
+  );
+
+  assert.equal(dateKey, "2026-09-29");
+  assert.equal(range.start.toISOString(), "2026-09-28T18:30:00.000Z");
+  assert.equal(range.endExclusive.toISOString(), "2026-09-29T18:30:00.000Z");
 });

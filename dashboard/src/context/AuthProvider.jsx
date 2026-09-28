@@ -81,12 +81,20 @@ function AuthProvider({ children }) {
   // CLEAR AUTH
   // ==========================================
 
+  // Keeps the remembered login: an expired or revoked session is exactly when
+  // "Continue as" should be offered. Only an explicit sign-out removes it.
   const clearAuth = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
     setToken(null);
     setUser(null);
+  }, []);
+
+  const clearRememberedLogin = useCallback(() => {
+    localStorage.removeItem("rememberedSessionToken");
+    localStorage.removeItem("rememberedUser");
+    setRememberedUser(null);
   }, []);
 
   // ==========================================
@@ -263,17 +271,19 @@ function AuthProvider({ children }) {
         try { await stopTimer(); } catch (timerError) {
           if (timerError?.response?.status !== 404) throw timerError;
         }
-        await logoutUser();
+        await logoutUser(localStorage.getItem("rememberedSessionToken"));
       }
     } catch (error) {
       if ([401, 403].includes(error?.response?.status)) {
         clearAuth();
+        clearRememberedLogin();
         return;
       }
       console.error("Logout was deferred until the timer can be finalized:", error);
       throw error;
     }
     clearAuth();
+    clearRememberedLogin();
   };
 
   const value = {

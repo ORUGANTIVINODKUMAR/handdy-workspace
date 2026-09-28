@@ -60,11 +60,35 @@ test("active employee takes no action; ten minutes pauses exactly once", async (
 
 test("thirty minutes pauses, closes the timer, then logs out exactly once", async () => {
   const h = harness({ idle: 1800 });
+  h.context.localStorage.setItem("rememberedSessionToken", "remember-me");
+  h.context.localStorage.setItem("rememberedUser", "user");
   await Promise.all([h.check(), h.check()]); await h.check();
   assert.equal(h.calls.filter(url => url.endsWith("/auth/logout")).length, 1);
   assert.ok(h.calls.findIndex(url => url.endsWith("/stop")) < h.calls.findIndex(url => url.endsWith("/auth/logout")));
   assert.equal(h.context.localStorage.getItem("token"), null);
+  assert.equal(h.context.localStorage.getItem("rememberedSessionToken"), null);
+  assert.equal(h.context.localStorage.getItem("rememberedUser"), null);
   assert.equal(h.state.timer.status, "stopped");
+});
+
+test("completed break tasks contribute only to break totals", () => {
+  const h = harness({ timer: null });
+  const result = h.run(`(() => {
+    const timeline = buildChronologicalTimeline([{
+      status: "stopped",
+      task: { _id: "break-task", taskName: "Lunch", taskType: "break" },
+      startedAt: "2026-09-18T10:00:00.000Z",
+      stoppedAt: "2026-09-18T10:30:00.000Z",
+      totalWorkedSeconds: 1800,
+      pauses: []
+    }]);
+    return { types: timeline.map(({ entry }) => entry.type), totals: summarizeTimeline(timeline) };
+  })()`);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    types: ["break"],
+    totals: { workSeconds: 0, breakSeconds: 1800, idleSeconds: 0 },
+  });
 });
 
 test("logout also applies without an active timer and for idle-exempt staff", async () => {

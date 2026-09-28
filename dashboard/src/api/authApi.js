@@ -31,8 +31,8 @@ export const getCurrentUser = async () => {
   return response.data;
 };
 
-export const logoutUser = async () => {
-  const response = await axiosInstance.post("/auth/logout");
+export const logoutUser = async (rememberedSessionToken) => {
+  const response = await axiosInstance.post("/auth/logout", { rememberedSessionToken });
   return response.data;
 };
 
