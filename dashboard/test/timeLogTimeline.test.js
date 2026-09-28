@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildTimeLogTimeline, sumTimelineSeconds } from "../src/utils/timeLogTimeline.js";
+import {
+  buildReportTimeLogTimeline,
+  buildTimeLogTimeline,
+  sumTimelineSeconds,
+} from "../src/utils/timeLogTimeline.js";
 
 test("splits a running task into chronological work and break segments", () => {
   const timeline = buildTimeLogTimeline({
@@ -35,6 +39,21 @@ test("keeps idle pauses separate from intentional breaks", () => {
   assert.equal(sumTimelineSeconds([record], "idle"), 60);
   assert.equal(sumTimelineSeconds([record], "break"), 120);
   assert.equal(sumTimelineSeconds([record], "work"), 420);
+});
+
+test("task-filtered report timelines contain only work segments", () => {
+  const record = {
+    startedAt: "2026-09-17T10:00:00.000Z",
+    stoppedAt: "2026-09-17T10:10:00.000Z",
+    pauses: [
+      { reason: "break", pausedAt: "2026-09-17T10:02:00.000Z", resumedAt: "2026-09-17T10:03:00.000Z" },
+      { reason: "idle", pausedAt: "2026-09-17T10:05:00.000Z", resumedAt: "2026-09-17T10:06:00.000Z" },
+    ],
+  };
+
+  const filtered = buildReportTimeLogTimeline(record, { taskFiltered: true });
+  assert.deepEqual(filtered.map((entry) => entry.type), ["work", "work", "work"]);
+  assert.equal(filtered.reduce((sum, entry) => sum + entry.durationSeconds, 0), 480);
 });
 
 test("clamps overlapping pauses so their shared time is never double-counted", () => {

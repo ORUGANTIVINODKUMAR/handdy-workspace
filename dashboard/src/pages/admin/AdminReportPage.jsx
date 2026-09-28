@@ -15,7 +15,7 @@ import {
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import { exportReportExcel, exportReportPdf } from "../../utils/reportExport";
 import useDataRefresh from "../../hooks/useDataRefresh";
-import { buildTimeLogTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
+import { buildReportTimeLogTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
 import { getIdleSeconds, getWorkedSeconds, localDate } from "../../utils/timeLogReportHelpers";
 import { readReportState, writeReportState } from "../../utils/reportPersistence";
 import useAuth from "../../context/useAuth";
@@ -88,6 +88,7 @@ function AdminReportPage({
   const [employee, setEmployee] = useState(() => savedReportState.employee || "");
   const [project, setProject] = useState(() => savedReportState.project || "");
   const [task, setTask] = useState(() => savedReportState.task || "");
+  const [appliedTask, setAppliedTask] = useState(() => savedReportState.task || "");
   // Snapshot of the filters that were active when "Generate" last succeeded.
   // The silent background poll must replay this snapshot, not whatever is
   // currently sitting in the (possibly half-edited) filter inputs.
@@ -171,12 +172,16 @@ function AdminReportPage({
     [records]
   );
   const totalIdleSeconds = useMemo(
-    () => records.reduce((sum, record) => sum + getIdleSeconds(record), 0),
-    [records]
+    () => appliedTask ? 0 : records.reduce((sum, record) => sum + getIdleSeconds(record), 0),
+    [appliedTask, records]
   );
   const totalBreakSeconds = useMemo(
-    () => sumTimelineSeconds(records, "break"),
-    [records],
+    () => appliedTask ? 0 : sumTimelineSeconds(records, "break"),
+    [appliedTask, records],
+  );
+  const getTimelineEntries = useCallback(
+    (record) => buildReportTimeLogTimeline(record, { taskFiltered: Boolean(appliedTask) }),
+    [appliedTask],
   );
   const teamRows = useMemo(
     () => buildGroupedRows(records, "employee"),
@@ -250,7 +255,10 @@ function AdminReportPage({
       setRecords(
         mode === "attendance" ? data.attendance || [] : data.timeLogs || []
       );
-      if (!silent) appliedFiltersRef.current = activeFilters;
+      if (!silent) {
+        appliedFiltersRef.current = activeFilters;
+        setAppliedTask(activeFilters.task || "");
+      }
     } catch (requestError) {
       if (!isCurrent()) return;
       if (!silent) {
@@ -332,7 +340,7 @@ function AdminReportPage({
       ],
       rows: records.flatMap((record) => {
         const employeeCell = scope === "company" ? [record.employee?.fullName || "-"] : [];
-        return buildTimeLogTimeline(record).map((entry) => [
+        return getTimelineEntries(record).map((entry) => [
           ...employeeCell,
           entry.type === "break" ? "Break" : entry.type === "idle" ? "Idle" : "Work",
           record.project?.projectName || "-",
@@ -557,7 +565,7 @@ function AdminReportPage({
                 <thead><tr>{scope === "company" && <th>Employee</th>}<th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th><th>Note</th></tr></thead>
                 <tbody>{records.map((record) => (
                   <Fragment key={record._id}>
-                    {buildTimeLogTimeline(record).map((entry) => (
+                    {getTimelineEntries(record).map((entry) => (
                       <tr className={`report-timeline-row report-${entry.type}-row`} key={`${record._id}-${entry.type}-${entry.sequence}`}>
                         {scope === "company" && <td>{record.employee?.fullName || "—"}</td>}
                         <td><div className="report-entry-project"><span className={`report-entry-badge ${entry.type}`}>{entry.type}</span>{entry.type === "work" && <span>{record.project?.projectName || "—"}</span>}</div></td>

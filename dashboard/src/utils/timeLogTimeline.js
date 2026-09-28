@@ -65,6 +65,18 @@ export function buildTimeLogTimeline(record, now = Date.now()) {
   return entries;
 }
 
+// A selected task represents worked time for that task. Break and idle
+// segments belong to the surrounding timer session, not to the task filter.
+export const buildReportTimeLogTimeline = (
+  record,
+  { taskFiltered = false, now = Date.now() } = {},
+) => {
+  const entries = buildTimeLogTimeline(record, now);
+  return taskFiltered
+    ? entries.filter((entry) => entry.type === "work")
+    : entries;
+};
+
 export const sumTimelineSeconds = (records, type, now = Date.now()) =>
   records.reduce(
     (total, record) => total + buildTimeLogTimeline(record, now)
