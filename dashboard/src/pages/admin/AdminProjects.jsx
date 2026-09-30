@@ -131,7 +131,7 @@ function AdminProjects() {
 
     setFormData((previous) => ({
       ...previous,
-      [name]: name === "teams" ? (value ? [value] : []) : value,
+      [name]: value,
     }));
   };
 
@@ -167,7 +167,7 @@ function AdminProjects() {
     }
 
     if (formData.teams.length === 0) {
-      setFormError("Select a team.");
+      setFormError("Select at least one team.");
       return;
     }
 
@@ -540,18 +540,20 @@ function AdminProjects() {
                 />
               </div>
 
-              <div>
-                <label>Team</label>
-                <p className="project-picker-help">Only employees in the selected team can use this project.</p>
-                <select
-                  name="teams"
-                  value={formData.teams[0] || ""}
-                  onChange={handleFormChange}
-                  required
-                >
-                  <option value="">Select team</option>
-                  {teams.map((team) => <option key={team._id} value={team._id}>{team.teamName}</option>)}
-                </select>
+              <div className="project-client-picker project-team-picker">
+                <div className="project-client-picker-heading">
+                  <label>Teams</label>
+                  <span>{formData.teams.length} selected</span>
+                </div>
+                <p className="project-picker-help">This project will be available to employees in every selected team.</p>
+                <div className="project-client-options" role="group" aria-label="Select teams">
+                  {teams.map((team) => {
+                    const selected = formData.teams.includes(team._id);
+                    return <button type="button" key={team._id} className={`project-client-option ${selected ? "selected" : ""}`} onClick={() => toggleTeam(team._id)} aria-pressed={selected}>
+                      <span className="project-client-check">{selected ? "✓" : ""}</span>{team.teamName}
+                    </button>;
+                  })}
+                </div>
               </div>
 
 

@@ -4,7 +4,7 @@ const Project = require("../src/models/Project");
 const Team = require("../src/models/Team");
 const { createProject } = require("../src/controllers/projectController");
 
-test("project creation only requires a name and an active team", async () => {
+test("project creation only requires a name and one or more active teams", async () => {
   const originals = { exists: Project.exists, create: Project.create, teamFind: Team.find };
   let created;
   Project.exists = async () => false;
@@ -13,7 +13,10 @@ test("project creation only requires a name and an active team", async () => {
     return values;
   };
   Team.find = (_filter) => ({
-    select: async () => [{ _id: "team-a", teamName: "Team A" }],
+    select: async () => [
+      { _id: "team-a", teamName: "Team A" },
+      { _id: "team-b", teamName: "Team B" },
+    ],
   });
 
   try {
@@ -23,12 +26,12 @@ test("project creation only requires a name and an active team", async () => {
     };
     await createProject({
       user: { _id: "admin-a" },
-      body: { projectName: "Monthly Accounts", teams: ["team-a"] },
+      body: { projectName: "Monthly Accounts", teams: ["team-a", "team-b"] },
     }, res);
 
     assert.equal(res.code, 201);
     assert.equal(created.projectName, "Monthly Accounts");
-    assert.deepEqual(created.teams, ["team-a"]);
+    assert.deepEqual(created.teams, ["team-a", "team-b"]);
     assert.deepEqual(created.clients, []);
     assert.equal(created.client, null);
     assert.equal(created.clientName, "");
