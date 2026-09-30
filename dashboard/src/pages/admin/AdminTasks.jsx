@@ -522,7 +522,7 @@ function AdminTasks() {
                           </td>
 
                           <td>
-                            {task.project?.projectName || "-"}
+                            {task.project?.projectName || (task.taskType === "work" ? "All team projects" : "-")}
                           </td>
 
                           <td>

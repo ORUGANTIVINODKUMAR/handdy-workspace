@@ -70,7 +70,7 @@ const validateTaskRelations = async ({ project, teams, assignedTo, user }) => {
 
 const prepareTaskCreation = async (user, body) => {
   const taskType = body.taskType || "work";
-  if (taskType === "work" && !body.project) {
+  if (taskType === "work" && !body.project && !body.allowProjectlessWork) {
     return { error: "Select a project for this work task." };
   }
 
@@ -78,7 +78,7 @@ const prepareTaskCreation = async (user, body) => {
   if (!teamResolution.teams) return { error: teamResolution.error };
 
   let project = body.project;
-  if (!project) {
+  if (!project && !body.allowProjectlessWork) {
     const resolution = await resolveTeamsProject(teamResolution.teamIds);
     if (resolution.status === "resolved") project = resolution.projectId;
   }
@@ -280,20 +280,22 @@ const createTasksBulk = async (req, res) => {
     if (autoProjects) {
       const selectedTeams = await getTeamsForTask(req.user, req.body.teams || req.body.team);
       if (!selectedTeams.teams) return res.status(400).json({ success: false, message: selectedTeams.error });
-      if (req.body.taskType === "break") {
-        projectAssignments = [{ project: null, teams: selectedTeams.teamIds }];
-      } else {
+      if (req.body.taskType !== "break") {
         const matchingProjects = await Project.find({
           status: "Active", deletedAt: null, teams: { $in: selectedTeams.teamIds },
         }).select("_id teams").lean();
         if (!matchingProjects.length) {
           return res.status(400).json({ success: false, message: "No active projects are assigned to the selected teams." });
         }
-        projectAssignments = matchingProjects.map((project) => ({
-          project: String(project._id),
-          teams: selectedTeams.teamIds.filter((id) => (project.teams || []).map(String).includes(id)),
-        }));
+        const coveredTeams = new Set(matchingProjects.flatMap((project) => (project.teams || []).map(String)));
+        if (selectedTeams.teamIds.some((teamId) => !coveredTeams.has(teamId))) {
+          return res.status(400).json({ success: false, message: "Every selected team must have an active project." });
+        }
       }
+      // A team-wide task is stored once and can be used with any active
+      // project available to its teams. The selected project is recorded on
+      // the time log when work starts.
+      projectAssignments = [{ project: null, teams: selectedTeams.teamIds }];
     } else {
       projectAssignments = (projectIds.length ? projectIds : [null]).map((project) => ({
         project, teams: req.body.teams || req.body.team,
@@ -302,12 +304,12 @@ const createTasksBulk = async (req, res) => {
     for (const { project, teams } of projectAssignments) {
       const creation = await prepareTaskCreation(req.user, {
         ...req.body, project, teams,
-        ...(autoProjects ? { assignToAllEmployees: true, assignedTo: [] } : {}),
+        ...(autoProjects ? { assignToAllEmployees: true, assignedTo: [], allowProjectlessWork: true } : {}),
       });
       if (creation.error) {
         return res.status(400).json({ success: false, message: creation.error });
       }
-      if (autoProjects && req.body.taskType === "break") creation.project = null;
+      if (autoProjects) creation.project = null;
       creationConfigurations.push(creation);
     }
 
@@ -401,7 +403,12 @@ const getAllTasks = async (req, res) => {
     }
 
     if (project) {
-      filter.project = project;
+      conditions.push({
+        $or: [
+          { project },
+          { project: null, taskType: "work" },
+        ],
+      });
     }
 
     if (team) {
@@ -624,10 +631,6 @@ const updateTask = async (req, res) => {
 
     if (idleLogout !== undefined) {
       task.idleLogout = Boolean(idleLogout);
-    }
-
-    if (task.taskType === "work" && !task.project) {
-      return res.status(400).json({ success: false, message: "Select a project for this work task." });
     }
 
     const normalizedAssignments = normalizeAssignments(task.assignedTo);

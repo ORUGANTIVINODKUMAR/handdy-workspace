@@ -160,6 +160,7 @@ const startTimer = async (req, res) => {
                 assignmentScope,
                 { $or: [
                     { project },
+                    { project: null, taskType: "work" },
                     { project: null, taskType: "break" },
                 ] },
             ],

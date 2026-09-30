@@ -105,7 +105,7 @@ test("bulk task creation creates each task name for every selected project", asy
   }
 });
 
-test("team-only creation copies work tasks to each team's active projects", async () => {
+test("team-only creation stores one work task across all selected-team projects", async () => {
   const originals = {
     teamFind: Team.find,
     projectFind: Project.find,
@@ -132,11 +132,9 @@ test("team-only creation copies work tasks to each team's active projects", asyn
       body: { taskNames: ["Review"], taskType: "work", teams: ["team-a", "team-b"], autoProjects: true },
     }, res);
     assert.equal(res.statusCode, 201);
-    assert.deepEqual(inserted.map((task) => [task.project, task.teams]), [
-      ["project-a", ["team-a"]],
-      ["project-b", ["team-a", "team-b"]],
-      ["project-c", ["team-b"]],
-    ]);
+    assert.equal(inserted.length, 1);
+    assert.equal(inserted[0].project, null);
+    assert.deepEqual(inserted[0].teams, ["team-a", "team-b"]);
     assert.ok(inserted.every((task) => task.assignToAllEmployees && task.assignedTo.length === 0));
   } finally {
     Team.find = originals.teamFind;

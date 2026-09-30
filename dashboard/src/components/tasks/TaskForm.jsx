@@ -159,10 +159,6 @@ function TaskForm({
       setError("Select at least one team.");
       return;
     }
-    if (mode === "edit" && taskType === "work" && projectIds.length === 0) {
-      setError("Select at least one project for this work task.");
-      return;
-    }
     if (assignType === "employee" && assignedTo.length === 0) {
       setError("Select at least one employee, or choose to assign the entire team.");
       return;
@@ -315,8 +311,7 @@ function TaskForm({
 
       {mode === "create" ? (
         <p className="admin-task-project-empty">
-          Work tasks will be added to every active project assigned to the selected teams.
-          Break tasks will be available across those projects.
+          One task will be created for the selected teams and will be available across all of their active projects.
         </p>
       ) : <div className="admin-task-project">
         <div className="admin-task-section-heading">
@@ -326,7 +321,7 @@ function TaskForm({
             <span className="admin-task-selection-copy">
               {mode === "create"
                 ? "Choose one or more projects. A task entry will be created for each selected project."
-                : "Projects are limited to the selected team assignments."}
+                : "Optional: choose one project, or leave all unselected to use this task across the team's projects."}
             </span>
           </div>
           <span className="admin-task-selection-count">{projectIds.length} selected</span>

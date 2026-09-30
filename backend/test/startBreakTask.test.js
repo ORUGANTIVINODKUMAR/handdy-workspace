@@ -41,6 +41,7 @@ test("desktop can start an assigned break task with no project under the selecte
     assert.equal(res.code, 201);
     assert.deepEqual(taskFilter.$and[1].$or, [
       { project: "selected-project" },
+      { project: null, taskType: "work" },
       { project: null, taskType: "break" },
     ]);
     assert.deepEqual(taskFilter.$and[0].$or, [{ assignedTo: "employee" }]);
