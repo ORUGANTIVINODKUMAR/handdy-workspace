@@ -37,6 +37,12 @@ const taskTimeLogSchema = new mongoose.Schema(
       required: true,
     },
 
+    client: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Client",
+      default: null,
+    },
+
     task: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Task",

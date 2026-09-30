@@ -105,6 +105,67 @@ test("bulk task creation creates each task name for every selected project", asy
   }
 });
 
+test("team-only creation copies work tasks to each team's active projects", async () => {
+  const originals = {
+    teamFind: Team.find,
+    projectFind: Project.find,
+    projectFindOne: Project.findOne,
+    taskExists: Task.exists,
+    insertMany: Task.insertMany,
+  };
+  let inserted;
+  Team.find = async ({ _id }) => _id.$in.map((id) => ({ _id: id }));
+  Project.find = () => ({ select: () => ({ lean: async () => [
+    { _id: "project-a", teams: ["team-a"] },
+    { _id: "project-b", teams: ["team-a", "team-b"] },
+    { _id: "project-c", teams: ["team-b"] },
+  ] }) });
+  Project.findOne = ({ _id }) => ({ select: () => ({ lean: async () => ({
+    teams: _id === "project-b" ? ["team-a", "team-b"] : [_id === "project-a" ? "team-a" : "team-b"],
+  }) }) });
+  Task.exists = async () => false;
+  Task.insertMany = async (tasks) => { inserted = tasks; return tasks; };
+  try {
+    const res = response();
+    await createTasksBulk({
+      user: { _id: "admin-1", role: "admin" },
+      body: { taskNames: ["Review"], taskType: "work", teams: ["team-a", "team-b"], autoProjects: true },
+    }, res);
+    assert.equal(res.statusCode, 201);
+    assert.deepEqual(inserted.map((task) => [task.project, task.teams]), [
+      ["project-a", ["team-a"]],
+      ["project-b", ["team-a", "team-b"]],
+      ["project-c", ["team-b"]],
+    ]);
+    assert.ok(inserted.every((task) => task.assignToAllEmployees && task.assignedTo.length === 0));
+  } finally {
+    Team.find = originals.teamFind;
+    Project.find = originals.projectFind;
+    Project.findOne = originals.projectFindOne;
+    Task.exists = originals.taskExists;
+    Task.insertMany = originals.insertMany;
+  }
+});
+
+test("team-only work creation requires an assigned active project", async () => {
+  const originalTeamFind = Team.find;
+  const originalProjectFind = Project.find;
+  Team.find = async () => [{ _id: "team-a" }];
+  Project.find = () => ({ select: () => ({ lean: async () => [] }) });
+  try {
+    const res = response();
+    await createTasksBulk({
+      user: { _id: "admin-1", role: "admin" },
+      body: { taskNames: ["Review"], taskType: "work", teams: ["team-a"], autoProjects: true },
+    }, res);
+    assert.equal(res.statusCode, 400);
+    assert.match(res.body.message, /No active projects/);
+  } finally {
+    Team.find = originalTeamFind;
+    Project.find = originalProjectFind;
+  }
+});
+
 test("bulk task creation rejects empty and duplicate name batches", async () => {
   for (const [taskNames, message] of [
     [["Only one"], "Select at least two tasks or projects for bulk creation."],

@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const Project = require("../src/models/Project");
 const Task = require("../src/models/Task");
 const TaskTimeLog = require("../src/models/TaskTimeLog");
+const mongoose = require("mongoose");
 const { startTimer } = require("../src/controllers/taskTimeLogController");
 
 test("desktop can start an assigned break task with no project under the selected project", async () => {
@@ -50,5 +51,30 @@ test("desktop can start an assigned break task with no project under the selecte
     TaskTimeLog.find = originals.logFind;
     TaskTimeLog.findOne = originals.logFindOne;
     TaskTimeLog.create = originals.logCreate;
+  }
+});
+
+test("timer start rejects a client outside the selected project", async () => {
+  const original = Project.findById;
+  const originalFind = TaskTimeLog.find;
+  const employeeId = new mongoose.Types.ObjectId();
+  TaskTimeLog.find = () => ({ lean: async () => [] });
+  Project.findById = async () => ({
+    status: "Active", deletedAt: null, client: "client-a", clients: ["client-a"],
+  });
+  try {
+    const res = {
+      status(code) { this.code = code; return this; },
+      json(body) { this.body = body; return this; },
+    };
+    await startTimer({
+      user: { _id: employeeId, role: "employee" },
+      body: { project: "project-a", task: "task-a", client: "client-b" },
+    }, res);
+    assert.equal(res.code, 400);
+    assert.match(res.body.message, /client linked to this project/);
+  } finally {
+    Project.findById = original;
+    TaskTimeLog.find = originalFind;
   }
 });

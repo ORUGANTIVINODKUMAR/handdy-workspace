@@ -93,7 +93,7 @@ app.whenReady().then(async () => {
     await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Add another task name')).click()`);
     await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Add another task name')).click()`);
     assert.equal(await evaluate("document.querySelectorAll('.admin-task-name-list input').length"), 3);
-    assert.equal(await evaluate("document.querySelector('.admin-add-task-save').textContent.trim()"), "Save 3 tasks");
+    assert.equal(await evaluate("document.querySelector('.admin-add-task-save').textContent.trim()"), "Save 3 task names");
     assert.equal(await evaluate(`(() => {
       const row = document.querySelector('.admin-task-name-row');
       if (!row) return false;

@@ -44,7 +44,7 @@ function TaskForm({
   });
 
   const [assignType, setAssignType] = useState(
-    initialTask?.assignToAllEmployees ? "team" : "employee"
+    mode === "create" || initialTask?.assignToAllEmployees ? "team" : "employee"
   );
   const [assignedTo, setAssignedTo] = useState(() =>
     (initialTask?.assignedTo || []).map(toId).filter(Boolean)
@@ -159,7 +159,7 @@ function TaskForm({
       setError("Select at least one team.");
       return;
     }
-    if (taskType === "work" && projectIds.length === 0) {
+    if (mode === "edit" && taskType === "work" && projectIds.length === 0) {
       setError("Select at least one project for this work task.");
       return;
     }
@@ -172,9 +172,9 @@ function TaskForm({
       taskName: taskName.trim(),
       taskType,
       teams,
-      project: projectIds[0] || null,
-      assignToAllEmployees: assignType === "team",
-      assignedTo: assignType === "team" ? [] : assignedTo,
+      project: mode === "edit" ? projectIds[0] || null : null,
+      assignToAllEmployees: mode === "create" || assignType === "team",
+      assignedTo: mode === "create" || assignType === "team" ? [] : assignedTo,
       idleLogout,
       ...(mode === "edit" ? { isActive } : {}),
     };
@@ -184,9 +184,7 @@ function TaskForm({
       const response =
         mode === "edit"
           ? await axiosInstance.put(`/tasks/${initialTask._id}`, payload)
-          : taskNames.length > 1 || projectIds.length > 1
-            ? await axiosInstance.post("/tasks/bulk", { ...payload, taskNames, projects: projectIds })
-            : await axiosInstance.post("/tasks", payload);
+          : await axiosInstance.post("/tasks/bulk", { ...payload, taskNames, autoProjects: true });
       onSaved(response.data.tasks || response.data.task);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Unable to save task."));
@@ -315,7 +313,12 @@ function TaskForm({
         </div>
       )}
 
-      <div className="admin-task-project">
+      {mode === "create" ? (
+        <p className="admin-task-project-empty">
+          Work tasks will be added to every active project assigned to the selected teams.
+          Break tasks will be available across those projects.
+        </p>
+      ) : <div className="admin-task-project">
         <div className="admin-task-section-heading">
           <div>
             <p>PROJECTS</p>
@@ -353,9 +356,9 @@ function TaskForm({
           </div>
         )}
         {teams.length > 0 && availableProjects.length === 0 && <p className="admin-task-project-empty">No active project is assigned to every selected team.</p>}
-      </div>
+      </div>}
 
-      <div className="admin-task-assignees">
+      {mode === "edit" && <div className="admin-task-assignees">
         <div className="admin-task-section-heading">
           <div>
             <p>ASSIGNMENT</p>
@@ -417,7 +420,7 @@ function TaskForm({
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       <footer>
         <button type="button" className="admin-add-task-cancel" onClick={onCancel} disabled={saving}>
@@ -426,8 +429,8 @@ function TaskForm({
         <button type="submit" className="admin-add-task-save" disabled={saving}>
           {saving
             ? "Saving..."
-            : mode === "create" && (additionalTaskNames.length > 0 || projectIds.length > 1)
-              ? `Save ${(additionalTaskNames.length + 1) * Math.max(projectIds.length, 1)} tasks`
+            : mode === "create" && additionalTaskNames.length > 0
+              ? `Save ${additionalTaskNames.length + 1} task names`
               : saveLabel || "Save task"}
         </button>
       </footer>

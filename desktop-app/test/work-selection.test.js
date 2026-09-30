@@ -32,7 +32,7 @@ class FakeSelect {
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 function harness() {
-  const nodes = new Map([["projectSelect", new FakeSelect()], ["taskSelect", new FakeSelect()]]);
+  const nodes = new Map([["projectSelect", new FakeSelect()], ["clientSelect", new FakeSelect()], ["taskSelect", new FakeSelect()]]);
   const values = new Map([["token", "test-only"]]);
   const localStorage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
   const state = {
@@ -44,7 +44,9 @@ function harness() {
     taskPages: {},
     taskUrls: [],
     startRequests: [],
+    startBodies: [],
     pending: null,
+    pendingStart: null,
   };
   const context = vm.createContext({
     console: { ...console, log() {}, trace() {} },
@@ -60,7 +62,7 @@ function harness() {
       querySelectorAll: () => [], addEventListener() {},
     },
     window: { electronAPI: {}, location: { replace() {} }, addEventListener() {} },
-    fetch: async (url) => {
+    fetch: async (url, options = {}) => {
       const json = (body, ok = true) => ({ ok, status: ok ? 200 : 500, json: async () => body });
       if (url.includes("/projects")) {
         const page = Number(new URL(url).searchParams.get("page") || 1);
@@ -81,15 +83,47 @@ function harness() {
       }
       if (url.includes("/time-logs/start")) {
         state.startRequests.push(url);
-        return json({ timeLog: null });
+        const body = JSON.parse(options.body);
+        state.startBodies.push(body);
+        if (state.pendingStart) await state.pendingStart;
+        return json({ timeLog: {
+          _id: "log-1", status: "running", startedAt: new Date().toISOString(),
+          project: { _id: body.project }, client: body.client ? { _id: body.client } : null,
+          task: { _id: body.task, taskType: "work" }, pauses: [],
+        } });
       }
       if (url.includes("/auth/me")) return json({ user: { fullName: "Bhargav Kommanaboina", role: "employee" } });
       return json({ timeLogs: [] });
     },
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../renderer.js"), "utf8"), context);
-  return { state, context, project: nodes.get("projectSelect"), task: nodes.get("taskSelect"), run: (source) => vm.runInContext(source, context) };
+  return { state, context, project: nodes.get("projectSelect"), client: nodes.get("clientSelect"), task: nodes.get("taskSelect"), run: (source) => vm.runInContext(source, context) };
 }
+
+test("desktop client selector uses the selected project's clients and starts promptly", async () => {
+  const h = harness();
+  h.state.projects[0].clients = [
+    { _id: "client-a", clientName: "Alpha", status: "Active" },
+    { _id: "client-b", clientName: "Beta", status: "Active" },
+  ];
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  await h.task.choose("t1");
+  assert.deepEqual(h.client.options.map((option) => option.textContent), ["Select client", "Alpha", "Beta"]);
+  await h.context.startTimer();
+  assert.equal(h.state.startRequests.length, 0, "a client is required when the project has linked clients");
+  await h.client.choose("client-b");
+  let releaseStart;
+  h.state.pendingStart = new Promise((resolve) => { releaseStart = resolve; });
+  const pending = h.context.startTimer();
+  assert.equal(h.run("timerStatus.textContent"), "Starting...");
+  assert.equal(h.run("timerMessage.textContent"), "Starting timer...");
+  releaseStart();
+  await pending;
+  assert.equal(h.state.startBodies[0].client, "client-b");
+  assert.equal(h.client.disabled, true);
+  assert.equal(h.run("timerStatus.textContent"), "Working");
+});
 
 test("selected project and task survive repeated and overlapping background refreshes", async () => {
   const h = harness();

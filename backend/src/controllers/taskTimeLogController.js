@@ -102,7 +102,7 @@ const startTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
         await closeStaleDesktopTimers(new Date(), employeeId);
-        const { project, task, note } = req.body;
+        const { project, task, note, client } = req.body;
 
         if (!project || !task) {
             return res.status(400).json({
@@ -118,6 +118,12 @@ const startTimer = async (req, res) => {
                 success: false,
                 message: "Project not found.",
             });
+        }
+
+        const projectClientIds = [projectExists.client, ...(projectExists.clients || [])]
+            .filter(Boolean).map(String);
+        if (client && !projectClientIds.includes(String(client))) {
+            return res.status(400).json({ success: false, message: "Select a client linked to this project." });
         }
 
         const hasActiveTeam = req.user.team
@@ -183,6 +189,7 @@ const startTimer = async (req, res) => {
         const timeLog = await TaskTimeLog.create({
             employee: employeeId,
             project,
+            client: client || null,
             task,
             note: typeof note === "string" ? note.trim().slice(0, 2000) : undefined,
             startedAt,
@@ -192,6 +199,7 @@ const startTimer = async (req, res) => {
         });
 
         await timeLog.populate("project", "projectCode projectName serviceType");
+        await timeLog.populate("client", "clientName");
         await timeLog.populate("task", "taskCode taskName idleLogout taskType");
 
         return res.status(201).json({
@@ -511,6 +519,7 @@ const getMyTimeLogs = async (req, res) => {
 
         const rawTimeLogs = await TaskTimeLog.find(filter)
             .populate("project", "projectCode projectName serviceType")
+            .populate("client", "clientName")
             .populate("task", "taskCode taskName taskType")
             .sort("-startedAt")
             .skip(skip)
@@ -546,6 +555,7 @@ const getActiveTimer = async (req, res) => {
             status: { $in: ["running", "paused"] },
         })
             .populate("project", "projectCode projectName serviceType")
+            .populate("client", "clientName")
             .populate("task", "taskCode taskName idleLogout taskType");
 
         return res.status(200).json({

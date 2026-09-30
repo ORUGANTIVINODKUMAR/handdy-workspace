@@ -67,7 +67,7 @@ const timerNavigationButtons = document.querySelectorAll("[data-timer-view]");
 const timerViewPanels = document.querySelectorAll("[data-timer-panel]");
 const accountMenuButton = document.getElementById("accountMenuButton");
 const accountMenu = document.getElementById("accountMenu");
-const clientName = document.getElementById("clientName");
+const clientSelect = document.getElementById("clientSelect");
 const currentDate = document.getElementById("currentDate");
 const addNoteButton = document.getElementById("addNoteButton");
 const timerNote = document.getElementById("timerNote");
@@ -459,7 +459,9 @@ function getStoredUser() {
 // re-applied after every rebuild instead of being read back from the DOM.
 let selectedProjectId = "";
 let selectedTaskId = "";
+let selectedClientId = "";
 let projectsSignature = null;
+let clientOptionsSignature = null;
 let tasksSignature = null;
 let tasksProjectId = "";
 let projectRequestId = 0;
@@ -562,9 +564,11 @@ function restoreWorkSelection() {
     const saved = JSON.parse(localStorage.getItem(getWorkSelectionStorageKey()) || "{}");
     selectedProjectId = String(saved.projectId || "");
     selectedTaskId = String(saved.taskId || "");
+    selectedClientId = String(saved.clientId || "");
   } catch {
     selectedProjectId = "";
     selectedTaskId = "";
+    selectedClientId = "";
   }
 }
 
@@ -572,6 +576,7 @@ function saveWorkSelection() {
   localStorage.setItem(getWorkSelectionStorageKey(), JSON.stringify({
     projectId: selectedProjectId,
     taskId: selectedTaskId,
+    clientId: selectedClientId,
   }));
 }
 
@@ -579,6 +584,7 @@ function setSelectedProjectId(projectId, source) {
   const nextProjectId = String(projectId || "");
   if (nextProjectId === selectedProjectId) return;
   selectedProjectId = nextProjectId;
+  selectedClientId = "";
   saveWorkSelection();
 }
 
@@ -604,11 +610,32 @@ function ensureOption(select, value, label) {
 }
 
 function updateClientName() {
-  if (!clientName) return;
+  if (!clientSelect) return;
   const selectedOption = projectSelect.selectedOptions[0];
-  clientName.textContent = selectedProjectId && selectedOption?.value
-    ? selectedOption.dataset.clientName || "Not assigned"
-    : "Not selected";
+  let clients = [];
+  try { clients = JSON.parse(selectedOption?.dataset.clients || "[]"); } catch { /* Ignore malformed legacy data. */ }
+  const signature = JSON.stringify([selectedProjectId, clients]);
+  if (signature !== clientOptionsSignature) {
+    const placeholder = !selectedProjectId ? "Select project first"
+      : clients.length ? "Select client" : selectedOption?.dataset.clientName || "No linked client";
+    clientSelect.replaceChildren(
+      new Option(placeholder, ""),
+      ...clients.map((client) => new Option(client.clientName, client._id))
+    );
+    clientOptionsSignature = signature;
+  }
+  const activeClientId = String(currentTimeLog?.client?._id || currentTimeLog?.client || "");
+  if (activeClientId && !hasOption(clientSelect, activeClientId)) {
+    clientSelect.appendChild(new Option(currentTimeLog?.client?.clientName || "Previously selected client", activeClientId));
+  }
+  const nextClientId = [activeClientId, selectedClientId, clients.length === 1 ? clients[0]._id : ""]
+    .find((id) => hasOption(clientSelect, id)) || "";
+  clientSelect.value = nextClientId;
+  if (selectedClientId !== nextClientId) {
+    selectedClientId = nextClientId;
+    saveWorkSelection();
+  }
+  clientSelect.disabled = Boolean(currentTimeLog) || clients.length === 0;
 }
 
 function renderTaskPlaceholder(text) {
@@ -649,7 +676,7 @@ async function loadProjects() {
     // Rebuilding the options closes an open dropdown and momentarily shows
     // the placeholder, so only rebuild when the project list really changed.
     const signature = JSON.stringify(
-      projects.map((project) => [project._id, project.projectName, project.clientName])
+      projects.map((project) => [project._id, project.projectName, project.clientName, project.clients, project.client])
     );
 
     if (signature !== projectsSignature) {
@@ -658,6 +685,11 @@ async function loadProjects() {
         ...projects.map((project) => {
           const option = new Option(project.projectName, project._id);
           option.dataset.clientName = project.clientName || "Not assigned";
+          option.dataset.clients = JSON.stringify(
+            [...new Map([...(project.clients || []), project.client].filter((client) =>
+              client?._id && client.status !== "Inactive"
+            ).map((client) => [client._id, { _id: client._id, clientName: client.clientName }])).values()]
+          );
           return option;
         })
       );
@@ -809,20 +841,33 @@ function endRevokedDeviceSession(reason = "This account is now active on another
 }
 
 async function waitForDeviceApproval(loginRequest) {
-  message.textContent = `Waiting for approval on ${loginRequest.activeDevice?.deviceName || "the active device"}...`;
+  const activeDevice = loginRequest.activeDevice?.deviceName || "the other computer";
+  message.classList.add("approval-pending");
+  message.textContent = `Approve this login in CRM on ${activeDevice}: choose "Allow New Device". If that computer is unavailable, close CRM there and try again in about 5 minutes.`;
+  loginButton.textContent = "Waiting for approval...";
   while (loginInProgress) {
-    const response = await fetch(`${API_BASE_URL}/auth/login-requests/${encodeURIComponent(loginRequest.requestId)}/wait`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestToken: loginRequest.requestToken }),
-      signal: AbortSignal.timeout(25_000),
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/auth/login-requests/${encodeURIComponent(loginRequest.requestId)}/wait`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestToken: loginRequest.requestToken }),
+        signal: AbortSignal.timeout(25_000),
+      });
+    } catch (error) {
+      // The server holds this request for up to 20 seconds. A slow response
+      // should not abandon an otherwise valid approval request.
+      if (error.name === "TimeoutError" && Date.now() < new Date(loginRequest.expiresAt).getTime()) continue;
+      throw error;
+    }
     const data = await response.json();
     if (response.status === 202) continue;
     if (!response.ok) {
+      message.classList.remove("approval-pending");
       message.textContent = data.message || "The login request was not approved.";
       return null;
     }
+    message.classList.remove("approval-pending");
     return data;
   }
   return null;
@@ -1514,6 +1559,7 @@ async function loadActiveTimer() {
       setSelectedTaskId(timeLog.task?._id, "loadActiveTimer: restore active timer");
       ensureOption(projectSelect, timeLog.project._id, timeLog.project.projectName);
       projectSelect.value = selectedProjectId;
+      selectedClientId = String(timeLog.client?._id || timeLog.client || "");
       updateClientName();
 
       await loadTasks(timeLog.project._id);
@@ -1525,6 +1571,7 @@ async function loadActiveTimer() {
     }
 
     projectSelect.disabled = true;
+    if (clientSelect) clientSelect.disabled = true;
     taskSelect.disabled = true;
     updateNoteControlsUI(timeLog);
 
@@ -1618,6 +1665,7 @@ async function stopTimer() {
     stopTimerButton.disabled = true;
 
     projectSelect.disabled = false;
+    if (clientSelect) clientSelect.disabled = !clientSelect.options || clientSelect.options.length <= 1;
 
     // Only re-enable the task dropdown when it holds real task options.
     taskSelect.disabled =
@@ -1778,6 +1826,7 @@ async function startTimer() {
   // and using that hidden value would silently restart work on the old task.
   const projectId = String(projectSelect?.value || "");
   const taskId = String(taskSelect?.value || "");
+  const clientId = String(clientSelect?.value || "");
 
   if (projectId !== selectedProjectId) {
     setSelectedProjectId(projectId, "startTimer: sync visible project");
@@ -1802,8 +1851,25 @@ async function startTimer() {
     return;
   }
 
+  if (clientSelect && clientSelect.options.length > 1 && !clientId) {
+    timerMessage.textContent = "Please select a client first.";
+    return;
+  }
+
+  const previousStatus = timerStatus.textContent;
+  const pendingStart = Date.now();
+  const isStartingBreak = taskSelect.selectedOptions[0]?.dataset.taskType === "break";
+  let pendingInterval = null;
   try {
     startTimerButton.disabled = true;
+    timerStatus.textContent = "Starting...";
+    timerMessage.textContent = "Starting timer...";
+    if (!isStartingBreak) {
+      timerDuration.textContent = "00:00:00";
+      pendingInterval = setInterval(() => {
+        timerDuration.textContent = formatDuration(Math.floor((Date.now() - pendingStart) / 1000));
+      }, 250);
+    }
 
     const response = await fetch(
       `${API_BASE_URL}/time-logs/start`,
@@ -1817,6 +1883,7 @@ async function startTimer() {
 
         body: JSON.stringify({
           project: projectId,
+          client: clientId || undefined,
           task: taskId,
           note: readNoteDraft().trim() || undefined,
           clientType: "desktop",
@@ -1858,12 +1925,19 @@ async function startTimer() {
     stopTimerButton.disabled = false;
 
     projectSelect.disabled = true;
+    if (clientSelect) clientSelect.disabled = true;
     taskSelect.disabled = true;
   } catch (error) {
     timerMessage.textContent =
       "Unable to reach the backend server.";
 
     startTimerButton.disabled = false;
+  } finally {
+    if (pendingInterval !== null) clearInterval(pendingInterval);
+    if (!currentTimeLog) {
+      timerStatus.textContent = previousStatus;
+      timerDuration.textContent = "00:00:00";
+    }
   }
 }
 
@@ -1878,6 +1952,11 @@ projectSelect?.addEventListener(
     await loadTasks(selectedProjectId);
   }
 );
+
+clientSelect?.addEventListener("change", () => {
+  selectedClientId = String(clientSelect.value || "");
+  saveWorkSelection();
+});
 
 taskSelect?.addEventListener("change", () => {
   setSelectedTaskId(taskSelect.value, "employee changed task");
@@ -1905,6 +1984,7 @@ loginForm?.addEventListener(
     console.debug(`[desktop-login] Button clicked; email present: ${Boolean(email)}; password present: ${Boolean(password)}; API URL: ${API_BASE_URL}/auth/login`);
 
     message.textContent = "";
+    message.classList.remove("approval-pending");
 
     const rememberedSessionToken = localStorage.getItem("rememberedSessionToken");
     const useRememberedSession = !email && !password && rememberedSessionToken;
@@ -1986,6 +2066,7 @@ loginForm?.addEventListener(
       console.debug("[desktop-login] Navigating to: ./dashboard.html");
       window.location.replace("./dashboard.html");
     } catch (error) {
+      message.classList.remove("approval-pending");
       console.error(`[desktop-auth] Login failed for ${API_BASE_URL}/auth/login:`, error.name, error.message);
       message.textContent = error.name === "TimeoutError"
         ? "The server is taking too long to respond. Please try again."

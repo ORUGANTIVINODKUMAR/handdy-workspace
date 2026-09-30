@@ -104,14 +104,14 @@ export default function AppShell({ children }) {
       <a className="crm-skip-link" href="#workspace-content">Skip to content</a>
       {mobileOpen && <button className="crm-nav-scrim" aria-label="Close navigation" onClick={closeNavigation} />}
       <aside className={`crm-nav${mobileOpen ? " is-open" : ""}`} aria-label="Workspace navigation">
-        <Link className="crm-brand" to={navigation[0]?.path || "/attendance"} onClick={closeNavigation}><span className="crm-brand-mark"><Building2 size={20} /></span><strong>CRM<span>Employee workspace</span></strong></Link>
+        <Link className="crm-brand" to={navigation[0]?.path || "/login"} onClick={closeNavigation}><span className="crm-brand-mark"><Building2 size={20} /></span><strong>CRM<span>Employee workspace</span></strong></Link>
         <button className="crm-nav-close" onClick={closeNavigation} aria-label="Close navigation"><X size={18} /></button>
         <div className="crm-workspace-label"><span className="crm-workspace-initial">{initials}</span><span>{user?.companyName || "Your workspace"}<small>{user?.role?.replaceAll("_", " ")}</small></span></div>
         <nav>
           {groups.map((group) => {
             const Icon = icons[group] || ClipboardList;
             return <details key={group} open={group === "Workspace" || group === "Time & attendance" || current?.group === group}>
-              <summary title={group}><Icon size={15} /><span>{group}</span></summary>
+              <summary title={group === "Time & attendance" ? "Time & reports" : group}><Icon size={15} /><span>{group === "Time & attendance" ? "Time & reports" : group}</span></summary>
               {navigation.filter((item) => item.group === group).map((item) => <NavLink key={item.path} to={item.path} end title={item.title} onClick={closeNavigation}><span className="crm-nav-dash" /><span>{item.title}</span></NavLink>)}
             </details>;
           })}

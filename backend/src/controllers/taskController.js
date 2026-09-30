@@ -265,9 +265,10 @@ const createTasksBulk = async (req, res) => {
     const projectIds = requestedProjects.length
       ? requestedProjects
       : [req.body.project].filter(Boolean).map(String);
+    const autoProjects = req.body.autoProjects === true;
     const taskCount = taskNames.length * Math.max(projectIds.length, 1);
 
-    if (taskNames.length === 0 || taskNames.some((name) => !name) || taskCount < 2) {
+    if (taskNames.length === 0 || taskNames.some((name) => !name) || (!autoProjects && taskCount < 2)) {
       return res.status(400).json({ success: false, message: "Select at least two tasks or projects for bulk creation." });
     }
     if (new Set(taskNames.map((name) => name.toLowerCase())).size !== taskNames.length) {
@@ -275,12 +276,38 @@ const createTasksBulk = async (req, res) => {
     }
 
     const creationConfigurations = [];
-    const projectsToCreate = projectIds.length ? projectIds : [null];
-    for (const project of projectsToCreate) {
-      const creation = await prepareTaskCreation(req.user, { ...req.body, project });
+    let projectAssignments;
+    if (autoProjects) {
+      const selectedTeams = await getTeamsForTask(req.user, req.body.teams || req.body.team);
+      if (!selectedTeams.teams) return res.status(400).json({ success: false, message: selectedTeams.error });
+      if (req.body.taskType === "break") {
+        projectAssignments = [{ project: null, teams: selectedTeams.teamIds }];
+      } else {
+        const matchingProjects = await Project.find({
+          status: "Active", deletedAt: null, teams: { $in: selectedTeams.teamIds },
+        }).select("_id teams").lean();
+        if (!matchingProjects.length) {
+          return res.status(400).json({ success: false, message: "No active projects are assigned to the selected teams." });
+        }
+        projectAssignments = matchingProjects.map((project) => ({
+          project: String(project._id),
+          teams: selectedTeams.teamIds.filter((id) => (project.teams || []).map(String).includes(id)),
+        }));
+      }
+    } else {
+      projectAssignments = (projectIds.length ? projectIds : [null]).map((project) => ({
+        project, teams: req.body.teams || req.body.team,
+      }));
+    }
+    for (const { project, teams } of projectAssignments) {
+      const creation = await prepareTaskCreation(req.user, {
+        ...req.body, project, teams,
+        ...(autoProjects ? { assignToAllEmployees: true, assignedTo: [] } : {}),
+      });
       if (creation.error) {
         return res.status(400).json({ success: false, message: creation.error });
       }
+      if (autoProjects && req.body.taskType === "break") creation.project = null;
       creationConfigurations.push(creation);
     }
 

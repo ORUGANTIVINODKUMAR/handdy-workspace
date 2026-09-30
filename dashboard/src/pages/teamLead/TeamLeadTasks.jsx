@@ -5,7 +5,6 @@ import TeamLeadSidebar from "./TeamLeadSidebar";
 import axiosInstance from "../../api/axiosInstance";
 import { getAllTasks } from "../../api/taskApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
-import useDataRefresh from "../../hooks/useDataRefresh";
 import "../../styles/teamLeadSidebar.css";
 import "../../styles/teamLeadTasks.css";
 
@@ -30,7 +29,6 @@ function TeamLeadTasks() {
   }, []);
 
   useEffect(() => { void loadTasks(); }, [loadTasks]);
-  useDataRefresh(loadTasks);
 
   const filteredTasks = useMemo(() => {
     const text = search.trim().toLowerCase();
@@ -66,6 +64,7 @@ function TeamLeadTasks() {
       <main className="tl-main">
         <div className="tl-tasks-header">
           <div><p>TEAM TASK MANAGEMENT</p><h1>Tasks</h1><span>Create and manage work for your team.</span></div>
+          <button type="button" onClick={() => void loadTasks()} disabled={loading}>Refresh</button>
           <button type="button" onClick={() => navigate("/team-lead/tasks/add")}>+ Add task</button>
         </div>
         {error && <p className="status-message error-message" role="alert">{error}</p>}

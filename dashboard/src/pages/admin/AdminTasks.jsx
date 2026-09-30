@@ -7,7 +7,6 @@ import TaskForm from "../../components/tasks/TaskForm";
 import "../../styles/adminTasks.css";
 import { deleteTask, getAllTasks } from "../../api/taskApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
-import useDataRefresh from "../../hooks/useDataRefresh";
 
 const getTaskName = (task) =>
   task.taskName || task.name || task.taskCode || "-";
@@ -93,7 +92,6 @@ function AdminTasks() {
   useEffect(() => {
     void loadTasks();
   }, []);
-  useDataRefresh(() => loadTasks({ background: true }));
 
   // ==============================
   // FILTER + SORT
@@ -352,6 +350,7 @@ function AdminTasks() {
           {/* SEARCH + ADD */}
 
           <div className="tasks-toolbar">
+            <button type="button" onClick={() => void loadTasks()} disabled={loading}>Refresh</button>
             <div className="tasks-search-box">
               <label htmlFor="task-search">
                 Search:

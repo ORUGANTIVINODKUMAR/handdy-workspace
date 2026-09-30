@@ -89,6 +89,7 @@ body[data-page="login"] input:focus { border-color:#167255; box-shadow:0 0 0 3px
 body[data-page="login"] #loginButton { min-height:47px; margin-top:25px; border-radius:7px; background:#167255; box-shadow:none; font-size:14px; }
 body[data-page="login"] #loginButton:hover:not(:disabled) { background:#0d5941; box-shadow:none; transform:none; }
 body[data-page="login"] #message { min-height:20px; margin:15px 0 0; color:#c8464a; font-size:13px; font-weight:400; }
+body[data-page="login"] #message.approval-pending { color:#2558a0; line-height:1.5; }
 
 /* Dashboard theme: Handdy green palette. */
 body[data-page="dashboard"] { background:#edf5f1; color:#17372d; }

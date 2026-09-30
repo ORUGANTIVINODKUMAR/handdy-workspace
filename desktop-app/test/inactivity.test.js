@@ -90,6 +90,20 @@ test("manual sign-out preserves the remembered account for quick login", async (
   assert.equal(h.calls.filter((url) => url.endsWith("/auth/logout")).length, 1);
 });
 
+test("new-device login explains approval on the existing computer", async () => {
+  const h = harness({ timer: null });
+  h.run("loginInProgress = true");
+  await h.run(`waitForDeviceApproval({
+    requestId: "approval-test", requestToken: "test-only",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    activeDevice: { deviceName: "OLD-PC" }
+  })`);
+  assert.match(h.nodes.get("message").textContent, /OLD-PC/);
+  assert.match(h.nodes.get("message").textContent, /Allow New Device/);
+  assert.equal(h.nodes.get("loginButton").textContent, "Waiting for approval...");
+  assert.ok(h.calls.some((url) => url.endsWith("/login-requests/approval-test/wait")));
+});
+
 test("closing the desktop app stops the backend timer without logging out", async () => {
   const h = harness({ timer: "running" });
   assert.equal(typeof h.state.beforeClose, "function");
