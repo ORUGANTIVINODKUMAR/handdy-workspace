@@ -1,10 +1,11 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Clock3, FileDown, FileSearch, Search, Sheet } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getAllEmployees } from "../../api/employeeApi";
 import { getAllActiveProjects } from "../../api/projectApi";
+import { getAllTeams } from "../../api/teamApi";
 import { getAllActiveTasksByProject } from "../../api/taskApi";
 import {
   getAdminAttendance,
@@ -15,22 +16,19 @@ import {
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import { exportReportExcel, exportReportPdf } from "../../utils/reportExport";
 import useDataRefresh from "../../hooks/useDataRefresh";
-import { buildReportTimeLogTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
+import { buildChronologicalReportTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
+import { formatReportDateTime, formatReportDuration, reportEntryStatus } from "../../utils/reportFormatting";
 import { getIdleSeconds, getWorkedSeconds, localDate } from "../../utils/timeLogReportHelpers";
+import { buildProjectWorkDetails } from "../../utils/projectWorkDetails";
 import { readReportState, writeReportState } from "../../utils/reportPersistence";
 import useAuth from "../../context/useAuth";
 
 import "../../styles/adminReportPage.css";
 import ReportSummary from "../../components/dashboard/ReportSummary";
 
-const formatDuration = (seconds = 0) => {
-  const safeSeconds = Math.max(0, Number(seconds) || 0);
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-  return `${hours}h ${minutes}m`;
-};
+const formatDuration = formatReportDuration;
 
-const buildGroupedRows = (records, groupBy) => {
+const buildGroupedRows = (records, groupBy, gapRows = []) => {
   const groups = new Map();
 
   records.forEach((record) => {
@@ -62,12 +60,18 @@ const buildGroupedRows = (records, groupBy) => {
     group.idleSeconds += getIdleSeconds(record);
   });
 
+  gapRows.filter(({ entry }) => entry.source === "between_sessions").forEach(({ record, entry }) => {
+    const entity = groupBy === "employee" ? record.employee : record.project;
+    const key = entity?._id || `unassigned-${groupBy}`;
+    if (groups.has(key)) groups.get(key).idleSeconds += entry.durationSeconds;
+  });
+
   return [...groups.values()].sort(
     (first, second) => second.workedSeconds - first.workedSeconds
   );
 };
 
-function AdminReportPage({
+function AdminReportContent({
   title,
   description,
   mode = "time",
@@ -79,16 +83,31 @@ function AdminReportPage({
   const { pathname } = useLocation();
   const { user } = useAuth();
   const reportStorageKey = `crm-report:${user?._id || user?.email || "user"}:${pathname}`;
-  const [savedReportState] = useState(() => readReportState(reportStorageKey));
+  const [savedReportState] = useState(() => {
+    const saved = readReportState(reportStorageKey);
+    // Older navigations could copy the Project Hours team into this route's
+    // storage. Other reports have no team control, so discard that filter.
+    return variant !== "project" && saved.team
+      ? { ...saved, team: "", employee: "" }
+      : saved;
+  });
   const restoredReportRef = useRef(false);
   const latestReportRequestRef = useRef(0);
   const pendingReportRequestsRef = useRef(0);
   const [fromDate, setFromDate] = useState(() => savedReportState.fromDate || localDate());
   const [toDate, setToDate] = useState(() => savedReportState.toDate || localDate());
   const [employee, setEmployee] = useState(() => savedReportState.employee || "");
+  const [team, setTeam] = useState(() => savedReportState.team || "");
   const [project, setProject] = useState(() => savedReportState.project || "");
+  const [appliedProject, setAppliedProject] = useState(() => savedReportState.project || "");
   const [task, setTask] = useState(() => savedReportState.task || "");
   const [appliedTask, setAppliedTask] = useState(() => savedReportState.task || "");
+  const [appliedHeading, setAppliedHeading] = useState(() => ({
+    team: savedReportState.team || "",
+    employee: savedReportState.employee || "",
+    fromDate: savedReportState.fromDate || localDate(),
+    toDate: savedReportState.toDate || localDate(),
+  }));
   // Snapshot of the filters that were active when "Generate" last succeeded.
   // The silent background poll must replay this snapshot, not whatever is
   // currently sitting in the (possibly half-edited) filter inputs.
@@ -96,14 +115,18 @@ function AdminReportPage({
     fromDate: savedReportState.fromDate || localDate(),
     toDate: savedReportState.toDate || localDate(),
     employee: savedReportState.employee || "",
+    team: savedReportState.team || "",
     project: savedReportState.project || "",
     task: savedReportState.task || "",
   });
+
   const [employees, setEmployees] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [records, setRecords] = useState([]);
+  const [allTimeRecords, setAllTimeRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasRun, setHasRun] = useState(() => Boolean(savedReportState.hasRun));
   const [error, setError] = useState("");
@@ -115,16 +138,18 @@ function AdminReportPage({
 
     const loadOptions = async () => {
       try {
-        const [employeeData, projectData] = await Promise.all([
+        const [employeeData, projectData, teamData] = await Promise.all([
           allowEmployeeFilter
             ? getAllEmployees()
             : Promise.resolve([]),
           mode === "time"
             ? getAllActiveProjects()
             : Promise.resolve([]),
+          variant === "project" ? getAllTeams() : Promise.resolve([]),
         ]);
         setEmployees(employeeData);
         setProjects(projectData);
+        setTeams(teamData);
       } catch (requestError) {
         setError(
           getApiErrorMessage(requestError, "Unable to load report filters.")
@@ -133,7 +158,11 @@ function AdminReportPage({
     };
 
     void loadOptions();
-  }, [allowEmployeeFilter, mode, scope]);
+  }, [allowEmployeeFilter, mode, scope, variant]);
+
+  const availableEmployees = useMemo(() => team
+    ? employees.filter((item) => String(item.team?._id || item.team || "") === team)
+    : employees, [employees, team]);
 
   useEffect(() => {
     let active = true;
@@ -171,37 +200,44 @@ function AdminReportPage({
     () => records.reduce((sum, record) => sum + getWorkedSeconds(record), 0),
     [records]
   );
+  const timelineRows = useMemo(
+    () => buildChronologicalReportTimeline(allTimeRecords, { includeGaps: true })
+      .filter(({ record, entry }) =>
+        (!appliedProject || String(record.project?._id || record.project || "") === appliedProject)
+        && (!appliedTask || String(record.task?._id || record.task || "") === appliedTask)
+        && (!appliedTask || (entry.source !== "between_sessions"
+          && entry.type === (record.task?.taskType === "break" ? "break" : "work")))),
+    [allTimeRecords, appliedProject, appliedTask],
+  );
   const totalIdleSeconds = useMemo(
-    () => appliedTask ? 0 : records.reduce((sum, record) => sum + getIdleSeconds(record), 0),
-    [appliedTask, records]
+    () => appliedTask ? 0 : records.reduce((sum, record) => sum + getIdleSeconds(record), 0)
+      + timelineRows.filter(({ entry }) => entry.source === "between_sessions")
+        .reduce((sum, { entry }) => sum + entry.durationSeconds, 0),
+    [appliedTask, records, timelineRows]
   );
   const totalBreakSeconds = useMemo(
-    () => appliedTask ? 0 : sumTimelineSeconds(records, "break"),
-    [appliedTask, records],
-  );
-  const getTimelineEntries = useCallback(
-    (record) => buildReportTimeLogTimeline(record, { taskFiltered: Boolean(appliedTask) }),
-    [appliedTask],
+    () => sumTimelineSeconds(records, "break"),
+    [records],
   );
   const teamRows = useMemo(
-    () => buildGroupedRows(records, "employee"),
-    [records]
+    () => buildGroupedRows(records, "employee", timelineRows),
+    [records, timelineRows]
   );
-  const projectRows = useMemo(
-    () => buildGroupedRows(records, "project"),
-    [records]
+  const projectDetails = useMemo(
+    () => buildProjectWorkDetails(records, timelineRows),
+    [records, timelineRows]
   );
 
   const resultCount = variant === "team"
     ? teamRows.length
     : variant === "project"
-      ? projectRows.length
-      : records.length;
+      ? projectDetails.length
+      : variant === "detailed" && mode === "time" ? timelineRows.length : records.length;
   const resultLabel = variant === "team"
     ? "employees"
     : variant === "project"
-      ? "projects"
-      : "records";
+      ? "employees"
+      : variant === "detailed" && mode === "time" ? "timeline entries" : "records";
 
   const loadReport = useCallback(async ({ silent = false } = {}) => {
     if (silent && pendingReportRequestsRef.current > 0) return;
@@ -213,7 +249,7 @@ function AdminReportPage({
     // filter inputs, so in-progress edits never silently change the table.
     const activeFilters = silent
       ? appliedFiltersRef.current
-      : { fromDate, toDate, employee, project, task };
+      : { fromDate, toDate, employee, team, project, task };
 
     if (!silent) {
       setHasRun(true);
@@ -223,6 +259,7 @@ function AdminReportPage({
     if (!activeFilters.fromDate || !activeFilters.toDate || activeFilters.toDate < activeFilters.fromDate) {
       if (!silent) {
         setRecords([]);
+        setAllTimeRecords([]);
         setError("Select a valid From and To date.");
       }
       return;
@@ -240,8 +277,11 @@ function AdminReportPage({
         startDate: activeFilters.fromDate,
         endDate: activeFilters.toDate,
         employee: activeFilters.employee || undefined,
-        project: activeFilters.project || undefined,
-        task: activeFilters.task || undefined,
+        team: activeFilters.team || undefined,
+        // Fetch every task in the selected scope first. Filtering locally
+        // preserves true between-session gaps when switching projects.
+        project: mode === "attendance" ? activeFilters.project || undefined : undefined,
+        task: mode === "attendance" ? activeFilters.task || undefined : undefined,
       };
       const data = mode === "attendance"
         ? scope === "personal"
@@ -252,17 +292,31 @@ function AdminReportPage({
           : await getAdminTimeLogs(params);
 
       if (!isCurrent()) return;
-      setRecords(
-        mode === "attendance" ? data.attendance || [] : data.timeLogs || []
-      );
+      const fetched = mode === "attendance" ? data.attendance || [] : data.timeLogs || [];
+      if (mode === "time") {
+        setAllTimeRecords(fetched);
+        setRecords(fetched.filter((record) =>
+          (!activeFilters.project || String(record.project?._id || record.project || "") === activeFilters.project)
+          && (!activeFilters.task || String(record.task?._id || record.task || "") === activeFilters.task)));
+      } else {
+        setRecords(fetched);
+      }
       if (!silent) {
         appliedFiltersRef.current = activeFilters;
+        setAppliedHeading({
+          team: activeFilters.team || "",
+          employee: activeFilters.employee || "",
+          fromDate: activeFilters.fromDate,
+          toDate: activeFilters.toDate,
+        });
+        setAppliedProject(activeFilters.project || "");
         setAppliedTask(activeFilters.task || "");
       }
     } catch (requestError) {
       if (!isCurrent()) return;
       if (!silent) {
         setRecords([]);
+        setAllTimeRecords([]);
         setError(
           getApiErrorMessage(requestError, "Unable to generate this report.")
         );
@@ -271,7 +325,7 @@ function AdminReportPage({
       pendingReportRequestsRef.current -= 1;
       if (isCurrent() && !silent) setLoading(false);
     }
-  }, [employee, fromDate, mode, project, scope, task, toDate]);
+  }, [employee, fromDate, mode, project, scope, task, team, toDate]);
 
   const runReport = () => loadReport();
   useEffect(() => {
@@ -279,11 +333,12 @@ function AdminReportPage({
       fromDate,
       toDate,
       employee,
+      team,
       project,
       task,
       hasRun,
     });
-  }, [employee, fromDate, hasRun, project, reportStorageKey, task, toDate]);
+  }, [employee, fromDate, hasRun, project, reportStorageKey, task, team, toDate]);
 
   useEffect(() => {
     if (restoredReportRef.current) return;
@@ -325,10 +380,14 @@ function AdminReportPage({
 
     if (variant === "project") {
       return {
-        columns: ["Project", "Sessions", "Employees", "Tasks", "Worked", "Idle"],
-        rows: projectRows.map((row) => [
-          row.label, row.sessions, row.employees.size, row.tasks.size,
-          formatDuration(row.workedSeconds), formatDuration(row.idleSeconds),
+        columns: ["Employee", "Project", "Sessions", "Worked", "Break", "Idle"],
+        rows: projectDetails.flatMap((employeeRow) => [
+          ...employeeRow.projects.map((row) => [
+            employeeRow.name, row.name, row.sessions,
+            formatDuration(row.workedSeconds), formatDuration(row.breakSeconds), formatDuration(row.idleSeconds),
+          ]),
+          [employeeRow.name, "Employee total", "", formatDuration(employeeRow.workedSeconds),
+            formatDuration(employeeRow.breakSeconds), formatDuration(employeeRow.idleSeconds)],
         ]),
       };
     }
@@ -338,20 +397,20 @@ function AdminReportPage({
         ...(scope === "company" ? ["Employee"] : []),
         "Entry type", "Project", "Task", "Started", "Finished", "Duration", "Idle", "Status", "Note",
       ],
-      rows: records.flatMap((record) => {
+      rows: timelineRows.map(({ record, entry }) => {
         const employeeCell = scope === "company" ? [record.employee?.fullName || "-"] : [];
-        return getTimelineEntries(record).map((entry) => [
+        return [
           ...employeeCell,
           entry.type === "break" ? "Break" : entry.type === "idle" ? "Idle" : "Work",
           record.project?.projectName || "-",
-          entry.type === "work" ? `${record.task?.taskName || "Task"} - Work ${entry.sequence}` : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`,
-          new Date(entry.start).toLocaleString(),
-          entry.end ? new Date(entry.end).toLocaleString() : "In progress",
-          formatDuration(entry.durationSeconds),
-          entry.type === "idle" ? formatDuration(entry.durationSeconds) : "-",
-          entry.isOpen ? (entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running") : "Completed",
+          entry.source === "between_sessions" ? "Between tasks" : entry.type === "work" ? `${record.task?.taskName || "Task"} - Work ${entry.sequence}` : `${entry.type === "break" ? record.task?.taskName || "Break" : "Idle"} ${entry.sequence}`,
+          formatReportDateTime(entry.start),
+          entry.end ? formatReportDateTime(entry.end) : "In progress",
+          formatReportDuration(entry.durationSeconds),
+          entry.type === "idle" ? formatReportDuration(entry.durationSeconds) : "-",
+          reportEntryStatus(record, entry),
           entry.type === "work" ? record.note || "-" : "-",
-        ]);
+        ];
       }),
     };
   };
@@ -364,12 +423,12 @@ function AdminReportPage({
       const { columns, rows } = getExportData();
       const exportOptions = {
         title,
-        fromDate,
-        toDate,
+        fromDate: appliedHeading.fromDate,
+        toDate: appliedHeading.toDate,
         columns,
         rows,
         summary: [
-          { label: "Records", value: records.length },
+          { label: variant === "detailed" && mode === "time" ? "Timeline entries" : variant === "project" ? "Employees" : "Records", value: resultCount },
           ...(mode === "time" ? [
             { label: "Worked", value: formatDuration(totalSeconds) },
             { label: "Break", value: formatDuration(totalBreakSeconds) },
@@ -391,7 +450,7 @@ function AdminReportPage({
     <DashboardLayout title={title}>
       <div className="admin-report-page">
         <ReportSummary items={mode === "time" ? [
-          { label: "Records", value: hasRun ? records.length : "—" },
+          { label: variant === "detailed" ? "Timeline entries" : "Records", value: hasRun ? resultCount : "—", help: variant === "detailed" ? `${records.length} timer sessions` : undefined },
           { label: "Worked time", value: hasRun ? formatDuration(totalSeconds) : "—" },
           { label: "Break time", value: hasRun ? formatDuration(totalBreakSeconds) : "—", help: "Intentional timer breaks" },
           { label: "Idle time", value: hasRun ? formatDuration(totalIdleSeconds) : "—" },
@@ -407,6 +466,22 @@ function AdminReportPage({
           </div>
 
           <div className="admin-report-controls">
+            {variant === "project" && mode === "time" && (
+              <select
+                value={team}
+                onChange={(event) => {
+                  setTeam(event.target.value);
+                  setEmployee("");
+                  setError("");
+                }}
+                aria-label="Team"
+              >
+                <option value="">All teams</option>
+                {teams.map((item) => (
+                  <option value={item._id} key={item._id}>{item.teamName}</option>
+                ))}
+              </select>
+            )}
             {allowEmployeeFilter && mode !== "tracking" && (
               <select
                 value={employee}
@@ -414,7 +489,7 @@ function AdminReportPage({
                 aria-label="Employee"
               >
                 <option value="">All employees</option>
-                {employees.map((item) => (
+                {availableEmployees.map((item) => (
                   <option value={item._id} key={item._id}>{item.fullName}</option>
                 ))}
               </select>
@@ -480,11 +555,11 @@ function AdminReportPage({
               <h2>{resultCount} {resultLabel}</h2>
             </div>
             <div className="admin-report-header-actions">
-              {mode === "time" && (
+              {mode === "time" && variant !== "detailed" && (
                 <div className="admin-report-totals">
                   <strong><Clock3 size={16} />Worked {formatDuration(totalSeconds)}</strong>
                   <strong className="admin-report-break-total"><Clock3 size={16} />Break {formatDuration(totalBreakSeconds)}</strong>
-                  <strong><Activity size={16} />Idle {formatDuration(totalIdleSeconds)}</strong>
+                  <strong className="admin-report-idle-total"><Activity size={16} />Idle {formatDuration(totalIdleSeconds)}</strong>
                 </div>
               )}
               <div className="admin-report-export-actions" aria-label="Export report">
@@ -549,36 +624,59 @@ function AdminReportPage({
           )}
 
           {!error && mode === "time" && records.length > 0 && variant === "project" && (
-            <div className="admin-report-table-wrap">
-              <table>
-                <thead><tr><th>Project</th><th>Sessions</th><th>Employees</th><th>Tasks</th><th>Worked</th><th>Idle</th></tr></thead>
-                <tbody>{projectRows.map((row) => (
-                  <tr key={row.key}><td>{row.label}</td><td>{row.sessions}</td><td>{row.employees.size}</td><td>{row.tasks.size}</td><td>{formatDuration(row.workedSeconds)}</td><td>{formatDuration(row.idleSeconds)}</td></tr>
-                ))}</tbody>
-              </table>
+            <div className="project-work-details">
+              <div className="project-work-report-banner">
+                {teams.find((item) => item._id === appliedHeading.team)?.teamName || "All teams"}
+                {" · "}
+                {employees.find((item) => item._id === appliedHeading.employee)?.fullName || "All employees"}
+                {" · "}
+                {appliedHeading.fromDate} to {appliedHeading.toDate}
+              </div>
+              {projectDetails.map((employeeRow) => (
+                <section className="project-work-employee" key={employeeRow.key}>
+                  <h3>{employeeRow.name}</h3>
+                  <div className="admin-report-table-wrap">
+                    <table>
+                      <thead><tr><th>Project</th><th>Sessions</th><th>Worked</th><th>Break</th><th>Idle</th></tr></thead>
+                      <tbody>
+                        {employeeRow.projects.map((row) => (
+                          <tr key={row.key}>
+                            <td>{row.name}</td><td>{row.sessions}</td>
+                            <td>{formatDuration(row.workedSeconds)}</td>
+                            <td>{formatDuration(row.breakSeconds)}</td>
+                            <td className="project-work-idle">{formatDuration(row.idleSeconds)}</td>
+                          </tr>
+                        ))}
+                        <tr className="project-work-total"><td>Employee total</td><td>—</td>
+                          <td>{formatDuration(employeeRow.workedSeconds)}</td>
+                          <td>{formatDuration(employeeRow.breakSeconds)}</td>
+                          <td className="project-work-idle">{formatDuration(employeeRow.idleSeconds)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ))}
             </div>
           )}
 
           {!error && mode === "time" && records.length > 0 && variant === "detailed" && (
             <div className="admin-report-table-wrap">
               <table>
-                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th><th>Note</th></tr></thead>
-                <tbody>{records.map((record) => (
-                  <Fragment key={record._id}>
-                    {getTimelineEntries(record).map((entry) => (
-                      <tr className={`report-timeline-row report-${entry.type}-row`} key={`${record._id}-${entry.type}-${entry.sequence}`}>
+                <thead><tr>{scope === "company" && <th>Employee</th>}<th>Type</th><th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th><th>Note</th></tr></thead>
+                <tbody>{timelineRows.map(({ record, entry, key }) => (
+                      <tr className={`report-timeline-row report-${entry.type}-row`} key={key}>
                         {scope === "company" && <td>{record.employee?.fullName || "—"}</td>}
-                        <td><div className="report-entry-project"><span className={`report-entry-badge ${entry.type}`}>{entry.type}</span>{entry.type === "work" && <span>{record.project?.projectName || "—"}</span>}</div></td>
-                        <td>{entry.type === "work" ? `${record.task?.taskName || "Task"} · Work ${entry.sequence}` : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`}</td>
-                        <td><strong>{new Date(entry.start).toLocaleString()}</strong></td>
-                        <td><strong>{entry.end ? new Date(entry.end).toLocaleString() : "In progress"}</strong></td>
-                        <td>{formatDuration(entry.durationSeconds)}</td>
-                        <td>{entry.type === "idle" ? formatDuration(entry.durationSeconds) : "—"}</td>
-                        <td>{entry.isOpen ? (entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running") : "Completed"}</td>
+                        <td><span className={`report-entry-badge ${entry.type}`}>{entry.type}</span></td>
+                        <td>{record.project?.projectName || "—"}</td>
+                        <td>{entry.source === "between_sessions" ? "Between tasks" : entry.type === "work" ? `${record.task?.taskName || "Task"} · Work ${entry.sequence}` : `${entry.type === "break" ? record.task?.taskName || "Break" : "Idle"} ${entry.sequence}`}</td>
+                        <td><strong>{formatReportDateTime(entry.start)}</strong></td>
+                        <td><strong>{entry.end ? formatReportDateTime(entry.end) : "In progress"}</strong></td>
+                        <td>{formatReportDuration(entry.durationSeconds)}</td>
+                        <td>{entry.type === "idle" ? formatReportDuration(entry.durationSeconds) : "—"}</td>
+                        <td>{reportEntryStatus(record, entry)}</td>
                         <td className="report-entry-note">{entry.type === "work" ? record.note || "—" : "—"}</td>
                       </tr>
-                    ))}
-                  </Fragment>
                 ))}</tbody>
               </table>
             </div>
@@ -598,6 +696,13 @@ function AdminReportPage({
       </div>
     </DashboardLayout>
   );
+}
+
+function AdminReportPage(props) {
+  const { pathname } = useLocation();
+  // Sibling report routes reuse this component. A key gives each route its
+  // own filter state instead of carrying Project Hours selections across.
+  return <AdminReportContent key={pathname} {...props} />;
 }
 
 export default AdminReportPage;

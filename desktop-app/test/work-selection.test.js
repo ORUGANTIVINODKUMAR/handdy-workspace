@@ -38,10 +38,12 @@ function harness() {
   const state = {
     projects: [{ _id: "p1", projectName: "Tax Preparation", clientName: "KCPA" }, { _id: "p2", projectName: "Audit", clientName: "Renau" }],
     tasks: { p1: [{ _id: "t1", taskName: "TAX 1" }, { _id: "t2", taskName: "TAX 2" }], p2: [{ _id: "t3", taskName: "Audit 1" }] },
+    breakTasks: [],
     failTasks: false,
     projectPages: null,
     taskPages: {},
     taskUrls: [],
+    startRequests: [],
     pending: null,
   };
   const context = vm.createContext({
@@ -69,10 +71,17 @@ function harness() {
         state.taskUrls.push(url);
         if (state.pending) await state.pending;
         if (state.failTasks) return json({ message: "boom" }, false);
-        const projectId = new URL(url).searchParams.get("project");
+        const params = new URL(url).searchParams;
+        const projectId = params.get("project");
         const page = Number(new URL(url).searchParams.get("page") || 1);
-        const pages = state.taskPages[projectId] || [state.tasks[projectId] || []];
+        const pages = params.get("taskType") === "break"
+          ? [state.breakTasks]
+          : state.taskPages[projectId] || [state.tasks[projectId] || []];
         return json({ success: true, tasks: pages[page - 1] || [], totalPages: pages.length });
+      }
+      if (url.includes("/time-logs/start")) {
+        state.startRequests.push(url);
+        return json({ timeLog: null });
       }
       if (url.includes("/auth/me")) return json({ user: { fullName: "Bhargav Kommanaboina", role: "employee" } });
       return json({ timeLogs: [] });
@@ -170,7 +179,21 @@ test("changing project keeps the new project, clears only the task, and ignores 
   assert.equal(h.project.value, "p2");
   assert.equal(h.run("selectedTaskId"), "");
   assert.deepEqual(h.task.options.map((option) => option.textContent), ["Select Task", "Audit 1"]);
-  assert.ok(h.state.taskUrls.every((url) => /project=p[12]&/.test(url)), "tasks are requested by project _id");
+  assert.ok(h.state.taskUrls.every((url) => /project=p[12]&|taskType=break&/.test(url)), "tasks are requested by project or break type");
+});
+
+test("assigned projectless break task appears in the task dropdown", async () => {
+  const h = harness();
+  h.state.breakTasks = [{ _id: "lunch", taskName: "Lunch", taskType: "break", project: null }];
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+
+  assert.deepEqual(h.task.options.map((option) => option.textContent), [
+    "Select Task", "TAX 1", "TAX 2", "Lunch (Break)",
+  ]);
+  assert.equal(h.task.options.at(-1).dataset.taskType, "break");
+  await h.task.choose("lunch");
+  assert.equal(h.run("selectedTaskId"), "lunch");
 });
 
 test("task dropdown shows explicit empty and error states", async () => {
@@ -192,4 +215,30 @@ test("task dropdown shows explicit empty and error states", async () => {
   await h.project.choose("");
   assert.equal(h.task.options[0].textContent, "Select Task");
   assert.equal(h.task.disabled, true);
+});
+
+test("start refuses a hidden stored task when the visible dropdown has no task", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  h.project.value = "p1";
+  h.run("selectedProjectId = 'p1'; selectedTaskId = 't2'");
+
+  await h.context.startTimer();
+
+  assert.equal(h.state.startRequests.length, 0);
+  assert.equal(h.run("selectedTaskId"), "");
+  assert.equal(h.run("timerMessage.textContent"), "Please select a project and task first.");
+});
+
+test("an inactive server timer clears the previous task and requires a fresh selection", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  await h.task.choose("t2");
+
+  await h.context.loadActiveTimer();
+
+  assert.equal(h.run("selectedTaskId"), "");
+  assert.equal(h.task.value, "");
+  assert.deepEqual(h.task.options.map((option) => option.value), ["", "t1", "t2"]);
 });

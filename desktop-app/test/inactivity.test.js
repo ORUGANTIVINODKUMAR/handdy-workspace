@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const defaults = require("../idle-policy-defaults.json");
 
-function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLogout = true } = {}) {
+function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLogout = true, stopWorkedSeconds = 23 * 60 + 26 } = {}) {
   const calls = [];
   const intervals = new Map();
   let nextInterval = 0;
@@ -15,7 +15,7 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
     return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   };
   const localStorage = storage();
-  const state = { idle, outage, timer: timer ? { _id: "existing", status: timer, startedAt: new Date().toISOString(), pauses: [], totalWorkedSeconds: 0 } : null, beforeClose: null, closeReady: 0 };
+  const state = { idle, outage, timer: timer ? { _id: "existing", status: timer, startedAt: new Date().toISOString(), pauses: [], totalWorkedSeconds: 0 } : null, beforeClose: null, closeReady: 0, closeCancelled: 0 };
   const context = vm.createContext({
     console, AbortSignal, Date, localStorage, sessionStorage: storage(),
     setInterval(callback) { intervals.set(++nextInterval, callback); return nextInterval; },
@@ -33,6 +33,7 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
       getIdleDefaults: async () => defaults,
       onBeforeClose: (callback) => { state.beforeClose = callback; },
       notifyCloseReady: () => { state.closeReady += 1; },
+      notifyCloseCancelled: () => { state.closeCancelled += 1; },
     }, location: { replace: value => calls.push(value) }, addEventListener() {} },
     fetch: async (url, options = {}) => {
       calls.push(url);
@@ -42,7 +43,7 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
         state.timer = { ...state.timer, status: "paused", pauses: [...state.timer.pauses, { pausedAt: new Date().toISOString(), reason: JSON.parse(options.body).reason }] };
       }
       if (url.endsWith("/resume")) state.timer = { ...state.timer, status: "running", pauses: state.timer.pauses.map(pause => pause.resumedAt ? pause : { ...pause, resumedAt: new Date().toISOString() }) };
-      if (url.endsWith("/stop")) state.timer = { ...state.timer, status: "stopped", totalWorkedSeconds: 23 * 60 + 26 };
+      if (url.endsWith("/stop")) state.timer = { ...state.timer, status: "stopped", totalWorkedSeconds: stopWorkedSeconds };
       return { ok: true, status: 200, json: async () => ({ timeLog: state.timer, idlePolicy: { idleThresholdMinutes: 10, autoLogoutMinutes: 30 } }) };
     },
   });
@@ -100,6 +101,55 @@ test("closing the desktop app stops the backend timer without logging out", asyn
   assert.equal(h.calls.filter((url) => url.endsWith("/auth/logout")).length, 0);
   assert.equal(h.context.localStorage.getItem("token"), "test-only");
   assert.equal(h.state.closeReady, 1);
+});
+
+test("close is cancelled if the backend cannot confirm the timer stopped", async () => {
+  const h = harness({ timer: "running", outage: true });
+
+  await h.state.beforeClose();
+
+  assert.equal(h.state.timer.status, "running");
+  assert.equal(h.state.closeReady, 0);
+  assert.equal(h.state.closeCancelled, 1);
+  assert.match(h.nodes.get("timerMessage").textContent, /could not be stopped/);
+});
+
+test("reopening after a confirmed close does not revive the previous timer", async () => {
+  const h = harness({ timer: "running" });
+  await h.state.beforeClose();
+  h.state.timer = null;
+
+  await h.context.loadActiveTimer();
+
+  assert.equal(h.nodes.get("timerDuration").textContent, "00:00:00");
+  assert.equal(h.nodes.get("timerStatus").textContent, "Not Started");
+  assert.equal(h.nodes.get("stopTimerButton").disabled, true);
+});
+
+test("desktop heartbeats only while a leased timer is active", async () => {
+  const h = harness({ timer: "running" });
+  await h.run("sendTimerHeartbeat()");
+  assert.equal(h.calls.filter(url => url.endsWith("/heartbeat")).length, 0);
+
+  h.run("currentTimeLog.desktopHeartbeatAt = new Date().toISOString()");
+  await h.run("sendTimerHeartbeat()");
+  assert.equal(h.calls.filter(url => url.endsWith("/heartbeat")).length, 1);
+
+  h.run("currentTimeLog = null");
+  await h.run("sendTimerHeartbeat()");
+  assert.equal(h.calls.filter(url => url.endsWith("/heartbeat")).length, 1);
+});
+
+test("stopping a long session resets the live clock while preserving the saved duration", async () => {
+  const h = harness({ stopWorkedSeconds: 40 * 3600 + 52 * 60 + 9 });
+  h.nodes.get("timerDuration").textContent = "40:52:09";
+
+  await h.context.stopTimer();
+
+  assert.equal(h.state.timer.totalWorkedSeconds, 40 * 3600 + 52 * 60 + 9);
+  assert.equal(h.nodes.get("timerDuration").textContent, "00:00:00");
+  assert.equal(h.nodes.get("timerStatus").textContent, "Stopped");
+  assert.equal(h.nodes.get("stopTimerButton").disabled, true);
 });
 
 test("completed break tasks contribute only to break totals", () => {
@@ -172,15 +222,14 @@ test("intentional break is exempt from idle pause and logout", async () => {
   assert.equal(h.calls.length, 0);
 });
 
-test("Break is enabled while working and toggles to End Break", async () => {
+test("manual break button is absent while legacy break records still render", async () => {
   const h = harness();
+  assert.equal(h.run("pauseTimerButton"), null);
+  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, "../dashboard.html"), "utf8"), /id="breakTimerButton"/);
   await h.run('pauseTimer("break")');
-  assert.equal(h.nodes.get("breakTimerButton").disabled, false);
-  assert.equal(h.nodes.get("breakTimerButton").textContent, "End Break");
+  assert.equal(h.nodes.get("timerStatus").textContent, "On Break");
   assert.equal(h.run("timerInterval !== null"), true);
   await h.run('resumeTimer("break")');
-  assert.equal(h.nodes.get("breakTimerButton").disabled, false);
-  assert.equal(h.nodes.get("breakTimerButton").textContent, "Start Break");
   assert.equal(h.nodes.get("timerDuration").textContent, "00:00:00");
 });
 
@@ -341,13 +390,34 @@ test("desktop timesheet globally sorts segments from every session by start time
     { id: "earlier-session", type: "work", start: "2026-09-18T13:35:55.000Z" },
     { id: "earlier-session", type: "break", start: "2026-09-18T13:37:25.000Z" },
     { id: "earlier-session", type: "work", start: "2026-09-18T13:37:38.000Z" },
+    { id: "earlier-session", type: "idle", start: "2026-09-18T13:42:49.000Z" },
     { id: "overlapping-session", type: "work", start: "2026-09-18T14:23:42.000Z" },
+    { id: "overlapping-session", type: "idle", start: "2026-09-18T14:23:51.000Z" },
     { id: "later-session", type: "work", start: "2026-09-18T14:23:55.000Z" },
     { id: "later-session", type: "break", start: "2026-09-18T14:24:14.000Z" },
     { id: "later-session", type: "work", start: "2026-09-18T14:30:28.000Z" },
     { id: "later-session", type: "break", start: "2026-09-18T14:32:20.000Z" },
     { id: "later-session", type: "work", start: "2026-09-18T14:32:22.000Z" },
   ]);
+});
+
+test("a ten-second task change is red idle time, but overnight is not", () => {
+  const h = harness({ timer: null });
+  const result = h.run(`(() => {
+    const rows = buildChronologicalTimeline([
+      { startedAt: "2026-09-29T11:29:00.000Z", stoppedAt: "2026-09-29T11:30:00.000Z" },
+      { startedAt: "2026-09-29T11:30:10.000Z", stoppedAt: "2026-09-29T11:31:00.000Z" },
+      { startedAt: "2026-09-30T02:30:00.000Z", stoppedAt: "2026-09-30T02:31:00.000Z" }
+    ]);
+    return {
+      gaps: rows.filter(({ entry }) => entry.source === "between_sessions")
+        .map(({ entry }) => ({ seconds: entry.seconds, type: entry.type })),
+      idleSeconds: summarizeTimeline(rows).idleSeconds
+    };
+  })()`);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    gaps: [{ seconds: 10, type: "idle" }], idleSeconds: 10,
+  });
 });
 
 test("timesheet work rows reconcile to backend totals and active breaks stay out of the completed total", () => {

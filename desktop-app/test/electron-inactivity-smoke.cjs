@@ -10,6 +10,7 @@ app.setPath("userData", fs.mkdtempSync(path.join(os.tmpdir(), "crm-idle-smoke-")
 process.env.HANDDY_API_URL = "http://127.0.0.1:5000/api";
 let idleSeconds = 0;
 let timer = null;
+const completedLogs = [];
 const actions = [];
 const user = { _id: "smoke-user", fullName: "Local test employee", role: "employee", isActive: true };
 const server = http.createServer((req, res) => {
@@ -25,9 +26,17 @@ const server = http.createServer((req, res) => {
     else if (req.url === "/api/auth/me") data = { user };
     else if (req.url === "/api/settings/idle-policy") data = { idlePolicy: { idleThresholdMinutes: 1, autoLogoutMinutes: 3 } };
     else if (req.url === "/api/time-logs/active") data = { timeLog: timer };
-    else if (req.url.startsWith("/api/time-logs/history")) data = { timeLogs: timer ? [timer] : [] };
+    else if (req.url.startsWith("/api/time-logs/history")) data = { timeLogs: [...completedLogs, ...(timer ? [timer] : [])] };
     else if (req.url === "/api/time-logs/start") {
-      timer = { _id: "smoke-timer", status: "running", startedAt: new Date().toISOString(), pauses: [], task: { _id: "task", idleLogout: true } };
+      const request = JSON.parse(body);
+      timer = {
+        _id: `smoke-timer-${completedLogs.length + 1}`,
+        status: "running",
+        startedAt: new Date().toISOString(),
+        pauses: [],
+        project: { _id: "project", projectName: "Project" },
+        task: { _id: request.task, taskName: request.task === "break-task" ? "Lunch" : "Task", taskType: request.task === "break-task" ? "break" : "work", idleLogout: true },
+      };
       data = { timeLog: timer };
     } else if (req.url === "/api/time-logs/pause") {
       actions.push("pause");
@@ -39,11 +48,19 @@ const server = http.createServer((req, res) => {
       data = { timeLog: timer };
     } else if (req.url === "/api/time-logs/stop") {
       actions.push("stop");
-      data = { timeLog: { ...timer, status: "stopped", totalWorkedSeconds: 0 } };
+      const stopped = { ...timer, status: "stopped", stoppedAt: new Date().toISOString(), totalWorkedSeconds: 0 };
+      completedLogs.push(stopped);
+      data = { timeLog: stopped };
       timer = null;
     } else if (req.url === "/api/auth/logout") actions.push("logout");
-    else if (req.url.startsWith("/api/projects")) data = { projects: [] };
-    else data = { timeLogs: [], tasks: [] };
+    else if (req.url.startsWith("/api/projects")) data = { projects: [{ _id: "project", projectName: "Project", clientName: "Client" }], totalPages: 1 };
+    else if (req.url.startsWith("/api/tasks")) data = {
+      tasks: req.url.includes("taskType=break")
+        ? [{ _id: "break-task", taskName: "Lunch", taskType: "break", project: null }]
+        : [{ _id: "task", taskName: "Task", taskType: "work", project: "project", idleLogout: true }],
+      totalPages: 1,
+    };
+    else data = { timeLogs: [] };
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify(data));
   });
@@ -77,43 +94,37 @@ app.whenReady().then(async () => {
     };
     await login();
     const evaluate = source => win.webContents.executeJavaScript(source);
-    await evaluate("setSelectedProjectId('project', 'smoke test'); setSelectedTaskId('task', 'smoke test'); document.getElementById('startTimerButton').click()");
+    await evaluate(`document.getElementById("projectSelect").value = "project";
+      document.getElementById("projectSelect").dispatchEvent(new Event("change"));`);
+    await until(() => evaluate("[...document.getElementById('taskSelect').options].some(option => option.value === 'break-task')"));
+    await evaluate(`document.getElementById("taskSelect").value = "task";
+      document.getElementById("taskSelect").dispatchEvent(new Event("change"));
+      document.getElementById("startTimerButton").click();`);
     await until(() => evaluate("document.getElementById('timerStatus').textContent === 'Working'"));
     await delay(1100);
     assert.notEqual(await evaluate("document.getElementById('timerDuration').textContent"), "00:00:00");
-    assert.equal(await evaluate("!!document.getElementById('pauseTimerButton') || !!document.getElementById('resumeTimerButton')"), false);
-    for (let index = 0; index < 2; index++) {
-      await evaluate("document.getElementById('breakTimerButton').click()");
-      await until(() => evaluate("document.getElementById('breakTimerButton').textContent === 'End Break'"));
-      assert.equal(await evaluate("document.getElementById('breakDuration').textContent"), "00:00:00");
-      await delay(2100);
-      assert.notEqual(await evaluate("document.getElementById('breakDuration').textContent"), "00:00:00");
-      assert.equal(await evaluate("document.getElementById('timesheetBreakDuration').textContent === document.getElementById('breakDuration').textContent"), true);
-      if (index === 0) {
-        await win.loadFile(path.resolve(__dirname, "../dashboard.html"));
-        await until(() => evaluate("document.getElementById('breakTimerButton').textContent === 'End Break'"));
-        assert.notEqual(await evaluate("document.getElementById('breakDuration').textContent"), "00:00:00");
-      }
-      await evaluate("document.getElementById('breakTimerButton').click()");
-      await until(() => evaluate("document.getElementById('breakTimerButton').textContent === 'Start Break'"));
-      assert.equal(await evaluate("document.getElementById('breakDuration').textContent"), "00:00:00");
-      assert.equal(await evaluate("document.getElementById('timesheetBreakDuration').textContent"), "00:00:00");
-      assert.equal(await evaluate("document.getElementById('timerDuration').textContent"), "00:00:00");
-      await evaluate(`renderTodayTimesheet(${JSON.stringify([timer])})`);
-      assert.notEqual(await evaluate("document.getElementById('todayBreak').textContent"), "00:00:00");
-      assert.equal(await evaluate(`(() => {
-        const parse = value => value.split(':').reduce((seconds, part) => seconds * 60 + Number(part), 0);
-        const rows = [...document.querySelectorAll('.timesheet-work-row td:last-child')];
-        return rows.reduce((total, cell) => total + parse(cell.textContent), 0)
-          === parse(document.getElementById('todayTotal').textContent);
-      })()`), true);
-      assert.equal(timer.pauses.length, index + 1);
-      assert.ok(timer.pauses.every(pause => pause.resumedAt));
-    }
+    assert.equal(await evaluate("document.getElementById('breakTimerButton')"), null);
+    await evaluate("document.getElementById('stopTimerButton').click()");
+    await until(() => evaluate("document.getElementById('timerStatus').textContent === 'Stopped'"));
+    assert.equal(await evaluate("document.getElementById('timerDuration').textContent"), "00:00:00");
+    await evaluate(`document.getElementById("taskSelect").value = "break-task";
+      document.getElementById("taskSelect").dispatchEvent(new Event("change"));
+      document.getElementById("startTimerButton").click();`);
+    await until(() => evaluate("document.getElementById('timerStatus').textContent === 'On Break'"));
+    await delay(2100);
+    assert.notEqual(await evaluate("document.getElementById('breakDuration').textContent"), "00:00:00");
+    assert.equal(await evaluate("document.getElementById('timerDuration').textContent"), "00:00:00");
     await win.loadFile(path.resolve(__dirname, "../dashboard.html"));
-    await until(() => evaluate("document.getElementById('timerStatus').textContent === 'Working'"));
-    assert.equal(await evaluate("document.getElementById('breakDuration').textContent"), "00:00:00");
+    await until(() => evaluate("document.getElementById('timerStatus').textContent === 'On Break'"));
+    assert.equal(await evaluate("document.getElementById('breakTimerButton')"), null);
+    await evaluate("document.getElementById('stopTimerButton').click()");
+    await until(() => evaluate("document.getElementById('timerStatus').textContent === 'Stopped'"));
+    await evaluate("loadTodayTimesheet()");
     await until(() => evaluate("document.getElementById('todayBreak').textContent !== '00:00:00'"));
+    await evaluate(`document.getElementById("taskSelect").value = "task";
+      document.getElementById("taskSelect").dispatchEvent(new Event("change"));
+      document.getElementById("startTimerButton").click();`);
+    await until(() => evaluate("document.getElementById('timerStatus').textContent === 'Working'"));
     const cardDoesNotOverlap = () => evaluate(`(() => {
       const items = [...document.querySelector('.timesheet-break-summary').children]
         .map(element => element.getBoundingClientRect());
@@ -124,7 +135,7 @@ app.whenReady().then(async () => {
     await delay(200);
     assert.equal(await cardDoesNotOverlap(), true);
     win.setSize(1495, 1000);
-    assert.deepEqual(actions, ["pause", "resume", "pause", "resume"]);
+    assert.deepEqual(actions, ["stop", "stop"]);
     actions.length = 0;
     idleSeconds = 60;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
@@ -150,7 +161,7 @@ app.whenReady().then(async () => {
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     await until(() => win.webContents.getURL().endsWith("index.html"));
     assert.deepEqual(actions, ["pause", "stop", "logout", "logout"]);
-    console.log("PASS: Electron break controls, successive breaks, reset, active/completed break restoration, preserved history; idle pause, logout, safe timer close, and zeroed next session.");
+    console.log("PASS: Electron break-task selection, stopped work, break restoration, idle pause, logout, and zeroed next session.");
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

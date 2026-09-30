@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
   startTimer,
+  heartbeatTimer,
   pauseTimer,
   resumeTimer,
   updateNote,
@@ -42,6 +43,7 @@ router.get(
 
 // Admin, Team Lead, and Employee can control their own timer
 router.post("/start", protect, startTimer);
+router.post("/heartbeat", protect, heartbeatTimer);
 router.post("/pause", protect, pauseTimer);
 router.post("/resume", protect, resumeTimer);
 router.post("/stop", protect, stopTimer);

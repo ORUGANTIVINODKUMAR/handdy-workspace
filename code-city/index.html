@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#05070d">
+  <title>Employee Time — Code City</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <canvas id="city" aria-label="Interactive 3D visualization of the repository's source files"></canvas>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">Repository intelligence</p>
+          <h1>Employee Time <span>Code City</span></h1>
+        </div>
+      </div>
+      <div class="stats" aria-label="Repository statistics">
+        <div><strong id="line-count">—</strong><span>lines</span></div>
+        <div><strong id="file-count">—</strong><span>buildings</span></div>
+        <div><strong id="district-count">—</strong><span>districts</span></div>
+      </div>
+    </header>
+
+    <aside class="controls" aria-label="Visualization controls">
+      <label class="search-field">
+        <span>Find a file</span>
+        <input id="search" type="search" placeholder="Search paths…" autocomplete="off">
+      </label>
+      <div class="control-row">
+        <button id="reset-view" type="button">Reset view</button>
+        <button id="toggle-labels" type="button" aria-pressed="true">District labels</button>
+        <button id="toggle-tour" type="button" aria-pressed="true">Auto tour</button>
+      </div>
+      <p class="hint">Drag to orbit · Scroll to zoom · Click a building to read its code</p>
+    </aside>
+
+    <section id="selection" class="selection" aria-live="polite">
+      <p class="eyebrow">Selected building</p>
+      <h2 id="selected-name">Explore the city</h2>
+      <p id="selected-path">Hover or click a building to inspect a source file.</p>
+      <div class="selection-metrics">
+        <span><strong id="selected-lines">—</strong> lines</span>
+        <span><strong id="selected-nonblank">—</strong> nonblank</span>
+        <span><strong id="selected-language">—</strong> type</span>
+      </div>
+    </section>
+
+    <section id="code-reader" class="code-reader" aria-label="Source code reader" hidden>
+      <header class="code-reader-header">
+        <div>
+          <p class="eyebrow">Source file</p>
+          <h2 id="code-file-name">File</h2>
+          <p id="code-file-path"></p>
+        </div>
+        <button id="close-code" type="button" aria-label="Close source code">Close</button>
+      </header>
+      <div class="code-reader-meta">
+        <span id="code-language">—</span>
+        <span id="code-lines">— lines</span>
+      </div>
+      <pre id="source-code" tabindex="0" aria-label="File source code"></pre>
+    </section>
+
+    <nav id="legend" class="legend" aria-label="File type legend"></nav>
+    <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+    <div class="vignette" aria-hidden="true"></div>
+  </main>
+
+  <script src="code-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

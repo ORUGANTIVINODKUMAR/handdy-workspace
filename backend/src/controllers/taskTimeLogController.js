@@ -7,6 +7,7 @@ const { getPagination } = require("../utils/requestUtils");
 const { getBillingDateRange, getDateKeyInTimezone } = require("../utils/billingUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
 const { isAdminRole } = require("../utils/roles");
+const { closeStaleDesktopTimers } = require("../services/desktopTimerLease");
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
 
@@ -100,6 +101,7 @@ const clipTimeLogToRange = (log, range, now = new Date()) => {
 const startTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
+        await closeStaleDesktopTimers(new Date(), employeeId);
         const { project, task, note } = req.body;
 
         if (!project || !task) {
@@ -147,10 +149,15 @@ const startTimer = async (req, res) => {
 
         const taskExists = await Task.findOne({
             _id: task,
-            project,
             isActive: true,
             deletedAt: null,
-            ...assignmentScope,
+            $and: [
+                assignmentScope,
+                { $or: [
+                    { project },
+                    { project: null, taskType: "break" },
+                ] },
+            ],
         });
 
         if (!taskExists) {
@@ -172,14 +179,16 @@ const startTimer = async (req, res) => {
             });
         }
 
+        const startedAt = new Date();
         const timeLog = await TaskTimeLog.create({
             employee: employeeId,
             project,
             task,
             note: typeof note === "string" ? note.trim().slice(0, 2000) : undefined,
-            startedAt: new Date(),
+            startedAt,
             status: "running",
             isActiveTimer: true,
+            desktopHeartbeatAt: req.body?.clientType === "desktop" ? startedAt : null,
         });
 
         await timeLog.populate("project", "projectCode projectName serviceType");
@@ -200,10 +209,28 @@ const startTimer = async (req, res) => {
         return sendErrorResponse(res, error, "Unable to start timer.");
     }
 };
+// A new app instance cannot revive an expired desktop timer.
+const heartbeatTimer = async (req, res) => {
+    try {
+        const employeeId = req.user._id;
+        await closeStaleDesktopTimers(new Date(), employeeId);
+        const timeLog = await TaskTimeLog.findOneAndUpdate(
+            { employee: employeeId, isActiveTimer: true, status: { $in: ["running", "paused"] }, desktopHeartbeatAt: { $type: "date" } },
+            { $set: { desktopHeartbeatAt: new Date() } },
+            { returnDocument: "after" },
+        );
+        if (!timeLog) return res.status(404).json({ success: false, message: "No active desktop timer found." });
+        return res.status(200).json({ success: true, timeLogId: timeLog._id });
+    } catch (error) {
+        return sendErrorResponse(res, error, "Unable to confirm desktop timer activity.");
+    }
+};
+
 // Pause Timer
 const pauseTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
+        await closeStaleDesktopTimers(new Date(), employeeId);
         const requestedReason = req.body?.reason;
         const reason = requestedReason === "idle" ? "idle" : requestedReason === "break" ? "break" : "manual";
 
@@ -276,6 +303,7 @@ const pauseTimer = async (req, res) => {
 const resumeTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
+        await closeStaleDesktopTimers(new Date(), employeeId);
         const requestedReason = req.body?.reason;
         const reason = requestedReason === "idle" ? "idle" : requestedReason === "break" ? "break" : "manual";
         const filter = {
@@ -336,6 +364,7 @@ const resumeTimer = async (req, res) => {
 const updateNote = async (req, res) => {
     try {
         const employeeId = req.user._id;
+        await closeStaleDesktopTimers(new Date(), employeeId);
         const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 2000) : "";
 
         const activeTimer = await TaskTimeLog.findOneAndUpdate(
@@ -366,6 +395,7 @@ const updateNote = async (req, res) => {
 const stopTimer = async (req, res) => {
     try {
         const employeeId = req.user._id;
+        await closeStaleDesktopTimers(new Date(), employeeId);
 
         const activeTimer = await TaskTimeLog.findOne({
             employee: employeeId,
@@ -436,6 +466,7 @@ const stopTimer = async (req, res) => {
 // Get logged-in user's personal time-log history
 const getMyTimeLogs = async (req, res) => {
     try {
+        await closeStaleDesktopTimers(new Date(), req.user._id);
         const employeeId = req.user._id;
 
         const { page, limit, skip } = getPagination(req.query);
@@ -507,6 +538,7 @@ const getMyTimeLogs = async (req, res) => {
 // Get Active Timer
 const getActiveTimer = async (req, res) => {
     try {
+        await closeStaleDesktopTimers(new Date(), req.user._id);
         const employeeId = req.user._id;
 
         const activeTimer = await TaskTimeLog.findOne({
@@ -528,6 +560,7 @@ const getActiveTimer = async (req, res) => {
 // Active company/team timers used by the live web task trackers.
 const getLiveTimers = async (req, res) => {
     try {
+        await closeStaleDesktopTimers();
         const filter = { status: { $in: ["running", "paused"] }, isActiveTimer: true };
         if (req.user.role === "team_lead") {
             const teamIds = await Team.find({ teamLead: req.user._id, isActive: true }).distinct("_id");
@@ -554,6 +587,7 @@ const getLiveTimers = async (req, res) => {
 // Get time logs for employees assigned to the logged-in Team Lead
 const getMyTeamTimeLogs = async (req, res) => {
     try {
+        await closeStaleDesktopTimers();
         const teamLeadId = req.user._id;
 
         const { page, limit, skip } = getPagination(req.query);
@@ -587,7 +621,7 @@ const getMyTeamTimeLogs = async (req, res) => {
                 "employeeId fullName email department designation"
             )
             .populate("project", "projectCode projectName serviceType")
-            .populate("task", "taskCode taskName")
+            .populate("task", "taskCode taskName taskType")
             .sort("-startedAt")
             .skip(skip)
             .limit(limit)
@@ -613,14 +647,24 @@ const getMyTeamTimeLogs = async (req, res) => {
 // Admin - company-wide time logs with report filters
 const getAllTimeLogs = async (req, res) => {
     try {
+        await closeStaleDesktopTimers();
         const { page, limit, skip } = getPagination(req.query);
-        const { startDate, endDate, employee, project, task, status } = req.query;
+        const { startDate, endDate, employee, team, project, task, status } = req.query;
         const filter = {};
 
         const reportRange = getReportRange(startDate, endDate);
         applyReportRangeFilter(filter, reportRange);
 
-        if (employee) filter.employee = employee;
+        if (team) {
+            const teamEmployees = await Employee.find({ team }).select("_id").lean();
+            filter.employee = { $in: teamEmployees.map((member) => member._id) };
+        }
+        if (employee) {
+            if (team && !filter.employee.$in.some((id) => String(id) === employee)) {
+                return res.status(400).json({ success: false, message: "Employee does not belong to the selected team." });
+            }
+            filter.employee = employee;
+        }
         if (project) filter.project = project;
         if (task) filter.task = task;
         if (status) filter.status = status;
@@ -629,7 +673,7 @@ const getAllTimeLogs = async (req, res) => {
         const rawTimeLogs = await TaskTimeLog.find(filter)
             .populate("employee", "employeeId fullName email department designation")
             .populate("project", "projectCode projectName serviceType")
-            .populate("task", "taskCode taskName")
+            .populate("task", "taskCode taskName taskType")
             .sort("-startedAt")
             .skip(skip)
             .limit(limit)
@@ -653,6 +697,7 @@ const getAllTimeLogs = async (req, res) => {
 };
 module.exports = {
     startTimer,
+    heartbeatTimer,
     pauseTimer,
     resumeTimer,
     updateNote,

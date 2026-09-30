@@ -25,6 +25,7 @@ export function buildTimeLogTimeline(record, now = Date.now()) {
 
   const entries = [];
   const counters = { work: 0, break: 0, idle: 0 };
+  const activeType = record.task?.taskType === "break" ? "break" : "work";
   let cursor = sessionStart;
 
   const addEntry = (type, startMs, endMs, isOpen = false) => {
@@ -42,7 +43,7 @@ export function buildTimeLogTimeline(record, now = Date.now()) {
 
   for (const pause of pauses) {
     const pauseStart = Math.min(sessionEnd, Math.max(sessionStart, pause.startMs));
-    if (pauseStart > cursor) addEntry("work", cursor, pauseStart);
+    if (pauseStart > cursor) addEntry(activeType, cursor, pauseStart);
 
     const openPause = pause.endMs === null && stoppedAt === null;
     const pauseEnd = Math.min(sessionEnd, Math.max(pauseStart, pause.endMs ?? sessionEnd));
@@ -59,21 +60,20 @@ export function buildTimeLogTimeline(record, now = Date.now()) {
   }
 
   if (cursor < sessionEnd || (entries.length === 0 && cursor === sessionEnd)) {
-    addEntry("work", cursor, sessionEnd, stoppedAt === null);
+    addEntry(activeType, cursor, sessionEnd, stoppedAt === null);
   }
 
   return entries;
 }
 
-// A selected task represents worked time for that task. Break and idle
-// segments belong to the surrounding timer session, not to the task filter.
+// A selected task represents its own work or break segments, not idle pauses.
 export const buildReportTimeLogTimeline = (
   record,
   { taskFiltered = false, now = Date.now() } = {},
 ) => {
   const entries = buildTimeLogTimeline(record, now);
   return taskFiltered
-    ? entries.filter((entry) => entry.type === "work")
+    ? entries.filter((entry) => entry.type === (record.task?.taskType === "break" ? "break" : "work"))
     : entries;
 };
 
@@ -84,3 +84,62 @@ export const sumTimelineSeconds = (records, type, now = Date.now()) =>
       .reduce((entryTotal, entry) => entryTotal + entry.durationSeconds, 0),
     0,
   );
+
+// Reports receive sessions newest first, but each session contains its own
+// older work/break/idle segments. Flatten before sorting so the visible table
+// and exported rows tell the same chronological story.
+export const buildChronologicalReportTimeline = (
+  records,
+  { taskFiltered = false, includeGaps = false, now = Date.now() } = {},
+) => {
+  const rows = records.flatMap((record, recordIndex) =>
+  buildReportTimeLogTimeline(record, { taskFiltered, now }).map((entry, entryIndex) => ({
+    record,
+    entry,
+    key: `${record._id || recordIndex}-${entry.type}-${entry.sequence}-${entryIndex}`,
+    recordIndex,
+    entryIndex,
+  })),
+  ).sort((first, second) =>
+  new Date(first.entry.start).getTime() - new Date(second.entry.start).getTime()
+  || first.recordIndex - second.recordIndex
+  || first.entryIndex - second.entryIndex,
+  );
+  if (!includeGaps || taskFiltered) return rows;
+
+  const result = [];
+  const lastEndByEmployee = new Map();
+  const lastRecordByEmployee = new Map();
+  const dayKey = (time) => new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(time));
+  for (const row of rows) {
+    const employeeKey = row.record.employee?._id || row.record.employee || "personal";
+    const previousEnd = lastEndByEmployee.get(employeeKey);
+    const startMs = new Date(row.entry.start).getTime();
+    if (previousEnd && startMs > previousEnd && dayKey(previousEnd) === dayKey(startMs)) {
+      result.push({
+        // Charge the between-task idle gap to the preceding task/project.
+        record: lastRecordByEmployee.get(employeeKey) || row.record,
+        entry: {
+          type: "idle", source: "between_sessions", sequence: 0,
+          start: new Date(previousEnd).toISOString(),
+          end: row.entry.start,
+          durationSeconds: Math.floor((startMs - previousEnd) / 1000),
+          isOpen: false,
+        },
+        key: `gap-${employeeKey}-${previousEnd}-${startMs}`,
+      });
+    }
+    result.push(row);
+    const endMs = row.entry.end ? new Date(row.entry.end).getTime() : now;
+    if (endMs >= (previousEnd || 0)) {
+      lastEndByEmployee.set(employeeKey, endMs);
+      lastRecordByEmployee.set(employeeKey, row.record);
+    }
+  }
+  return result.sort((first, second) =>
+    new Date(first.entry.start).getTime() - new Date(second.entry.start).getTime()
+    || (first.entry.source === "between_sessions" ? -1 : 0) - (second.entry.source === "between_sessions" ? -1 : 0),
+  );
+};

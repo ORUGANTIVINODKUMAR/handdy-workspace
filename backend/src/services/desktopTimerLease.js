@@ -1,0 +1,49 @@
+const TaskTimeLog = require("../models/TaskTimeLog");
+
+const HEARTBEAT_TIMEOUT_MS = 90_000;
+
+function stoppedValues(log, stoppedAt) {
+  const pauses = (log.pauses || []).map((pause) => ({
+    pausedAt: pause.pausedAt,
+    resumedAt: pause.resumedAt || stoppedAt,
+    reason: pause.reason,
+  }));
+  const totalPausedSeconds = pauses.reduce((sum, pause) =>
+    sum + Math.max(0, Math.floor((pause.resumedAt - pause.pausedAt) / 1000)), 0);
+  const totalIdleSeconds = pauses.reduce((sum, pause) =>
+    sum + (pause.reason === "idle"
+      ? Math.max(0, Math.floor((pause.resumedAt - pause.pausedAt) / 1000)) : 0), 0);
+  const elapsedSeconds = Math.max(0, Math.floor((stoppedAt - log.startedAt) / 1000));
+  return {
+    pauses,
+    stoppedAt,
+    status: "stopped",
+    isActiveTimer: false,
+    stopReason: "desktop_disconnected",
+    totalPausedSeconds,
+    totalIdleSeconds,
+    totalWorkedSeconds: Math.max(0, elapsedSeconds - totalPausedSeconds),
+  };
+}
+
+async function closeStaleDesktopTimers(now = new Date(), employeeId = null) {
+  const cutoff = new Date(now.getTime() - HEARTBEAT_TIMEOUT_MS);
+  const filter = {
+    isActiveTimer: true,
+    status: { $in: ["running", "paused"] },
+    desktopHeartbeatAt: { $type: "date", $lte: cutoff },
+    ...(employeeId ? { employee: employeeId } : {}),
+  };
+  const stale = await TaskTimeLog.find(filter).lean();
+  let closed = 0;
+  for (const log of stale) {
+    const result = await TaskTimeLog.updateOne(
+      { _id: log._id, isActiveTimer: true, status: log.status, desktopHeartbeatAt: log.desktopHeartbeatAt },
+      { $set: stoppedValues(log, log.desktopHeartbeatAt) },
+    );
+    closed += result.modifiedCount || 0;
+  }
+  return closed;
+}
+
+module.exports = { closeStaleDesktopTimers, HEARTBEAT_TIMEOUT_MS, stoppedValues };

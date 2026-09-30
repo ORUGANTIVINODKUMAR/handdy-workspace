@@ -1,4 +1,4 @@
-import { isIntentionalBreak } from "./timeLogTimeline";
+import { isIntentionalBreak } from "./timeLogTimeline.js";
 
 // Shared by AdminReportPage and RoleReportPage so their summary totals and
 // per-row timelines can never drift apart again.
@@ -24,6 +24,7 @@ export const getPauseSeconds = (record, reason) => {
 // A running/paused timer has no totalWorkedSeconds yet (only set when
 // stopped), so it must be computed live from startedAt minus paused time.
 export const getWorkedSeconds = (record) => {
+  if (record.task?.taskType === "break") return 0;
   if (record.status === "stopped") {
     return Math.max(0, Number(record.totalWorkedSeconds) || 0);
   }

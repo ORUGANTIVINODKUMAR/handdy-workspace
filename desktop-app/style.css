@@ -30,14 +30,16 @@ label,.work-summary span { color:#385048; font-size:13px; font-weight:700; } inp
 .timesheet-timeline-row td:first-child { border-left:3px solid #1f7a57; }
 .timesheet-break-row td { color:#b42318; background:#fff1f0; border-bottom-color:#f4cbc7; }
 .timesheet-break-row td:first-child { border-left-color:#c9362b; }
-.timesheet-idle-row td { color:#8a5a00; background:#fff8e8; }
-.timesheet-idle-row td:first-child { border-left-color:#c58519; }
+.timesheet-idle-row td { color:#b42318; background:#fff1f0; border-bottom-color:#f4cbc7; }
+.timesheet-idle-row td:first-child { border-left-color:#c9362b; }
 .timesheet-entry-badge { display:inline-flex; align-items:center; margin-right:8px; padding:4px 7px; border:1px solid #b9dccd; border-radius:999px; color:#176c4d; background:#edf8f3; font-size:9px; font-weight:800; text-transform:uppercase; }
 .timesheet-entry-break { color:#b42318; border-color:#f1b9b4; background:#fff6f5; }
-.timesheet-entry-idle { color:#8a5a00; border-color:#ecd29e; background:#fffbf2; }
+.timesheet-entry-idle { color:#b42318; border-color:#f1b9b4; background:#fff6f5; }
 .timesheet-entry-project { color:inherit; }
 .timesheet-status-break { color:#b42318; background:#ffe4e1; }
+.timesheet-status-idle { color:#b42318; background:#ffe4e1; }
 .timesheet-status-completed { color:#4e5f58; background:#edf1ef; }
+.timesheet-status-disconnected { color:#895a00; background:#fff0d7; }
 .timesheet-note { margin-top:4px; overflow-wrap:anywhere; white-space:normal; color:var(--muted); font-size:11px; font-style:italic; font-weight:400; }
 @media (max-width:850px) { body { min-width:0; }.timer-header { grid-template-columns:1fr auto; }.timer-navigation { order:3; grid-column:1/-1; justify-content:center; }.timer-nav-item { padding:10px 3px; }.timer-stage { width:calc(100% - 28px); margin:28px auto; }.timer-workspace { grid-template-columns:1fr; }.work-card { padding:28px; }.clock-card { min-height:300px; }.timesheet-summary { grid-template-columns:1fr; } }
 @media (max-width:650px) { .timesheet-heading { flex-direction:column; }.timesheet-actions { width:100%; flex-wrap:wrap; }.timesheet-actions button,.dashboard-link { flex:1; } }
@@ -157,6 +159,7 @@ body[data-page="dashboard"] .clock-card #timerDuration { color:#fff; font-size:4
 body[data-page="dashboard"] .clock-actions button { min-width:92px; border-radius:9px; background:#4f7dde; color:#fff; }
 body[data-page="dashboard"] .clock-actions #stopTimerButton { background:#fff; color:#244786; }
 body[data-page="dashboard"] .clock-actions button:disabled { background:rgba(255,255,255,.1); color:#8fa1c6; }
+body[data-page="dashboard"] .clock-actions #stopTimerButton:disabled { background:rgba(255,255,255,.1); color:#8fa1c6; }
 body[data-page="dashboard"] .panel { border:1px solid #dfe4ee; border-radius:18px; box-shadow:0 20px 55px rgba(29,44,76,.08); }
 body[data-page="dashboard"] .timesheet-summary>div { border:1px solid #e3e8f1; border-radius:10px; background:#f7f9fc; }
 body[data-page="dashboard"] .dashboard-link { background:#2858b4; }
@@ -188,14 +191,8 @@ body[data-page="login"] #loginButton:hover:not(:disabled) { background:#214b9c; 
 .break-clock[hidden] { display:none; }
 .break-clock span { color:#b9c9e8; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
 .break-clock strong { color:#fff; font-family:Consolas,monospace; font-size:20px; }
-body[data-page="dashboard"] .clock-actions { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+body[data-page="dashboard"] .clock-actions { width:100%; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 body[data-page="dashboard"] .clock-actions button { width:100%; min-width:0; min-height:42px; }
-body[data-page="dashboard"] #breakTimerButton { background:#e6efff; color:#244786; }
-body[data-page="dashboard"] #breakTimerButton:disabled { background:rgba(255,255,255,.1); color:#8fa1c6; }
-/* On-break state reads as a warning (red), distinct from the normal
-   blue "active/working" button and status colors. */
-body[data-page="dashboard"] #breakTimerButton.is-on-break { background:#e2495c; color:#fff; }
-body[data-page="dashboard"] #breakTimerButton.is-on-break:disabled { background:rgba(226,73,92,.35); color:#fbdfe2; }
 body[data-page="dashboard"] .clock-status.status-break { color:#ff9fac; font-weight:700; }
 .break-clock.is-on-break { border-color:rgba(226,73,92,.5); background:rgba(226,73,92,.14); }
 .break-clock.is-on-break strong { color:#ff9fac; }

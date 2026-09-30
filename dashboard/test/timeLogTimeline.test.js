@@ -2,10 +2,63 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildChronologicalReportTimeline,
   buildReportTimeLogTimeline,
   buildTimeLogTimeline,
   sumTimelineSeconds,
 } from "../src/utils/timeLogTimeline.js";
+import { formatReportDuration } from "../src/utils/reportFormatting.js";
+
+test("combines sessions into a single chronological report and keeps seconds visible", () => {
+  const records = [
+    { _id: "later", startedAt: "2026-09-29T10:10:00Z", stoppedAt: "2026-09-29T10:10:04Z", pauses: [] },
+    { _id: "earlier", startedAt: "2026-09-29T10:00:00Z", stoppedAt: "2026-09-29T10:00:51Z", pauses: [] },
+  ];
+  const rows = buildChronologicalReportTimeline(records);
+  assert.deepEqual(rows.map(({ record }) => record._id), ["earlier", "later"]);
+  assert.equal(formatReportDuration(rows[0].entry.durationSeconds), "51s");
+  assert.equal(formatReportDuration(rows[1].entry.durationSeconds), "4s");
+});
+
+test("marks same-day between-task gaps as idle without assigning them to worked time", () => {
+  const records = [
+    { _id: "later", startedAt: "2026-09-29T10:02:00Z", stoppedAt: "2026-09-29T10:03:00Z", pauses: [] },
+    { _id: "earlier", startedAt: "2026-09-29T10:00:00Z", stoppedAt: "2026-09-29T10:01:00Z", pauses: [] },
+  ];
+  const rows = buildChronologicalReportTimeline(records, { includeGaps: true });
+  assert.deepEqual(rows.map(({ entry }) => entry.type), ["work", "idle", "work"]);
+  assert.equal(rows[1].entry.durationSeconds, 60);
+  assert.equal(rows[1].entry.source, "between_sessions");
+  assert.equal(rows[1].record._id, "earlier");
+  assert.equal(sumTimelineSeconds(records, "work"), 120);
+});
+
+test("gaps for one employee stay in time order beside another employee's work", () => {
+  const records = [
+    { _id: "a2", employee: { _id: "a" }, startedAt: "2026-09-29T13:00:00Z", stoppedAt: "2026-09-29T13:05:00Z", pauses: [] },
+    { _id: "b", employee: { _id: "b" }, startedAt: "2026-09-29T12:00:00Z", stoppedAt: "2026-09-29T12:05:00Z", pauses: [] },
+    { _id: "a1", employee: { _id: "a" }, startedAt: "2026-09-29T11:00:00Z", stoppedAt: "2026-09-29T11:05:00Z", pauses: [] },
+  ];
+  const rows = buildChronologicalReportTimeline(records, { includeGaps: true });
+  assert.deepEqual(rows.map(({ entry }) => entry.start), [...rows.map(({ entry }) => entry.start)].sort());
+  assert.equal(rows.filter(({ entry }) => entry.source === "between_sessions").length, 1);
+});
+
+test("a ten-second task switch is idle, but overnight time is not", () => {
+  const sameDay = [
+    { _id: "work", startedAt: "2026-09-29T10:00:00Z", stoppedAt: "2026-09-29T10:01:00Z", pauses: [] },
+    { _id: "break", task: { taskType: "break" }, startedAt: "2026-09-29T10:01:10Z", stoppedAt: "2026-09-29T10:02:00Z", pauses: [] },
+  ];
+  const rows = buildChronologicalReportTimeline(sameDay, { includeGaps: true });
+  assert.deepEqual(rows.map(({ entry }) => [entry.type, entry.durationSeconds]), [
+    ["work", 60], ["idle", 10], ["break", 50],
+  ]);
+  assert.equal(sumTimelineSeconds(sameDay, "break"), 50);
+
+  const nextDay = [{ ...sameDay[1], startedAt: "2026-09-30T10:01:10Z", stoppedAt: "2026-09-30T10:02:00Z" }];
+  assert.equal(buildChronologicalReportTimeline([sameDay[0], ...nextDay], { includeGaps: true })
+    .filter(({ entry }) => entry.source === "between_sessions").length, 0);
+});
 
 test("splits a running task into chronological work and break segments", () => {
   const timeline = buildTimeLogTimeline({

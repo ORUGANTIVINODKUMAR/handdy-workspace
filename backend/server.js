@@ -12,6 +12,7 @@ const connectDatabase = require("./src/config/db");
 const { validateProductionConfig } = require("./src/config/productionConfig");
 const { verifyEmailTransport } = require("./src/utils/mailer");
 const { ensureAuthSessionIndexes } = require("./src/services/authSessionService");
+const { closeStaleDesktopTimers } = require("./src/services/desktopTimerLease");
 
 // ==============================
 // ROUTES
@@ -219,6 +220,11 @@ const startServer = async () => {
     await verifyEmailTransport();
     await connectDatabase();
     await ensureAuthSessionIndexes();
+    const timerSweep = setInterval(() => {
+      closeStaleDesktopTimers().catch((error) => console.error("Unable to close stale desktop timers:", error));
+    }, 30_000);
+    timerSweep.unref();
+    await closeStaleDesktopTimers();
 
     app.listen(
       PORT,

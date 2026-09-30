@@ -16,4 +16,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("app:before-close", listener);
   },
   notifyCloseReady: () => ipcRenderer.send("app:close-ready"),
+  notifyCloseCancelled: () => ipcRenderer.send("app:close-cancelled"),
 });

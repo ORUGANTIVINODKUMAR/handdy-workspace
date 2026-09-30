@@ -328,7 +328,7 @@ function AppRoutes() {
         path="/admin/timesheets/project-hours"
         element={
           <AdminStaffOnly>
-            <AdminReportPage title="Project hours" description="Worked and idle duration grouped by project." variant="project" />
+            <AdminReportPage title="Project work details" description="Worked, break, and idle time by employee and project. Same-day gaps between timers count as idle against the previous project." variant="project" />
           </AdminStaffOnly>
         }
       />

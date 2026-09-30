@@ -1,5 +1,5 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Clock3, FileSearch, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FileSearch, Search } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import useAuth from "../../context/useAuth";
@@ -17,14 +17,15 @@ import EmployeeSidebar from "../employee/EmployeeSidebar";
 import ReportSummary from "../../components/dashboard/ReportSummary";
 import PageHeader from "../../components/layout/PageHeader";
 import useDataRefresh from "../../hooks/useDataRefresh";
-import { buildReportTimeLogTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
+import { buildChronologicalReportTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
+import { formatReportDateTime, formatReportDuration, reportEntryStatus } from "../../utils/reportFormatting";
 import { getWorkedSeconds, localDate as today } from "../../utils/timeLogReportHelpers";
 import { readReportState, writeReportState } from "../../utils/reportPersistence";
 
 import "../../styles/adminReportPage.css";
 import "../../styles/roleReportPage.css";
 
-const duration = (seconds = 0) => `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+const duration = formatReportDuration;
 
 function RoleReportPage({ title, description, mode = "time", scope = "team", showDesktopDownload = false }) {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   const [toDate, setToDate] = useState(() => savedReportState.toDate || today());
   const [project, setProject] = useState(() => savedReportState.project || "");
   const [task, setTask] = useState(() => savedReportState.task || "");
+  const [appliedProject, setAppliedProject] = useState(() => savedReportState.project || "");
   const [appliedTask, setAppliedTask] = useState(() => savedReportState.task || "");
   // Snapshot of the filters that were active when "Generate" last succeeded.
   // The silent background poll must replay this snapshot, not whatever is
@@ -103,12 +105,17 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
 
   const totalSeconds = useMemo(() => records.reduce((sum, record) => sum + getWorkedSeconds(record), 0), [records]);
   const totalBreakSeconds = useMemo(
-    () => appliedTask ? 0 : sumTimelineSeconds(records, "break"),
-    [appliedTask, records],
+    () => sumTimelineSeconds(records, "break"),
+    [records],
   );
-  const getTimelineEntries = useCallback(
-    (record) => buildReportTimeLogTimeline(record, { taskFiltered: Boolean(appliedTask) }),
-    [appliedTask],
+  const timelineRows = useMemo(
+    () => buildChronologicalReportTimeline(records, {
+      taskFiltered: Boolean(appliedTask),
+      // A server-side project filter hides intervening projects, so gaps
+      // between its remaining sessions cannot safely be called idle.
+      includeGaps: !appliedProject && !appliedTask,
+    }),
+    [appliedProject, appliedTask, records],
   );
 
   const loadReport = useCallback(async ({ silent = false } = {}) => {
@@ -153,6 +160,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       setRecords(mode === "attendance" ? data.attendance || [] : data.timeLogs || []);
       if (!silent) {
         appliedFiltersRef.current = activeFilters;
+        setAppliedProject(activeFilters.project || "");
         setAppliedTask(activeFilters.task || "");
       }
     } catch (requestError) {
@@ -202,11 +210,31 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
         </div>
       </section>
       <section className="admin-report-results card">
-        <header><div><span className="admin-report-kicker">Results</span><h2>{records.length} records</h2></div>{mode === "time" && <strong><Clock3 size={16} />{duration(totalSeconds)}</strong>}</header>
+        <header><div><span className="admin-report-kicker">Results</span><h2>{mode === "time" ? `${timelineRows.length} timeline entries` : `${records.length} records`}</h2></div></header>
         {error && <p className="admin-report-message error-message" role="alert">{error}</p>}
         {!error && !hasRun && <div className="admin-report-empty"><FileSearch size={26} /><strong>Your work, in one view</strong><span>Select a period and generate your timesheet to view recorded work.</span></div>}
         {!error && hasRun && records.length === 0 && <div className="admin-report-empty"><FileSearch size={26} /><strong>No records found</strong><span>No matching activity exists for the selected dates.</span></div>}
-        {!error && mode === "time" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th><th>Note</th></tr></thead><tbody>{records.map((record) => <Fragment key={record._id}>{getTimelineEntries(record).map((entry) => <tr className={`report-timeline-row report-${entry.type}-row`} key={`${record._id}-${entry.type}-${entry.sequence}`}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td><div className="report-entry-project"><span className={`report-entry-badge ${entry.type}`}>{entry.type}</span>{entry.type === "work" && <span>{record.project?.projectName || "—"}</span>}</div></td><td>{entry.type === "work" ? `${record.task?.taskName || "Task"} · Work ${entry.sequence}` : `${entry.type === "break" ? "Break" : "Idle"} ${entry.sequence}`}</td><td><strong>{new Date(entry.start).toLocaleString()}</strong></td><td><strong>{entry.end ? new Date(entry.end).toLocaleString() : "In progress"}</strong></td><td>{duration(entry.durationSeconds)}</td><td>{entry.type === "idle" ? duration(entry.durationSeconds) : "—"}</td><td>{entry.isOpen ? (entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running") : "Completed"}</td><td className="report-entry-note">{entry.type === "work" ? record.note || "—" : "—"}</td></tr>)}</Fragment>)}</tbody></table></div>}
+        {!error && mode === "time" && records.length > 0 && (
+          <div className="admin-report-table-wrap">
+            <table>
+              <thead><tr>{isTeamReport && <th>Employee</th>}<th>Type</th><th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th><th>Note</th></tr></thead>
+              <tbody>{timelineRows.map(({ record, entry, key }) => (
+                <tr className={`report-timeline-row report-${entry.type}-row`} key={key}>
+                  {isTeamReport && <td>{record.employee?.fullName || "—"}</td>}
+                  <td><span className={`report-entry-badge ${entry.type}`}>{entry.type}</span></td>
+                  <td>{record.project?.projectName || "—"}</td>
+                  <td>{entry.source === "between_sessions" ? "Between tasks" : entry.type === "work" ? `${record.task?.taskName || "Task"} · Work ${entry.sequence}` : `${entry.type === "break" ? record.task?.taskName || "Break" : "Idle"} ${entry.sequence}`}</td>
+                  <td><strong>{formatReportDateTime(entry.start)}</strong></td>
+                  <td><strong>{entry.end ? formatReportDateTime(entry.end) : "In progress"}</strong></td>
+                  <td>{duration(entry.durationSeconds)}</td>
+                  <td>{entry.type === "idle" ? duration(entry.durationSeconds) : "—"}</td>
+                  <td>{reportEntryStatus(record, entry)}</td>
+                  <td className="report-entry-note">{entry.type === "work" ? record.note || "—" : "—"}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
         {!error && mode === "attendance" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Hours</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "—"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "—"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
       </section>
     </div>

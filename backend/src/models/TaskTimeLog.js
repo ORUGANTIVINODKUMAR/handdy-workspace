@@ -92,6 +92,8 @@ const taskTimeLogSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    desktopHeartbeatAt: { type: Date, default: null },
+    stopReason: { type: String, enum: ["desktop_disconnected"], default: null },
 
     autoLogoutAt: {
       type: Date,
@@ -119,5 +121,6 @@ taskTimeLogSchema.index(
 );
 
 taskTimeLogSchema.index({ employee: 1, status: 1, startedAt: 1, stoppedAt: 1 });
+taskTimeLogSchema.index({ isActiveTimer: 1, desktopHeartbeatAt: 1 });
 
 module.exports = mongoose.model("TaskTimeLog", taskTimeLogSchema);

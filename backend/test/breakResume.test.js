@@ -5,6 +5,8 @@ const { resumeTimer } = require("../src/controllers/taskTimeLogController");
 
 test("End Break closes the existing pause without replacing history or inserting records", async () => {
   const original = TaskTimeLog.findOneAndUpdate;
+  const originalFind = TaskTimeLog.find;
+  TaskTimeLog.find = () => ({ lean: async () => [] });
   let updates = 0;
   TaskTimeLog.findOneAndUpdate = async (filter, update, options) => {
     assert.equal(filter.status, "paused");
@@ -29,5 +31,6 @@ test("End Break closes the existing pause without replacing history or inserting
     assert.equal((await call()).code, 404);
   } finally {
     TaskTimeLog.findOneAndUpdate = original;
+    TaskTimeLog.find = originalFind;
   }
 });

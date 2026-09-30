@@ -71,6 +71,14 @@ ipcMain.on("app:close-ready", (event) => {
   window.close();
 });
 
+ipcMain.on("app:close-cancelled", (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (!window || window.isDestroyed()) return;
+  const fallbackTimer = closeFallbackTimers.get(window);
+  if (fallbackTimer) clearTimeout(fallbackTimer);
+  closeFallbackTimers.delete(window);
+});
+
 function compareVersions(firstVersion, secondVersion) {
   const firstParts = String(firstVersion).replace(/^v/i, "").split(".");
   const secondParts = String(secondVersion).replace(/^v/i, "").split(".");
@@ -175,6 +183,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false,
     },
   });
 
@@ -231,10 +240,18 @@ function createWindow() {
       mainWindow.webContents.send("app:before-close");
       const fallbackTimer = setTimeout(() => {
         if (mainWindow.isDestroyed()) return;
-        closeReadyWindows.add(mainWindow);
         closeFallbackTimers.delete(mainWindow);
-        mainWindow.close();
-      }, 12_000);
+        // A hung renderer is not proof that the backend timer stopped.
+        // Keep the window open so the employee can retry the close request.
+        void dialog.showMessageBox(mainWindow, {
+          type: "warning",
+          title: "Timer stop not confirmed",
+          message: "CRM could not confirm that your timer stopped.",
+          detail: "The app is staying open. Check your connection and close it again.",
+          buttons: ["OK"],
+          noLink: true,
+        });
+      }, 25_000);
       fallbackTimer.unref();
       closeFallbackTimers.set(mainWindow, fallbackTimer);
     }
