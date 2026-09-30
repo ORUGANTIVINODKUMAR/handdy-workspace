@@ -227,13 +227,22 @@ test("idle stops work even when the old per-task flag is disabled", async () => 
   assert.equal(h.state.stopBody.idleSeconds, 300);
 });
 
-test("intentional break is exempt from idle pause and logout", async () => {
+test("intentional break is exempt from idle stop but not account auto-logout", async () => {
   const h = harness({ timer: "paused", idle: 1800 });
   h.state.timer.pauses = [{ pausedAt: new Date().toISOString(), reason: "break" }];
   h.run("currentTimeLog = seed");
   await h.check();
-  assert.equal(h.state.timer.status, "paused");
-  assert.equal(h.calls.length, 0);
+  assert.equal(h.state.timer.status, "stopped");
+  assert.equal(h.calls.filter((url) => url.endsWith("/stop")).length, 1);
+  assert.equal(h.calls.filter((url) => url.endsWith("/auth/logout")).length, 1);
+  assert.equal(h.context.localStorage.getItem("token"), null);
+});
+
+test("desktop honors short inactivity values saved by the administrator", () => {
+  const h = harness({ timer: null });
+  h.run("idlePolicy = normalizedDesktopPolicy({ idleThresholdMinutes: 1, autoLogoutMinutes: 2 })");
+  assert.equal(h.run("idlePolicy.thresholdSeconds"), 60);
+  assert.equal(h.run("idlePolicy.logoutSeconds"), 120);
 });
 
 test("manual break button is absent while legacy break records still render", async () => {

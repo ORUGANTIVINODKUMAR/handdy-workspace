@@ -10,8 +10,8 @@ import "../../styles/adminAddTask.css";
 const toId = (value) => (typeof value === "string" ? value : value?._id) || "";
 
 // Shared Task Creation/Edit form used by Admin (full page + list-page edit
-// modal) and Team Lead (full page). The project dropdown is limited to
-// active projects assigned to every currently selected team.
+// modal) and Team Lead (full page). Tasks are team-wide and can be used with
+// any active project available to their selected teams.
 function TaskForm({
   mode = "create",
   scope = "admin",
@@ -53,13 +53,7 @@ function TaskForm({
   const [teamsOptions, setTeamsOptions] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
-  const [projects, setProjects] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
-
-  const [projectIds, setProjectIds] = useState(() => {
-    const initialProjectId = toId(initialTask?.project);
-    return initialProjectId ? [initialProjectId] : [];
-  });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -85,25 +79,7 @@ function TaskForm({
     }
   }, [scope]);
 
-  useEffect(() => {
-    axiosInstance
-      .get("/projects", { params: { limit: 100, status: "Active" } })
-      .then(({ data }) => setProjects(data.projects || []))
-      .catch(() => {});
-  }, []);
-
   const teamsKey = teams.join(",");
-
-  const availableProjects = useMemo(() => projects.filter((project) => {
-    if (teams.length === 0) return false;
-    const projectTeams = (project.teams || []).map(toId).filter(Boolean);
-    return projectTeams.length === 0 || teams.every((teamId) => projectTeams.includes(teamId));
-  }), [projects, teamsKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const availableProjectIds = new Set(availableProjects.map((project) => project._id));
-    setProjectIds((current) => current.filter((projectId) => availableProjectIds.has(projectId)));
-  }, [availableProjects]);
 
   const availableEmployees = useMemo(() => {
     const pool =
@@ -124,16 +100,6 @@ function TaskForm({
       previous.includes(teamId) ? previous.filter((id) => id !== teamId) : [...previous, teamId]
     );
     setAssignedTo([]);
-    setProjectIds([]);
-  };
-
-  const toggleProject = (projectId) => {
-    setProjectIds((current) => {
-      if (mode === "edit") return [projectId];
-      return current.includes(projectId)
-        ? current.filter((id) => id !== projectId)
-        : [...current, projectId];
-    });
   };
 
   const toggleEmployee = (employeeId) => {
@@ -168,7 +134,7 @@ function TaskForm({
       taskName: taskName.trim(),
       taskType,
       teams,
-      project: mode === "edit" ? projectIds[0] || null : null,
+      project: null,
       assignToAllEmployees: mode === "create" || assignType === "team",
       assignedTo: mode === "create" || assignType === "team" ? [] : assignedTo,
       idleLogout,
@@ -309,49 +275,9 @@ function TaskForm({
         </div>
       )}
 
-      {mode === "create" ? (
-        <p className="admin-task-project-empty">
-          One task will be created for the selected teams and will be available across all of their active projects.
-        </p>
-      ) : <div className="admin-task-project">
-        <div className="admin-task-section-heading">
-          <div>
-            <p>PROJECTS</p>
-            <h3>{mode === "create" ? "Select projects" : "Select project"}</h3>
-            <span className="admin-task-selection-copy">
-              {mode === "create"
-                ? "Choose one or more projects. A task entry will be created for each selected project."
-                : "Optional: choose one project, or leave all unselected to use this task across the team's projects."}
-            </span>
-          </div>
-          <span className="admin-task-selection-count">{projectIds.length} selected</span>
-        </div>
-        {teams.length === 0 ? (
-          <p className="admin-task-project-empty">Select a team first.</p>
-        ) : (
-          <div className="admin-task-project-grid">
-            {availableProjects.map((project) => {
-              const selected = projectIds.includes(project._id);
-              return (
-                <button
-                  type="button"
-                  key={project._id}
-                  className={`admin-task-project-option ${selected ? "selected" : ""}`}
-                  onClick={() => toggleProject(project._id)}
-                  aria-pressed={selected}
-                >
-                  <i aria-hidden="true">{selected ? "✓" : ""}</i>
-                  <span>
-                    <strong>{project.projectName}</strong>
-                    {project.projectCode && <small>{project.projectCode}</small>}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {teams.length > 0 && availableProjects.length === 0 && <p className="admin-task-project-empty">No active project is assigned to every selected team.</p>}
-      </div>}
+      <p className="admin-task-project-empty">
+        This task is available across all active projects assigned to the selected teams.
+      </p>
 
       {mode === "edit" && <div className="admin-task-assignees">
         <div className="admin-task-section-heading">

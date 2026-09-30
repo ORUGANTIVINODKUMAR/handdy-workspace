@@ -234,15 +234,21 @@ function isIdlePauseReason(reason) {
 
 function normalizedDesktopPolicy(policy = {}) {
   const idle = Number(policy.idleThresholdMinutes);
-  // Older installations may still have the former 1-minute policy stored in
-  // the database. Never stop work before the requested five-minute limit.
-  const thresholdMinutes = Math.max(5, Number.isInteger(idle) && idle >= idleDefaults.minIdleMinutes && idle <= idleDefaults.maxIdleMinutes
-    ? idle : idleDefaults.idleThresholdMinutes);
+  const thresholdMinutes = Number.isInteger(idle)
+    && idle >= idleDefaults.minIdleMinutes
+    && idle <= idleDefaults.maxIdleMinutes
+    ? idle
+    : idleDefaults.idleThresholdMinutes;
   const logout = Number(policy.autoLogoutMinutes);
+  const logoutMinutes = Number.isInteger(logout)
+    && logout >= idleDefaults.minLogoutMinutes
+    && logout <= idleDefaults.maxLogoutMinutes
+    && logout > thresholdMinutes
+    ? logout
+    : Math.max(idleDefaults.autoLogoutMinutes, thresholdMinutes + 1);
   return {
     thresholdSeconds: thresholdMinutes * 60,
-    logoutSeconds: Math.max(30, Number.isInteger(logout) && logout > thresholdMinutes && logout <= idleDefaults.maxLogoutMinutes
-      ? logout : Math.max(idleDefaults.autoLogoutMinutes, thresholdMinutes + 1)) * 60,
+    logoutSeconds: logoutMinutes * 60,
     exempt: Boolean(policy.idleTrackingExempt),
   };
 }
@@ -372,15 +378,16 @@ async function checkSystemIdleState() {
   idleCheckInProgress = true;
   try {
     const idleSeconds = await window.electronAPI.getSystemIdleTime();
-    if (!getToken() || isIntentionalBreak()) return;
+    if (!getToken()) return;
     // Close the work session at the first idle poll. The backend records the
     // preceding OS-idle interval as an idle pause, not as worked time.
-    if (!idlePolicy.exempt && currentTimeLog?.status === "running" && !isBreakTask()
+    if (!isIntentionalBreak() && !idlePolicy.exempt
+      && currentTimeLog?.status === "running" && !isBreakTask()
       && idleSeconds >= idlePolicy.thresholdSeconds) {
       await runTimerAction(() => stopTimer({ idleSeconds }));
     }
-    // Session-level auto-logout: applies to every logged-in, non-break session
-    // regardless of whether a timer is running or that task's idleLogout flag.
+    // Session-level auto-logout applies to every logged-in session regardless
+    // of timer state, task type, intentional break, or the old per-task flag.
     // (idlePolicy.exempt intentionally does NOT block this - it only exempts
     // an employee's active work from being auto-paused for idleness, see below.)
     if (logoutPending || idleSeconds >= idlePolicy.logoutSeconds) {
