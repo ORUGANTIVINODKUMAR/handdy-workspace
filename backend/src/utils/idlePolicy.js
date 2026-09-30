@@ -4,8 +4,8 @@
 // desktop-app/ directory present), so fall back to a hardcoded copy of that
 // file's contents if the require fails.
 const FALLBACK_DEFAULTS = {
-  idleThresholdMinutes: 1,
-  autoLogoutMinutes: 3,
+  idleThresholdMinutes: 5,
+  autoLogoutMinutes: 30,
   minIdleMinutes: 1,
   maxIdleMinutes: 240,
   minLogoutMinutes: 2,

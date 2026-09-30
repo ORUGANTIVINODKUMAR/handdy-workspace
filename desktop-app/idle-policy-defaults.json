@@ -1,6 +1,6 @@
 {
-  "idleThresholdMinutes": 1,
-  "autoLogoutMinutes": 3,
+  "idleThresholdMinutes": 5,
+  "autoLogoutMinutes": 30,
   "minIdleMinutes": 1,
   "maxIdleMinutes": 240,
   "minLogoutMinutes": 2,

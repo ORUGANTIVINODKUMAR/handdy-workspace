@@ -3,6 +3,7 @@ const Project = require("../models/Project");
 const Task = require("../models/Task");
 const Employee = require("../models/Employee");
 const Team = require("../models/Team");
+const Client = require("../models/Client");
 const { getPagination } = require("../utils/requestUtils");
 const { getBillingDateRange, getDateKeyInTimezone } = require("../utils/billingUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
@@ -120,10 +121,8 @@ const startTimer = async (req, res) => {
             });
         }
 
-        const projectClientIds = [projectExists.client, ...(projectExists.clients || [])]
-            .filter(Boolean).map(String);
-        if (client && !projectClientIds.includes(String(client))) {
-            return res.status(400).json({ success: false, message: "Select a client linked to this project." });
+        if (client && !await Client.exists({ _id: client, status: "Active" })) {
+            return res.status(400).json({ success: false, message: "Select a valid active client." });
         }
 
         const hasActiveTeam = req.user.team
@@ -418,6 +417,15 @@ const stopTimer = async (req, res) => {
         }
 
         const stoppedAt = new Date();
+        const reportedIdleSeconds = Number(req.body?.idleSeconds);
+        if (activeTimer.status === "running" && Number.isInteger(reportedIdleSeconds) && reportedIdleSeconds >= 300) {
+            const lastPauseEnd = (activeTimer.pauses || []).reduce((latest, pause) =>
+                Math.max(latest, new Date(pause.resumedAt || pause.pausedAt).getTime()), activeTimer.startedAt.getTime());
+            const idleStart = Math.max(lastPauseEnd, stoppedAt.getTime() - Math.min(reportedIdleSeconds, 12 * 60 * 60) * 1000);
+            if (idleStart < stoppedAt.getTime()) {
+                activeTimer.pauses.push({ pausedAt: new Date(idleStart), resumedAt: stoppedAt, reason: "idle" });
+            }
+        }
         let totalPausedSeconds = 0;
         let totalIdleSeconds = 0;
 

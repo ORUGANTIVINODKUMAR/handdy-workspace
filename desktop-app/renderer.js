@@ -106,18 +106,8 @@ let loginInProgress = false;
 let deviceApprovalMonitorActive = false;
 let pendingDeviceLoginRequest = null;
 let noteDirty = false;
-// Idle seconds observed on the previous poll. getSystemIdleTime() counts
-// continuously since the last real input, so a brief activity burst that
-// happens between two polls can already have climbed back past
-// ACTIVE_AGAIN_SECONDS by the time the next poll runs. Tracking the previous
-// reading lets us detect a drop (this poll's idle seconds < last poll's),
-// which is evidence real activity happened since the last check, even when
-// the instantaneous value no longer looks "just active".
-let lastIdleSeconds = 0;
-
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const DATA_REFRESH_INTERVAL_MS = 10 * 1000;
-const ACTIVE_AGAIN_SECONDS = 2;
 const API_REQUEST_TIMEOUT_MS = 10 * 1000;
 
 const showTimerView = (viewName) => {
@@ -244,12 +234,14 @@ function isIdlePauseReason(reason) {
 
 function normalizedDesktopPolicy(policy = {}) {
   const idle = Number(policy.idleThresholdMinutes);
-  const thresholdMinutes = Number.isInteger(idle) && idle >= idleDefaults.minIdleMinutes && idle <= idleDefaults.maxIdleMinutes
-    ? idle : idleDefaults.idleThresholdMinutes;
+  // Older installations may still have the former 1-minute policy stored in
+  // the database. Never stop work before the requested five-minute limit.
+  const thresholdMinutes = Math.max(5, Number.isInteger(idle) && idle >= idleDefaults.minIdleMinutes && idle <= idleDefaults.maxIdleMinutes
+    ? idle : idleDefaults.idleThresholdMinutes);
   const logout = Number(policy.autoLogoutMinutes);
   return {
     thresholdSeconds: thresholdMinutes * 60,
-    logoutSeconds: (Number.isInteger(logout) && logout > thresholdMinutes && logout <= idleDefaults.maxLogoutMinutes
+    logoutSeconds: Math.max(30, Number.isInteger(logout) && logout > thresholdMinutes && logout <= idleDefaults.maxLogoutMinutes
       ? logout : Math.max(idleDefaults.autoLogoutMinutes, thresholdMinutes + 1)) * 60,
     exempt: Boolean(policy.idleTrackingExempt),
   };
@@ -380,9 +372,13 @@ async function checkSystemIdleState() {
   idleCheckInProgress = true;
   try {
     const idleSeconds = await window.electronAPI.getSystemIdleTime();
-    const previousIdleSeconds = lastIdleSeconds;
-    lastIdleSeconds = idleSeconds;
     if (!getToken() || isIntentionalBreak()) return;
+    // Close the work session at the first idle poll. The backend records the
+    // preceding OS-idle interval as an idle pause, not as worked time.
+    if (!idlePolicy.exempt && currentTimeLog?.status === "running" && !isBreakTask()
+      && idleSeconds >= idlePolicy.thresholdSeconds) {
+      await runTimerAction(() => stopTimer({ idleSeconds }));
+    }
     // Session-level auto-logout: applies to every logged-in, non-break session
     // regardless of whether a timer is running or that task's idleLogout flag.
     // (idlePolicy.exempt intentionally does NOT block this - it only exempts
@@ -391,19 +387,8 @@ async function checkSystemIdleState() {
       await signOut(true);
       return;
     }
-    // Per-task auto-pause/resume: only applies while the running task opted
-    // into idle enforcement (activeTaskIdleLogout) and the employee isn't
-    // idle-tracking exempt.
-    if (!activeTaskIdleLogout || idlePolicy.exempt) return;
-    if (currentTimeLog?.status === "running" && idleSeconds >= idlePolicy.thresholdSeconds) {
-      await runTimerAction(() => pauseTimer("idle"));
-    } else if (
-      currentTimeLog?.status === "paused" &&
-      automaticIdlePause &&
-      (idleSeconds <= ACTIVE_AGAIN_SECONDS || idleSeconds < previousIdleSeconds)
-    ) {
-      await runTimerAction(() => resumeTimer("idle"));
-    }
+    // Activity never resumes an idle-ended task. The employee selects a task
+    // and presses Start to begin a fresh zeroed session.
   } catch {
     if (timerMessage) timerMessage.textContent = "CRM could not check inactivity. Please try again.";
   } finally {
@@ -460,6 +445,7 @@ function getStoredUser() {
 let selectedProjectId = "";
 let selectedTaskId = "";
 let selectedClientId = "";
+let activeClients = [];
 let projectsSignature = null;
 let clientOptionsSignature = null;
 let tasksSignature = null;
@@ -611,16 +597,11 @@ function ensureOption(select, value, label) {
 
 function updateClientName() {
   if (!clientSelect) return;
-  const selectedOption = projectSelect.selectedOptions[0];
-  let clients = [];
-  try { clients = JSON.parse(selectedOption?.dataset.clients || "[]"); } catch { /* Ignore malformed legacy data. */ }
-  const signature = JSON.stringify([selectedProjectId, clients]);
+  const signature = JSON.stringify(activeClients);
   if (signature !== clientOptionsSignature) {
-    const placeholder = !selectedProjectId ? "Select project first"
-      : clients.length ? "Select client" : selectedOption?.dataset.clientName || "No linked client";
     clientSelect.replaceChildren(
-      new Option(placeholder, ""),
-      ...clients.map((client) => new Option(client.clientName, client._id))
+      new Option(activeClients.length ? "Select client" : "No active clients", ""),
+      ...activeClients.map((client) => new Option(client.clientName, client._id))
     );
     clientOptionsSignature = signature;
   }
@@ -628,14 +609,37 @@ function updateClientName() {
   if (activeClientId && !hasOption(clientSelect, activeClientId)) {
     clientSelect.appendChild(new Option(currentTimeLog?.client?.clientName || "Previously selected client", activeClientId));
   }
-  const nextClientId = [activeClientId, selectedClientId, clients.length === 1 ? clients[0]._id : ""]
+  const nextClientId = [activeClientId, selectedClientId, activeClients.length === 1 ? activeClients[0]._id : ""]
     .find((id) => hasOption(clientSelect, id)) || "";
   clientSelect.value = nextClientId;
   if (selectedClientId !== nextClientId) {
     selectedClientId = nextClientId;
     saveWorkSelection();
   }
-  clientSelect.disabled = Boolean(currentTimeLog) || clients.length === 0;
+  clientSelect.disabled = Boolean(currentTimeLog) || activeClients.length === 0;
+}
+
+async function loadClients() {
+  const token = getToken();
+  if (!token || !clientSelect) return false;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/clients`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      workSelectionMessage.textContent = data.message || "Unable to load clients.";
+      return false;
+    }
+    activeClients = data.clients || [];
+    updateClientName();
+    return true;
+  } catch {
+    workSelectionMessage.textContent = "Unable to reach the backend server.";
+    return false;
+  }
 }
 
 function renderTaskPlaceholder(text) {
@@ -675,21 +679,13 @@ async function loadProjects() {
 
     // Rebuilding the options closes an open dropdown and momentarily shows
     // the placeholder, so only rebuild when the project list really changed.
-    const signature = JSON.stringify(
-      projects.map((project) => [project._id, project.projectName, project.clientName, project.clients, project.client])
-    );
+    const signature = JSON.stringify(projects.map((project) => [project._id, project.projectName]));
 
     if (signature !== projectsSignature) {
       projectSelect.replaceChildren(
         new Option("Select Project", ""),
         ...projects.map((project) => {
           const option = new Option(project.projectName, project._id);
-          option.dataset.clientName = project.clientName || "Not assigned";
-          option.dataset.clients = JSON.stringify(
-            [...new Map([...(project.clients || []), project.client].filter((client) =>
-              client?._id && client.status !== "Inactive"
-            ).map((client) => [client._id, { _id: client._id, clientName: client.clientName }])).values()]
-          );
           return option;
         })
       );
@@ -985,6 +981,8 @@ async function runDesktopRefresh() {
   // backend by loadActiveTimer, not by the background refresh.
   if (currentTimeLog) return;
 
+  await loadClients();
+  if (currentTimeLog) return;
   await loadProjects();
   if (currentTimeLog) return;
   await loadTasks(selectedProjectId, { background: true });
@@ -1599,7 +1597,7 @@ async function loadActiveTimer() {
       "Unable to load active timer.";
   }
 }
-async function stopTimer() {
+async function stopTimer({ idleSeconds = 0 } = {}) {
   const token = getToken();
 
   timerMessage.textContent = "";
@@ -1617,8 +1615,10 @@ async function stopTimer() {
       {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify(idleSeconds > 0 ? { idleSeconds: Math.floor(idleSeconds) } : {}),
         signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );
@@ -1648,7 +1648,7 @@ async function stopTimer() {
     activeTaskIdleLogout = false;
     setSelectedTaskId("", "timer stopped");
     taskSelect.value = "";
-    timerStatus.textContent = "Stopped";
+    timerStatus.textContent = idleSeconds > 0 ? "Idle — select a task" : "Stopped";
     updateBreakUI(null);
     updateNoteControlsUI(null);
 
@@ -1656,8 +1656,9 @@ async function stopTimer() {
     // The saved duration is shown in the timesheet instead.
     timerDuration.textContent = "00:00:00";
 
-    timerMessage.textContent =
-      data.message || "Timer stopped successfully.";
+    timerMessage.textContent = idleSeconds > 0
+      ? "Five minutes without activity ended this task. Select a task and press Start to work again."
+      : data.message || "Timer stopped successfully.";
 
     startTimerButton.disabled = false;
     if (pauseTimerButton) pauseTimerButton.disabled = true;
@@ -1670,6 +1671,7 @@ async function stopTimer() {
     // Only re-enable the task dropdown when it holds real task options.
     taskSelect.disabled =
       !selectedProjectId || tasksSignature === null;
+    void loadTodayTimesheet();
   } catch (error) {
     timerMessage.textContent =
       "Unable to reach the backend server.";
@@ -2175,6 +2177,8 @@ async function initializeApp() {
     startIdleMonitor();
     startTimerHeartbeat();
     void monitorDeviceLoginRequests();
+    await loadClients();
+    if (logoutPending || !getToken()) return;
     await loadProjects();
     if (logoutPending || !getToken()) return;
     await loadActiveTimer();

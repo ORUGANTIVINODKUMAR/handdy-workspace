@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const { normalizeIdlePolicy, resolveIdlePolicy, validateIdlePolicy } = require("../src/utils/idlePolicy");
 
 test("legacy settings retain idle threshold and get a safe logout default", () => {
-  assert.deepEqual(normalizeIdlePolicy(), { idleThresholdMinutes: 1, autoLogoutMinutes: 3 });
+  assert.deepEqual(normalizeIdlePolicy(), { idleThresholdMinutes: 5, autoLogoutMinutes: 30 });
   assert.deepEqual(normalizeIdlePolicy({ idleThresholdMinutes: 240 }), { idleThresholdMinutes: 240, autoLogoutMinutes: 241 });
 });
 

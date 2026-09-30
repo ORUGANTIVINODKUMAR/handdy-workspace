@@ -15,7 +15,7 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
     return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   };
   const localStorage = storage();
-  const state = { idle, outage, timer: timer ? { _id: "existing", status: timer, startedAt: new Date().toISOString(), pauses: [], totalWorkedSeconds: 0 } : null, beforeClose: null, closeReady: 0, closeCancelled: 0 };
+  const state = { idle, outage, stopBody: null, timer: timer ? { _id: "existing", status: timer, startedAt: new Date().toISOString(), pauses: [], totalWorkedSeconds: 0 } : null, beforeClose: null, closeReady: 0, closeCancelled: 0 };
   const context = vm.createContext({
     console, AbortSignal, Date, localStorage, sessionStorage: storage(),
     setInterval(callback) { intervals.set(++nextInterval, callback); return nextInterval; },
@@ -43,7 +43,10 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
         state.timer = { ...state.timer, status: "paused", pauses: [...state.timer.pauses, { pausedAt: new Date().toISOString(), reason: JSON.parse(options.body).reason }] };
       }
       if (url.endsWith("/resume")) state.timer = { ...state.timer, status: "running", pauses: state.timer.pauses.map(pause => pause.resumedAt ? pause : { ...pause, resumedAt: new Date().toISOString() }) };
-      if (url.endsWith("/stop")) state.timer = { ...state.timer, status: "stopped", totalWorkedSeconds: stopWorkedSeconds };
+      if (url.endsWith("/stop")) {
+        state.stopBody = options.body ? JSON.parse(options.body) : {};
+        state.timer = { ...state.timer, status: "stopped", totalWorkedSeconds: stopWorkedSeconds };
+      }
       return { ok: true, status: 200, json: async () => ({ timeLog: state.timer, idlePolicy: { idleThresholdMinutes: 10, autoLogoutMinutes: 30 } }) };
     },
   });
@@ -51,17 +54,20 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
   localStorage.setItem("token", "test-only");
   context.seed = state.timer;
   context.defaults = defaults;
-  vm.runInContext(`idleDefaults = defaults; idlePolicy = normalizedDesktopPolicy({ idleThresholdMinutes: 10, autoLogoutMinutes: 30 }); currentTimeLog = seed; activeTaskIdleLogout = ${activeTaskIdleLogout};`, context);
+  vm.runInContext(`idleDefaults = defaults; idlePolicy = normalizedDesktopPolicy({ idleThresholdMinutes: 5, autoLogoutMinutes: 30 }); currentTimeLog = seed; activeTaskIdleLogout = ${activeTaskIdleLogout};`, context);
   return { state, calls, context, nodes, intervals, run: source => vm.runInContext(source, context), check: () => context.checkSystemIdleState() };
 }
 
-test("active employee takes no action; ten minutes pauses exactly once", async () => {
+test("five idle minutes stop work once and reset the task and clock", async () => {
   const h = harness();
   await h.check(); assert.equal(h.calls.length, 0);
-  h.state.idle = 600;
+  h.state.idle = 300;
   await h.check(); await h.check();
-  assert.equal(h.calls.filter(url => url.endsWith("/pause")).length, 1);
-  assert.equal(h.state.timer.status, "paused");
+  assert.equal(h.calls.filter(url => url.endsWith("/stop")).length, 1);
+  assert.equal(h.state.stopBody.idleSeconds, 300);
+  assert.equal(h.state.timer.status, "stopped");
+  assert.equal(h.nodes.get("timerDuration").textContent, "00:00:00");
+  assert.match(h.nodes.get("timerStatus").textContent, /Idle/);
 });
 
 test("thirty minutes pauses, closes the timer, then logs out exactly once", async () => {
@@ -199,32 +205,26 @@ test("logout also applies without an active timer and for idle-exempt staff", as
   }
 });
 
-test("activity before logout preserves normal automatic resume and resets inactivity", async () => {
-  const h = harness({ idle: 600 }); await h.check();
+test("activity after idle stop cannot resume old work", async () => {
+  const h = harness({ idle: 300 }); await h.check();
   h.state.idle = 0; await h.check();
-  assert.equal(h.state.timer.status, "running");
+  assert.equal(h.state.timer.status, "stopped");
+  assert.equal(h.calls.some(url => url.endsWith("/resume")), false);
   assert.equal(h.calls.some(url => url.endsWith("/auth/logout")), false);
 });
 
-test("a brief activity burst between polls still resumes even if idle climbed back above the flat threshold", async () => {
-  const h = harness({ idle: 600 }); await h.check();
-  assert.equal(h.state.timer.status, "paused");
-  // Real activity happened between polls (idle counter reset then climbed
-  // again), so this poll's reading (50s) is still well above
-  // ACTIVE_AGAIN_SECONDS but is a clear drop from the previous poll's 600s -
-  // that drop alone must be enough evidence to resume.
+test("a later mouse movement still requires a fresh task selection", async () => {
+  const h = harness({ idle: 300 }); await h.check();
   h.state.idle = 50; await h.check();
-  assert.equal(h.state.timer.status, "running");
+  assert.equal(h.state.timer.status, "stopped");
+  assert.equal(h.calls.some(url => url.endsWith("/resume")), false);
 });
 
-test("task idle logout off leaves a running timer unchanged (below the session logout threshold)", async () => {
-  // 700s is past the 600s pause threshold but below the 1800s session
-  // auto-logout threshold, isolating the per-task pause gate from the
-  // always-on session logout covered by the test above.
-  const h = harness({ idle: 700, activeTaskIdleLogout: false });
+test("idle stops work even when the old per-task flag is disabled", async () => {
+  const h = harness({ idle: 300, activeTaskIdleLogout: false });
   await h.check();
-  assert.equal(h.state.timer.status, "running");
-  assert.equal(h.calls.length, 0);
+  assert.equal(h.state.timer.status, "stopped");
+  assert.equal(h.state.stopBody.idleSeconds, 300);
 });
 
 test("intentional break is exempt from idle pause and logout", async () => {

@@ -37,6 +37,10 @@ function harness() {
   const localStorage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
   const state = {
     projects: [{ _id: "p1", projectName: "Tax Preparation", clientName: "KCPA" }, { _id: "p2", projectName: "Audit", clientName: "Renau" }],
+    clients: [
+      { _id: "client-a", clientName: "Alpha", status: "Active" },
+      { _id: "client-b", clientName: "Beta", status: "Active" },
+    ],
     tasks: { p1: [{ _id: "t1", taskName: "TAX 1" }, { _id: "t2", taskName: "TAX 2" }], p2: [{ _id: "t3", taskName: "Audit 1" }] },
     breakTasks: [],
     failTasks: false,
@@ -64,6 +68,7 @@ function harness() {
     window: { electronAPI: {}, location: { replace() {} }, addEventListener() {} },
     fetch: async (url, options = {}) => {
       const json = (body, ok = true) => ({ ok, status: ok ? 200 : 500, json: async () => body });
+      if (url.includes("/clients")) return json({ clients: state.clients });
       if (url.includes("/projects")) {
         const page = Number(new URL(url).searchParams.get("page") || 1);
         const pages = state.projectPages || [state.projects];
@@ -100,18 +105,15 @@ function harness() {
   return { state, context, project: nodes.get("projectSelect"), client: nodes.get("clientSelect"), task: nodes.get("taskSelect"), run: (source) => vm.runInContext(source, context) };
 }
 
-test("desktop client selector uses the selected project's clients and starts promptly", async () => {
+test("desktop client selector uses all active clients and starts promptly", async () => {
   const h = harness();
-  h.state.projects[0].clients = [
-    { _id: "client-a", clientName: "Alpha", status: "Active" },
-    { _id: "client-b", clientName: "Beta", status: "Active" },
-  ];
+  await h.context.loadClients();
   await h.context.loadProjects();
   await h.project.choose("p1");
   await h.task.choose("t1");
   assert.deepEqual(h.client.options.map((option) => option.textContent), ["Select client", "Alpha", "Beta"]);
   await h.context.startTimer();
-  assert.equal(h.state.startRequests.length, 0, "a client is required when the project has linked clients");
+  assert.equal(h.state.startRequests.length, 0, "a client is required when active clients are available");
   await h.client.choose("client-b");
   let releaseStart;
   h.state.pendingStart = new Promise((resolve) => { releaseStart = resolve; });

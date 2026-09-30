@@ -64,11 +64,19 @@ const createProject = async (req, res) => {
   try {
     const payload = { ...req.body };
     payload.projectCode = payload.projectCode?.trim() || await generateProjectCode();
-    const clientResolution = await resolveProjectClients(payload.clients || payload.client);
-    if (clientResolution.error) return res.status(400).json({ success: false, message: clientResolution.error });
-    payload.clients = clientResolution.ids;
-    payload.client = clientResolution.ids[0];
-    payload.clientName = clientResolution.clients.map((client) => client.clientName).join(", ");
+    // The employee selects the client when starting work. Older callers may
+    // still link clients, but a link is no longer required at creation time.
+    if (payload.clients?.length || payload.client) {
+      const clientResolution = await resolveProjectClients(payload.clients || payload.client);
+      if (clientResolution.error) return res.status(400).json({ success: false, message: clientResolution.error });
+      payload.clients = clientResolution.ids;
+      payload.client = clientResolution.ids[0];
+      payload.clientName = clientResolution.clients.map((client) => client.clientName).join(", ");
+    } else {
+      payload.clients = [];
+      payload.client = null;
+      payload.clientName = "";
+    }
     const teamResolution = await resolveProjectTeams(payload.teams);
     if (teamResolution.error) return res.status(400).json({ success: false, message: teamResolution.error });
     payload.teams = teamResolution.ids;

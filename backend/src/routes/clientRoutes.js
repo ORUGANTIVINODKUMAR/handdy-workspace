@@ -6,20 +6,27 @@ const { escapeRegExp } = require("../utils/requestUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
 
 const router = express.Router();
-router.use(protect, authorizeRoles("admin", "manager", "hr"));
 
-router.get("/", async (req, res) => {
+// Employees use this list to choose a client when starting desktop work.
+// Creating, changing, and deactivating clients remains administrative.
+router.get("/", protect, async (req, res) => {
   try {
     const filter = { status: { $ne: "Inactive" } };
     if (req.query.search) {
       filter.clientName = { $regex: escapeRegExp(req.query.search), $options: "i" };
     }
-    const clients = await Client.find(filter).sort({ createdAt: -1 });
+    const query = Client.find(filter).sort({ createdAt: -1 });
+    if (["employee", "team_lead"].includes(req.user.role)) {
+      query.select("clientName status");
+    }
+    const clients = await query;
     return res.json({ success: true, count: clients.length, clients });
   } catch (error) {
     return sendErrorResponse(res, error, "Unable to load clients.");
   }
 });
+
+router.use(protect, authorizeRoles("admin", "manager", "hr"));
 
 router.post("/", async (req, res) => {
   try {

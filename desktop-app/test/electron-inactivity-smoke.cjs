@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
     let data = {};
     if (req.url === "/api/auth/login") data = { token: "local-test-token", user };
     else if (req.url === "/api/auth/me") data = { user };
-    else if (req.url === "/api/settings/idle-policy") data = { idlePolicy: { idleThresholdMinutes: 1, autoLogoutMinutes: 3 } };
+    else if (req.url === "/api/settings/idle-policy") data = { idlePolicy: { idleThresholdMinutes: 5, autoLogoutMinutes: 30 } };
     else if (req.url === "/api/time-logs/active") data = { timeLog: timer };
     else if (req.url.startsWith("/api/time-logs/history")) data = { timeLogs: [...completedLogs, ...(timer ? [timer] : [])] };
     else if (req.url === "/api/time-logs/start") {
@@ -137,14 +137,18 @@ app.whenReady().then(async () => {
     win.setSize(1495, 1000);
     assert.deepEqual(actions, ["stop", "stop"]);
     actions.length = 0;
-    idleSeconds = 60;
+    idleSeconds = 300;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
-    assert.equal(timer.status, "paused");
-    idleSeconds = 180;
+    assert.equal(timer, null);
+    assert.equal(await win.webContents.executeJavaScript('document.getElementById("timerDuration").textContent'), "00:00:00");
+    idleSeconds = 0;
+    await win.webContents.executeJavaScript("checkSystemIdleState()");
+    assert.equal(timer, null);
+    idleSeconds = 1800;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     await until(() => win.webContents.getURL().endsWith("index.html"));
-    await until(() => win.webContents.executeJavaScript('document.getElementById("message")?.textContent === "You were logged out after 3 minutes of inactivity."'));
-    assert.deepEqual(actions, ["pause", "stop", "logout"]);
+    await until(() => win.webContents.executeJavaScript('document.getElementById("message")?.textContent === "You were logged out after 30 minutes of inactivity."'));
+    assert.deepEqual(actions, ["stop", "logout"]);
     idleSeconds = 0;
     await login();
     await win.webContents.executeJavaScript("checkSystemIdleState()");
@@ -157,11 +161,11 @@ app.whenReady().then(async () => {
     // no-timer / no-task-opt-in scenario the desktop app previously never
     // exercised, and previously never enforced.
     assert.equal(await win.webContents.executeJavaScript("activeTaskIdleLogout"), false);
-    idleSeconds = 180;
+    idleSeconds = 1800;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     await until(() => win.webContents.getURL().endsWith("index.html"));
-    assert.deepEqual(actions, ["pause", "stop", "logout", "logout"]);
-    console.log("PASS: Electron break-task selection, stopped work, break restoration, idle pause, logout, and zeroed next session.");
+    assert.deepEqual(actions, ["stop", "logout", "logout"]);
+    console.log("PASS: Electron break-task selection, idle stop, logout, and zeroed next session.");
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

@@ -16,8 +16,8 @@ import "../../styles/adminSettings.css";
 // cross-package build dependency; the backend independently re-validates
 // and enforces the real limits regardless of what this form sends.
 const idleDefaults = {
-  idleThresholdMinutes: 1,
-  autoLogoutMinutes: 3,
+  idleThresholdMinutes: 5,
+  autoLogoutMinutes: 30,
   minIdleMinutes: 1,
   maxIdleMinutes: 240,
   minLogoutMinutes: 2,
