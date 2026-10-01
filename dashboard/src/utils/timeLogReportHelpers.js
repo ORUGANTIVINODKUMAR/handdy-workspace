@@ -14,7 +14,7 @@ export const getPauseSeconds = (record, reason) => {
   const now = Date.now();
 
   return (record.pauses || []).reduce((total, pause) => {
-    if (!pause.pausedAt || pause.mergedIntoPreviousWork || (reason && pause.reason !== reason)) return total;
+    if (!pause.pausedAt || (reason && pause.reason !== reason)) return total;
     const end = pause.resumedAt ? new Date(pause.resumedAt).getTime() : now;
     const start = new Date(pause.pausedAt).getTime();
     return total + Math.max(0, Math.floor((end - start) / 1000));
@@ -46,7 +46,7 @@ export const getIdleSeconds = (record) => {
 
   const now = Date.now();
   return (record.pauses || []).reduce((total, pause) => {
-    if (!pause.pausedAt || pause.mergedIntoPreviousWork || isIntentionalBreak(pause)) return total;
+    if (!pause.pausedAt || isIntentionalBreak(pause)) return total;
     const end = pause.resumedAt ? new Date(pause.resumedAt).getTime() : now;
     const start = new Date(pause.pausedAt).getTime();
     return total + Math.max(0, Math.floor((end - start) / 1000));

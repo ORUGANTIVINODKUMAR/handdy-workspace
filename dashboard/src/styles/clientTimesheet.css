@@ -1,0 +1,22 @@
+.client-timesheet { display:grid; gap:14px; }
+.client-timesheet-help { margin:0 0 4px; color:var(--text-secondary,#64748b); font-size:13px; line-height:1.6; }
+.client-timesheet details { border:1px solid var(--border-light); border-radius:10px; background:var(--surface); overflow:hidden; }
+.client-timesheet summary { display:flex; align-items:center; gap:12px; padding:16px; cursor:pointer; background:var(--surface-muted); }
+.client-timesheet summary::before { content:"›"; font-size:22px; color:var(--text-secondary,#64748b); }
+.client-timesheet details[open]>summary::before { transform:rotate(90deg); }
+.client-timesheet summary>span:first-of-type { min-width:0; flex:1; overflow-wrap:anywhere; font-weight:700; }
+.client-timesheet summary small { display:block; font-size:11px; font-weight:500; color:var(--text-secondary,#64748b); margin-bottom:4px; }
+.client-timesheet-totals { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px 18px; font-size:12px; font-variant-numeric:tabular-nums; }
+.client-timesheet-totals strong { color:var(--text-heading); }
+.client-timesheet-children { padding:12px; display:grid; gap:10px; }
+.client-timesheet .admin-report-table-wrap { margin:0; }
+.client-timesheet table { min-width:480px; }
+.client-timesheet-view-buttons { display:flex; gap:8px; margin:16px 0; }
+.crm-content .client-timesheet-view-buttons button { border:1px solid var(--border-light); border-radius:8px; padding:9px 16px; color:var(--text-secondary); background:var(--surface); font-weight:600; }
+.crm-content .client-timesheet-view-buttons button[aria-pressed="true"] { color:var(--button-text); background:var(--primary); border-color:var(--primary); }
+.client-timesheet summary:focus-visible, .client-timesheet-view-buttons button:focus-visible { outline:3px solid #a9c5fa; outline-offset:-3px; }
+@media (max-width:650px) {
+  .client-timesheet summary { flex-wrap:wrap; padding:12px; }
+  .client-timesheet-totals { flex-basis:100%; justify-content:flex-start; padding-left:22px; }
+  .client-timesheet-children { padding:8px; }
+}

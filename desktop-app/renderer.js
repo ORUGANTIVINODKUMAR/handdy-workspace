@@ -79,6 +79,10 @@ const requestingDeviceName = document.getElementById("requestingDeviceName");
 const deviceLoginMessage = document.getElementById("deviceLoginMessage");
 const keepThisDeviceButton = document.getElementById("keepThisDeviceButton");
 const allowNewDeviceButton = document.getElementById("allowNewDeviceButton");
+const idleStartedDialog = document.getElementById("idleStartedDialog");
+const idleStartedMessage = document.getElementById("idleStartedMessage");
+const idleStartedTime = document.getElementById("idleStartedTime");
+const acknowledgeIdleButton = document.getElementById("acknowledgeIdleButton");
 
 const API_BASE_URL =
   window.electronAPI?.apiBaseUrl || "http://localhost:5000/api";
@@ -93,6 +97,7 @@ let timerHeartbeatInterval = null;
 let idlePolicyRefreshInterval = null;
 let dataRefreshInterval = null;
 let idleCheckInProgress = false;
+let lastIdleNoticeKey = null;
 let idlePolicy = null;
 let currentTimeLog = null;
 let automaticIdlePause = false;
@@ -282,6 +287,8 @@ function clearSessionLoops() {
   idleMonitorInterval = idlePolicyRefreshInterval = timerInterval = dataRefreshInterval = null;
   timerHeartbeatInterval = null;
   automaticIdlePause = false;
+  lastIdleNoticeKey = null;
+  if (idleStartedDialog?.open) idleStartedDialog.close();
 }
 
 async function runTimerAction(action) {
@@ -371,6 +378,20 @@ async function signOut(inactivity = false) {
   } finally {
     logoutInProgress = false;
   }
+}
+
+function showIdleStartedPopup(timeLog, idleSeconds) {
+  if (!idleStartedDialog || typeof idleStartedDialog.showModal !== "function") return;
+  const noticeKey = timeLog?._id || timeLog?.stoppedAt;
+  if (noticeKey && noticeKey === lastIdleNoticeKey) return;
+  lastIdleNoticeKey = noticeKey;
+  const minutes = (idlePolicy?.thresholdSeconds || idleSeconds) / 60;
+  idleStartedMessage.textContent = `You have been inactive for ${minutes} minute${minutes === 1 ? "" : "s"}. Idle time has started.`;
+  const idlePause = [...(timeLog?.pauses || [])].reverse().find((pause) => pause.reason === "idle");
+  const idleStart = validTimelineTime(idlePause?.pausedAt);
+  idleStartedTime.textContent = idleStart === null ? "" : `Idle started at ${new Date(idleStart).toLocaleTimeString()}.`;
+  idleStartedTime.hidden = idleStart === null;
+  if (!idleStartedDialog.open) idleStartedDialog.showModal();
 }
 
 async function checkSystemIdleState() {
@@ -1089,19 +1110,7 @@ function buildTimeLogTimeline(timeLog, now = Date.now()) {
     if (pauseStart > cursor) addEntry(activeSegmentType, cursor, pauseStart);
     const openPause = pause.endMs === null && stoppedAt === null;
     const pauseEnd = Math.min(sessionEnd, Math.max(pauseStart, pause.endMs ?? sessionEnd));
-    if (pause.mergedIntoPreviousWork && pause.reason === "idle" && pause.endMs !== null) {
-      const effectiveStart = Math.max(pauseStart, cursor);
-      const previous = entries.at(-1);
-      if (previous?.type === "work" && previous.end?.getTime() === effectiveStart) {
-        previous.end = new Date(pauseEnd);
-        previous.milliseconds = Math.max(0, pauseEnd - previous.start.getTime());
-        previous.seconds = Math.floor(previous.milliseconds / 1000);
-      } else if (effectiveStart < pauseEnd) {
-        addEntry("work", effectiveStart, pauseEnd);
-      }
-    } else {
-      addEntry(isIdlePauseReason(pause.reason) ? "idle" : "break", pauseStart, pauseEnd, openPause);
-    }
+    addEntry(isIdlePauseReason(pause.reason) ? "idle" : "break", pauseStart, pauseEnd, openPause);
     cursor = Math.max(cursor, pauseEnd);
   });
 
@@ -1369,7 +1378,7 @@ function calculateCurrentWorkSeconds(timeLog, now = Date.now()) {
       : now;
   const resolvedEnd = segmentEnd ?? now;
   const idleMilliseconds = (timeLog.pauses || []).reduce((total, pause) => {
-    if (!isIdlePauseReason(pause.reason) || !pause.pausedAt || pause.mergedIntoPreviousWork) return total;
+    if (!isIdlePauseReason(pause.reason) || !pause.pausedAt) return total;
     const pauseStart = Math.max(segmentStart, validTimelineTime(pause.pausedAt) ?? resolvedEnd);
     const pauseEnd = Math.min(
       resolvedEnd,
@@ -1637,8 +1646,7 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(idleSeconds > 0
-          ? { idleSeconds: Math.floor(idleSeconds), timeLogId: currentTimeLog?._id } : {}),
+        body: JSON.stringify(idleSeconds > 0 ? { idleSeconds: Math.floor(idleSeconds) } : {}),
         signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );
@@ -1691,6 +1699,9 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
     // Only re-enable the task dropdown when it holds real task options.
     taskSelect.disabled =
       !selectedProjectId || tasksSignature === null;
+    // Announce only the confirmed Working -> Idle transition. Acknowledging
+    // this notice never changes the timer or its saved idle interval.
+    if (idleSeconds > 0) showIdleStartedPopup(data.timeLog, idleSeconds);
     void loadTodayTimesheet();
   } catch (error) {
     timerMessage.textContent =
@@ -2130,6 +2141,7 @@ stopTimerButton?.addEventListener(
   () => runTimerAction(stopTimer)
 );
 logoutButton?.addEventListener("click", () => signOut(false));
+acknowledgeIdleButton?.addEventListener("click", () => idleStartedDialog.close());
 keepThisDeviceButton?.addEventListener("click", () => decideDeviceLogin("deny"));
 allowNewDeviceButton?.addEventListener("click", () => decideDeviceLogin("allow"));
 

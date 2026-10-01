@@ -10,6 +10,19 @@ const user = { _id: "test-admin", role: "admin", fullName: "Test Admin", permiss
 const calls = new Map();
 let revoked = false;
 let pending = false;
+let clientReportEnabled = false;
+const clientReportLogs = [
+  ["log-1", "ABC Corporation", "client-a", "Tax Return", "tax", "Preparation", "prepare", 60],
+  ["log-2", "ABC Corporation", "client-a", "Tax Return", "tax", "Review", "review", 120],
+  ["log-3", "ABC Corporation", "client-a", "Bookkeeping", "books", "Monthly", "monthly", 180],
+  ["log-4", "XYZ Corporation", "client-b", "Banking", "bank", "Reconciliation", "reconcile", 240],
+].map(([id, clientName, clientId, projectName, projectId, taskName, taskId, seconds]) => ({
+  _id: id, employee: { _id: "employee-john", fullName: "John" },
+  client: { _id: clientId, clientName }, project: { _id: projectId, projectName },
+  task: { _id: taskId, taskName, taskType: "work" }, status: "stopped",
+  startedAt: "2026-10-01T10:00:00Z", stoppedAt: "2026-10-01T10:01:00Z",
+  totalWorkedSeconds: seconds, totalIdleSeconds: 0, pauses: [],
+}));
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (url.pathname.startsWith("/api/")) {
@@ -29,6 +42,7 @@ const server = http.createServer((req, res) => {
       if (endpoint === "/teams") body = { teams: [{ _id: "team", teamName: "Stable team", isActive: true }] };
       if (endpoint === "/employees") body = { employees: [], totalPages: 1, totalEmployees: 0 };
       if (endpoint === "/tasks") body = { tasks: [] };
+      if (endpoint === "/time-logs/admin" && clientReportEnabled) body = { timeLogs: clientReportLogs, totalPages: 1 };
       res.end(JSON.stringify(body));
     }, endpoint.startsWith("/time-logs/") ? 6500 : 150);
     return;
@@ -121,6 +135,42 @@ app.whenReady().then(async () => {
     await until(`[...document.querySelectorAll('button')].some(b => b.disabled && b.textContent.includes('Loading'))`);
     await until(`[...document.querySelectorAll('button')].some(b => !b.disabled && b.textContent.includes('Generate'))`);
     assert.equal(calls.get('/time-logs/admin'), 1, "polling does not supersede the slow manual report");
+    clientReportEnabled = true;
+    await evaluate(`document.querySelector('a[href="/admin/timesheets/team"]').click()`);
+    await until(`location.pathname === '/admin/timesheets/team'`);
+    await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Generate')).click()`);
+    await until(`document.querySelector('.admin-report-results').textContent.includes('John')`);
+    await evaluate(`document.querySelector('[aria-label="Team timesheet view"] button:last-child').click()`);
+    await until(`document.querySelectorAll('.client-timesheet-client').length === 2`);
+    assert.equal(await evaluate("document.querySelectorAll('.client-timesheet-employee').length"), 1);
+    assert.equal(await evaluate("document.querySelectorAll('.client-timesheet-project').length"), 3);
+    assert.equal(await evaluate("document.querySelectorAll('.client-timesheet tbody tr').length"), 4);
+    assert.ok((await evaluate("document.querySelector('.client-timesheet-employee > summary').textContent")).includes('Worked 10m'));
+    assert.equal(await evaluate(`(() => {
+      const buttons = [...document.querySelectorAll('.client-timesheet-view-buttons button')];
+      return getComputedStyle(buttons[0]).backgroundColor !== getComputedStyle(buttons[1]).backgroundColor;
+    })()`), true);
+    await evaluate("document.querySelectorAll('.client-timesheet details').forEach(node => node.open = true)");
+    await evaluate("document.querySelector('.client-timesheet-client > summary').click()");
+    assert.equal(await evaluate("document.querySelector('.client-timesheet-client').open"), false);
+    await evaluate("document.querySelector('.client-timesheet-client > summary').click()");
+    assert.equal(await evaluate("document.querySelector('.client-timesheet-client').open"), true);
+    await evaluate(`document.querySelector('[aria-label="Team timesheet view"] button:first-child').click()`);
+    assert.equal(await evaluate("document.querySelector('.client-timesheet')"), null);
+    assert.ok((await evaluate("document.querySelector('.admin-report-results').textContent")).includes('John'));
+    await evaluate(`document.querySelector('[aria-label="Team timesheet view"] button:last-child').click()`);
+    const screenshotPath = path.resolve(__dirname, "../../dashboard/ui-review/client-timesheet.png");
+    await evaluate("document.querySelectorAll('.client-timesheet details').forEach(node => node.open = true)");
+    win.setSize(1200, 1100);
+    await delay(250);
+    await evaluate("document.querySelector('.client-timesheet').scrollIntoView({block: 'start'})");
+    await delay(200);
+    fs.writeFileSync(screenshotPath, (await win.webContents.capturePage()).toPNG());
+    win.setSize(520, 900);
+    await delay(250);
+    assert.equal(await evaluate("document.documentElement.scrollWidth <= window.innerWidth"), true);
+    fs.writeFileSync(path.resolve(__dirname, "../../dashboard/ui-review/client-timesheet-mobile.png"), (await win.webContents.capturePage()).toPNG());
+    win.setSize(1200, 900);
     await evaluate(`document.querySelector('a[href="/admin/team"]').click()`);
     await until("document.body.textContent.includes('Stable team')");
     pending = true;

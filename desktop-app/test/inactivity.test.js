@@ -23,7 +23,10 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
     document: {
       body: { dataset: { page: "login" } },
       getElementById(id) {
-        if (!nodes.has(id)) nodes.set(id, { textContent: "", style: {}, classList: { add() {}, remove() {} }, addEventListener() {} });
+        if (!nodes.has(id)) nodes.set(id, { textContent: "", style: {}, open: false, shown: 0,
+          classList: { add() {}, remove() {} }, listeners: {},
+          addEventListener(event, callback) { this.listeners[event] = callback; },
+          showModal() { this.open = true; this.shown += 1; }, close() { this.open = false; } });
         return nodes.get(id);
       },
       querySelectorAll: () => [], addEventListener() {},
@@ -45,7 +48,11 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
       if (url.endsWith("/resume")) state.timer = { ...state.timer, status: "running", pauses: state.timer.pauses.map(pause => pause.resumedAt ? pause : { ...pause, resumedAt: new Date().toISOString() }) };
       if (url.endsWith("/stop")) {
         state.stopBody = options.body ? JSON.parse(options.body) : {};
-        state.timer = { ...state.timer, status: "stopped", totalWorkedSeconds: stopWorkedSeconds };
+        const stoppedAt = new Date().toISOString();
+        const idlePause = state.stopBody.idleSeconds > 0 ? [{ reason: "idle", resumedAt: stoppedAt,
+          pausedAt: new Date(Date.now() - state.stopBody.idleSeconds * 1000).toISOString() }] : [];
+        state.timer = { ...state.timer, stoppedAt, pauses: [...state.timer.pauses, ...idlePause],
+          status: "stopped", totalWorkedSeconds: stopWorkedSeconds };
       }
       return { ok: true, status: 200, json: async () => ({ timeLog: state.timer, idlePolicy: { idleThresholdMinutes: 10, autoLogoutMinutes: 30 } }) };
     },
@@ -58,35 +65,60 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
   return { state, calls, context, nodes, intervals, run: source => vm.runInContext(source, context), check: () => context.checkSystemIdleState() };
 }
 
-test("desktop merged idle produces one preceding work row and matching timesheet totals", () => {
-  const h = harness();
-  const record = JSON.stringify({
-    startedAt: "2026-10-01T02:02:58Z", stoppedAt: "2026-10-01T02:08:09Z",
-    status: "stopped", totalWorkedSeconds: 311,
-    pauses: [{ reason: "idle", pausedAt: "2026-10-01T02:03:06Z",
-      resumedAt: "2026-10-01T02:08:09Z", mergedIntoPreviousWork: true }],
-  });
-  const rows = h.run(`buildTimeLogTimeline(${record})`);
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].type, "work");
-  assert.equal(rows[0].seconds, 311);
-  assert.equal(rows[0].end.toISOString(), "2026-10-01T02:08:09.000Z");
-  assert.equal(h.run(`calculateCurrentWorkSeconds(${record}, new Date("2026-10-01T02:08:09Z").getTime())`), 311);
+test("idle popup appears once, acknowledges without resuming, and appears for the next work session", async () => {
+  const h = harness({ idle: 300 });
+  await h.check();
+  const dialog = h.nodes.get("idleStartedDialog");
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.shown, 1);
+  assert.match(h.nodes.get("idleStartedMessage").textContent, /inactive for 5 minutes.*Idle time has started/);
+  assert.match(h.nodes.get("idleStartedTime").textContent, /Idle started at/);
+  h.nodes.get("acknowledgeIdleButton").listeners.click();
+  assert.equal(dialog.open, false);
+  const calls = h.calls.length;
+  await h.check(); await h.check();
+  assert.equal(dialog.shown, 1);
+  assert.equal(h.calls.length, calls);
+  h.state.idle = 0;
+  await h.check();
+  assert.equal(h.run("currentTimeLog"), null);
+  h.state.timer = { _id: "new-task-session", status: "running", startedAt: new Date().toISOString(), pauses: [] };
+  h.context.nextSession = h.state.timer;
+  h.run("currentTimeLog = nextSession");
+  h.state.idle = 300;
+  await h.check();
+  assert.equal(dialog.shown, 2);
 });
 
-test("desktop restart restores merged time before a new open idle or break", () => {
-  const h = harness();
-  const record = {
-    startedAt: "2026-10-01T02:02:58Z", status: "paused",
-    pauses: [{ reason: "idle", pausedAt: "2026-10-01T02:03:06Z",
-      resumedAt: "2026-10-01T02:08:09Z", mergedIntoPreviousWork: true },
-    { reason: "idle", pausedAt: "2026-10-01T02:09:00Z", resumedAt: null }],
-  };
-  assert.equal(h.run(`calculateCurrentWorkSeconds(${JSON.stringify(record)}, new Date("2026-10-01T02:12:00Z").getTime())`), 362);
-  const rows = h.run(`buildTimeLogTimeline(${JSON.stringify(record)}, new Date("2026-10-01T02:12:00Z").getTime())`);
-  assert.equal(rows[0].seconds, 311);
-  assert.equal(rows.at(-1).type, "idle");
-  assert.equal(rows.at(-1).open, true);
+test("idle popup uses the configured threshold and preserves independent idle records", async () => {
+  const h = harness({ idle: 600 });
+  h.run("idlePolicy = normalizedDesktopPolicy({ idleThresholdMinutes: 10, autoLogoutMinutes: 30 })");
+  await h.check();
+  assert.match(h.nodes.get("idleStartedMessage").textContent, /inactive for 10 minutes/);
+  assert.equal(h.state.timer.pauses.at(-1).reason, "idle");
+  assert.equal(h.state.timer.pauses.at(-1).mergedIntoPreviousWork, undefined);
+  assert.equal(h.state.stopBody.idleSeconds, 600);
+});
+
+test("idle popup is absent before transition, during breaks, exemption, manual stop and network failure", async () => {
+  for (const kind of ["before", "break", "exempt", "manual", "offline", "no-timer"]) {
+    const h = harness({ idle: kind === "before" ? 299 : 300,
+      outage: kind === "offline", timer: kind === "no-timer" ? null : "running" });
+    if (kind === "break") h.run("currentTimeLog.task = { taskType: 'break' }");
+    if (kind === "exempt") h.run("idlePolicy.exempt = true");
+    if (kind === "manual") await h.run("stopTimer()");
+    else await h.check();
+    assert.equal(h.nodes.get("idleStartedDialog").shown, 0, kind);
+  }
+});
+
+test("idle popup waits for a successful retry after an outage", async () => {
+  const h = harness({ idle: 300, outage: true });
+  await h.check();
+  assert.equal(h.nodes.get("idleStartedDialog").shown, 0);
+  h.state.outage = false;
+  await h.check(); await h.check();
+  assert.equal(h.nodes.get("idleStartedDialog").shown, 1);
 });
 
 test("five idle minutes stop work once and reset the task and clock", async () => {
@@ -96,7 +128,6 @@ test("five idle minutes stop work once and reset the task and clock", async () =
   await h.check(); await h.check();
   assert.equal(h.calls.filter(url => url.endsWith("/stop")).length, 1);
   assert.equal(h.state.stopBody.idleSeconds, 300);
-  assert.equal(h.state.stopBody.timeLogId, "existing");
   assert.equal(h.state.timer.status, "stopped");
   assert.equal(h.nodes.get("timerDuration").textContent, "00:00:00");
   assert.match(h.nodes.get("timerStatus").textContent, /Idle/);

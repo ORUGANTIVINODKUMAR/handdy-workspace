@@ -71,7 +71,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
 
         const totalPausedSeconds = (timeLog.pauses || []).reduce(
           (total, pause) => {
-            if (!pause.resumedAt || pause.mergedIntoPreviousWork) {
+            if (!pause.resumedAt) {
               return total;
             }
 
@@ -109,7 +109,7 @@ function TaskTimer({ selectedProject, selectedTask }) {
 
           const completedPauseSeconds = (timeLog.pauses || []).reduce(
             (total, pause) => {
-              if (!pause.resumedAt || pause.mergedIntoPreviousWork) {
+              if (!pause.resumedAt) {
                 return total;
               }
 

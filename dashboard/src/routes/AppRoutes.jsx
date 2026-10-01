@@ -622,7 +622,7 @@ function AppRoutes() {
         path="/team-lead/timesheets/team"
         element={
           <TeamLeadOnly>
-            <RoleReportPage title="Team timesheet" description="Timer activity for your assigned employees." />
+            <RoleReportPage title="Team timesheet" description="Timer activity for your assigned employees." showClientView />
           </TeamLeadOnly>
         }
       />

@@ -21,13 +21,15 @@ import { buildChronologicalReportTimeline, sumTimelineSeconds } from "../../util
 import { formatReportDateTime, formatReportDuration, reportEntryStatus } from "../../utils/reportFormatting";
 import { getWorkedSeconds, localDate as today } from "../../utils/timeLogReportHelpers";
 import { readReportState, writeReportState } from "../../utils/reportPersistence";
+import { buildClientTimesheet } from "../../utils/clientTimesheet";
+import ClientTimesheet from "../../components/reports/ClientTimesheet";
 
 import "../../styles/adminReportPage.css";
 import "../../styles/roleReportPage.css";
 
 const duration = formatReportDuration;
 
-function RoleReportPage({ title, description, mode = "time", scope = "team", showDesktopDownload = false }) {
+function RoleReportPage({ title, description, mode = "time", scope = "team", showDesktopDownload = false, showClientView = false }) {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const reportStorageKey = `crm-report:${user?._id || user?.email || "user"}:${pathname}`;
@@ -57,6 +59,7 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   const [loading, setLoading] = useState(false);
   const [hasRun, setHasRun] = useState(() => Boolean(savedReportState.hasRun));
   const [error, setError] = useState("");
+  const [teamView, setTeamView] = useState(() => savedReportState.teamView === "client" ? "client" : "employee");
   const isTeamLead = user?.role === "team_lead";
   const isTeamReport = isTeamLead && scope !== "personal";
 
@@ -116,6 +119,10 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       includeGaps: !appliedProject && !appliedTask,
     }),
     [appliedProject, appliedTask, records],
+  );
+  const clientDetails = useMemo(
+    () => showClientView && isTeamReport ? buildClientTimesheet(records, timelineRows) : [],
+    [records, timelineRows, showClientView, isTeamReport],
   );
 
   const loadReport = useCallback(async ({ silent = false } = {}) => {
@@ -177,8 +184,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
 
   const runReport = () => loadReport();
   useEffect(() => {
-    writeReportState(reportStorageKey, { fromDate, toDate, project, task, hasRun });
-  }, [fromDate, hasRun, project, reportStorageKey, task, toDate]);
+    writeReportState(reportStorageKey, { fromDate, toDate, project, task, hasRun, teamView });
+  }, [fromDate, hasRun, project, reportStorageKey, task, teamView, toDate]);
 
   useEffect(() => {
     if (restoredReportRef.current) return;
@@ -211,10 +218,15 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       </section>
       <section className="admin-report-results card">
         <header><div><span className="admin-report-kicker">Results</span><h2>{mode === "time" ? `${timelineRows.length} timeline entries` : `${records.length} records`}</h2></div></header>
+        {showClientView && isTeamReport && mode === "time" && <div className="client-timesheet-view-buttons" role="group" aria-label="Team timesheet view">
+          <button type="button" aria-pressed={teamView === "employee"} onClick={() => setTeamView("employee")}>Employee</button>
+          <button type="button" aria-pressed={teamView === "client"} onClick={() => setTeamView("client")}>Client</button>
+        </div>}
         {error && <p className="admin-report-message error-message" role="alert">{error}</p>}
         {!error && !hasRun && <div className="admin-report-empty"><FileSearch size={26} /><strong>Your work, in one view</strong><span>Select a period and generate your timesheet to view recorded work.</span></div>}
         {!error && hasRun && records.length === 0 && <div className="admin-report-empty"><FileSearch size={26} /><strong>No records found</strong><span>No matching activity exists for the selected dates.</span></div>}
-        {!error && mode === "time" && records.length > 0 && (
+        {!error && mode === "time" && records.length > 0 && showClientView && isTeamReport && teamView === "client" && <ClientTimesheet employees={clientDetails} />}
+        {!error && mode === "time" && records.length > 0 && !(showClientView && isTeamReport && teamView === "client") && (
           <div className="admin-report-table-wrap">
             <table>
               <thead><tr>{isTeamReport && <th>Employee</th>}<th>Type</th><th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Duration</th><th>Idle</th><th>Status</th><th>Note</th></tr></thead>

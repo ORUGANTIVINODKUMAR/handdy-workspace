@@ -20,6 +20,8 @@ import { buildChronologicalReportTimeline, sumTimelineSeconds } from "../../util
 import { formatReportDateTime, formatReportDuration, reportEntryStatus } from "../../utils/reportFormatting";
 import { getIdleSeconds, getWorkedSeconds, localDate } from "../../utils/timeLogReportHelpers";
 import { buildProjectWorkDetails } from "../../utils/projectWorkDetails";
+import { buildClientTimesheet, flattenClientTimesheet } from "../../utils/clientTimesheet";
+import ClientTimesheet from "../../components/reports/ClientTimesheet";
 import { readReportState, writeReportState } from "../../utils/reportPersistence";
 import useAuth from "../../context/useAuth";
 
@@ -132,6 +134,7 @@ function AdminReportContent({
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState("");
   const [exportError, setExportError] = useState("");
+  const [teamView, setTeamView] = useState(() => savedReportState.teamView === "client" ? "client" : "employee");
 
   useEffect(() => {
     if (mode === "tracking") return;
@@ -226,6 +229,10 @@ function AdminReportContent({
   const projectDetails = useMemo(
     () => buildProjectWorkDetails(records, timelineRows),
     [records, timelineRows]
+  );
+  const clientDetails = useMemo(
+    () => variant === "team" ? buildClientTimesheet(records, timelineRows) : [],
+    [records, timelineRows, variant],
   );
 
   const resultCount = variant === "team"
@@ -337,8 +344,9 @@ function AdminReportContent({
       project,
       task,
       hasRun,
+      teamView,
     });
-  }, [employee, fromDate, hasRun, project, reportStorageKey, task, team, toDate]);
+  }, [employee, fromDate, hasRun, project, reportStorageKey, task, team, teamView, toDate]);
 
   useEffect(() => {
     if (restoredReportRef.current) return;
@@ -369,6 +377,13 @@ function AdminReportContent({
     }
 
     if (variant === "team") {
+      if (teamView === "client") return {
+        columns: ["Employee", "Client", "Project", "Task", "Sessions", "Worked", "Break", "Idle"],
+        rows: flattenClientTimesheet(clientDetails).map((row) => [
+          row.employee, row.client, row.project, row.task, row.sessions,
+          formatDuration(row.workedSeconds), formatDuration(row.breakSeconds), formatDuration(row.idleSeconds),
+        ]),
+      };
       return {
         columns: ["Employee", "Sessions", "Projects", "Tasks", "Worked", "Idle"],
         rows: teamRows.map((row) => [
@@ -586,6 +601,10 @@ function AdminReportContent({
           </header>
 
           {exportError && <p className="admin-report-message error-message" role="alert">{exportError}</p>}
+          {variant === "team" && mode === "time" && <div className="client-timesheet-view-buttons" role="group" aria-label="Team timesheet view">
+            <button type="button" aria-pressed={teamView === "employee"} onClick={() => setTeamView("employee")}>Employee</button>
+            <button type="button" aria-pressed={teamView === "client"} onClick={() => setTeamView("client")}>Client</button>
+          </div>}
           {error && (
             <p className="admin-report-message error-message" role="alert">{error}</p>
           )}
@@ -612,7 +631,8 @@ function AdminReportContent({
             </div>
           )}
 
-          {!error && mode === "time" && records.length > 0 && variant === "team" && (
+          {!error && mode === "time" && records.length > 0 && variant === "team" && teamView === "client" && <ClientTimesheet employees={clientDetails} />}
+          {!error && mode === "time" && records.length > 0 && variant === "team" && teamView === "employee" && (
             <div className="admin-report-table-wrap">
               <table>
                 <thead><tr><th>Employee</th><th>Sessions</th><th>Projects</th><th>Tasks</th><th>Worked</th><th>Idle</th></tr></thead>

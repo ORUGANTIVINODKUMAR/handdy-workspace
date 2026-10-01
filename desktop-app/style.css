@@ -211,3 +211,12 @@ body[data-page="dashboard"] .clock-status.status-break { color:#ff9fac; font-wei
 .device-login-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
 .device-login-actions button { min-height:42px; padding:0 17px; border-radius:9px; background:#2858b4; color:#fff; font-weight:700; }
 .device-login-actions .secondary-action { background:#eef2f8; color:#34445f; }
+
+.idle-started-dialog { width:min(460px,calc(100vw - 40px)); box-sizing:border-box; border:1px solid #dfe4ee; border-radius:18px; padding:28px; color:#17233a; background:#fff; box-shadow:0 24px 70px rgba(20,31,55,.22); }
+.idle-started-dialog::backdrop { background:rgba(20,31,55,.45); }
+.idle-started-dialog h2 { margin:8px 0 16px; font-size:24px; }
+.idle-started-dialog p { line-height:1.6; }
+.idle-started-time { color:#53617a; font-size:14px; }
+.idle-started-actions { display:flex; justify-content:flex-end; margin-top:24px; }
+.idle-started-actions button { padding:12px 20px; border-radius:9px; background:#2858b4; color:#fff; font-weight:700; }
+.idle-started-actions button:focus-visible { outline:3px solid #aac4ff; outline-offset:3px; }

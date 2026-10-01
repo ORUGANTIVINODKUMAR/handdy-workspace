@@ -141,6 +141,13 @@ app.whenReady().then(async () => {
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     assert.equal(timer, null);
     assert.equal(await win.webContents.executeJavaScript('document.getElementById("timerDuration").textContent'), "00:00:00");
+    assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), true);
+    assert.match(await evaluate("document.getElementById('idleStartedMessage').textContent"), /inactive for 5 minutes/);
+    fs.writeFileSync(path.resolve(__dirname, "../../dashboard/ui-review/idle-popup.png"), (await win.webContents.capturePage()).toPNG());
+    await evaluate("document.getElementById('acknowledgeIdleButton').click()");
+    assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), false);
+    await evaluate("checkSystemIdleState()");
+    assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), false);
     idleSeconds = 0;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     assert.equal(timer, null);
