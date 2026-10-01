@@ -1089,7 +1089,19 @@ function buildTimeLogTimeline(timeLog, now = Date.now()) {
     if (pauseStart > cursor) addEntry(activeSegmentType, cursor, pauseStart);
     const openPause = pause.endMs === null && stoppedAt === null;
     const pauseEnd = Math.min(sessionEnd, Math.max(pauseStart, pause.endMs ?? sessionEnd));
-    addEntry(isIdlePauseReason(pause.reason) ? "idle" : "break", pauseStart, pauseEnd, openPause);
+    if (pause.mergedIntoPreviousWork && pause.reason === "idle" && pause.endMs !== null) {
+      const effectiveStart = Math.max(pauseStart, cursor);
+      const previous = entries.at(-1);
+      if (previous?.type === "work" && previous.end?.getTime() === effectiveStart) {
+        previous.end = new Date(pauseEnd);
+        previous.milliseconds = Math.max(0, pauseEnd - previous.start.getTime());
+        previous.seconds = Math.floor(previous.milliseconds / 1000);
+      } else if (effectiveStart < pauseEnd) {
+        addEntry("work", effectiveStart, pauseEnd);
+      }
+    } else {
+      addEntry(isIdlePauseReason(pause.reason) ? "idle" : "break", pauseStart, pauseEnd, openPause);
+    }
     cursor = Math.max(cursor, pauseEnd);
   });
 
@@ -1357,7 +1369,7 @@ function calculateCurrentWorkSeconds(timeLog, now = Date.now()) {
       : now;
   const resolvedEnd = segmentEnd ?? now;
   const idleMilliseconds = (timeLog.pauses || []).reduce((total, pause) => {
-    if (!isIdlePauseReason(pause.reason) || !pause.pausedAt) return total;
+    if (!isIdlePauseReason(pause.reason) || !pause.pausedAt || pause.mergedIntoPreviousWork) return total;
     const pauseStart = Math.max(segmentStart, validTimelineTime(pause.pausedAt) ?? resolvedEnd);
     const pauseEnd = Math.min(
       resolvedEnd,
@@ -1625,7 +1637,8 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(idleSeconds > 0 ? { idleSeconds: Math.floor(idleSeconds) } : {}),
+        body: JSON.stringify(idleSeconds > 0
+          ? { idleSeconds: Math.floor(idleSeconds), timeLogId: currentTimeLog?._id } : {}),
         signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       }
     );

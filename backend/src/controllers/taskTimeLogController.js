@@ -9,6 +9,7 @@ const { getBillingDateRange, getDateKeyInTimezone } = require("../utils/billingU
 const sendErrorResponse = require("../utils/sendErrorResponse");
 const { isAdminRole } = require("../utils/roles");
 const { closeStaleDesktopTimers } = require("../services/desktopTimerLease");
+const { mergeCompletedIdlePauses, calculateTimeLogTotals } = require("../utils/idleSegmentMerge");
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
 
@@ -72,6 +73,7 @@ const clipTimeLogToRange = (log, range, now = new Date()) => {
   let totalPausedSeconds = 0;
   let totalIdleSeconds = 0;
   for (const pause of [...pauses].sort((a, b) => a.pausedAt - b.pausedAt)) {
+    if (pause.mergedIntoPreviousWork) continue;
     const effectiveStart = Math.max(pauseCursor, pause.pausedAt.getTime());
     const effectiveEnd = pause.resumedAt.getTime();
     if (effectiveEnd > effectiveStart) {
@@ -329,16 +331,38 @@ const resumeTimer = async (req, res) => {
             ...(reason === "idle" ? { "elem.reason": "idle" } : reason === "break" ? { "elem.reason": { $in: ["break", "manual"] } } : {}),
         };
 
+        // Finalize idle and its attribution in one document write. A snapshot
+        // guard rejects concurrent/retried events without adding time twice.
+        const idleSnapshot = reason !== "break"
+            ? await TaskTimeLog.findOne({ ...filter, "pauses.reason": "idle" }).lean()
+            : null;
+        let idleUpdate = null;
+        if (idleSnapshot) {
+            const resumedAt = new Date();
+            const candidate = {
+                ...idleSnapshot,
+                pauses: idleSnapshot.pauses.map((pause) => ({
+                    ...pause,
+                    resumedAt: !pause.resumedAt && (reason !== "idle" || pause.reason === "idle")
+                        ? resumedAt : pause.resumedAt,
+                })),
+            };
+            const isWork = await Task.exists({ _id: candidate.task, taskType: "work" });
+            if (mergeCompletedIdlePauses(candidate, isWork ? "work" : null)) {
+                idleUpdate = { pauses: candidate.pauses, status: "running",
+                    ...calculateTimeLogTotals(candidate, resumedAt) };
+            }
+        }
         const pausedTimer = await TaskTimeLog.findOneAndUpdate(
-            filter,
-            {
+            idleUpdate ? { ...filter, _id: idleSnapshot._id, pauses: idleSnapshot.pauses } : filter,
+            idleUpdate ? { $set: idleUpdate } : {
                 $set: {
                     "pauses.$[elem].resumedAt": new Date(),
                     status: "running",
                 },
             },
             {
-                arrayFilters: [pauseFilter],
+                ...(idleUpdate ? {} : { arrayFilters: [pauseFilter] }),
                 returnDocument: "after",
             }
         );
@@ -405,9 +429,10 @@ const stopTimer = async (req, res) => {
         const employeeId = req.user._id;
         await closeStaleDesktopTimers(new Date(), employeeId);
 
-        const activeTimer = await TaskTimeLog.findOne({
+        let activeTimer = await TaskTimeLog.findOne({
             employee: employeeId,
             status: { $in: ["running", "paused"] },
+            ...(req.body?.timeLogId ? { _id: req.body.timeLogId } : {}),
         });
 
         if (!activeTimer) {
@@ -418,6 +443,9 @@ const stopTimer = async (req, res) => {
         }
 
         const stoppedAt = new Date();
+        const originalPauses = activeTimer.pauses.map((pause) =>
+            typeof pause.toObject === "function" ? pause.toObject() : { ...pause });
+        const originalStatus = activeTimer.status;
         const reportedIdleSeconds = Number(req.body?.idleSeconds);
         if (activeTimer.status === "running" && Number.isInteger(reportedIdleSeconds) && reportedIdleSeconds >= 300) {
             const lastPauseEnd = (activeTimer.pauses || []).reduce((latest, pause) =>
@@ -469,7 +497,27 @@ const stopTimer = async (req, res) => {
             activeTimer.logoutReason = "manual";
         }
 
-        await activeTimer.save();
+        const hasIdle = activeTimer.pauses.some((pause) => pause.reason === "idle");
+        const isWork = hasIdle && activeTimer.task
+            ? await Task.exists({ _id: activeTimer.task, taskType: "work" }) : false;
+        const merged = mergeCompletedIdlePauses(activeTimer, isWork ? "work" : null);
+        if (merged || activeTimer.pauses.some((pause) => pause.mergedIntoPreviousWork)) {
+            Object.assign(activeTimer, calculateTimeLogTotals(activeTimer, stoppedAt));
+            const fields = ["pauses", "stoppedAt", "totalPausedSeconds", "totalIdleSeconds",
+                "totalWorkedSeconds", "status", "isActiveTimer", "logoutReason", "autoLogoutAt"];
+            const values = Object.fromEntries(fields.filter((key) => activeTimer[key] !== undefined)
+                .map((key) => [key, activeTimer[key]]));
+            activeTimer = await TaskTimeLog.findOneAndUpdate(
+                { _id: activeTimer._id, employee: employeeId, status: originalStatus,
+                    task: activeTimer.task, startedAt: activeTimer.startedAt, pauses: originalPauses },
+                { $set: values }, { returnDocument: "after", runValidators: true },
+            );
+            if (!activeTimer) {
+                return res.status(409).json({ success: false, message: "Timer changed. Refresh and try again." });
+            }
+        } else {
+            await activeTimer.save();
+        }
 
         return res.status(200).json({
             success: true,

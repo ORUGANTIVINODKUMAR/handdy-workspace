@@ -58,6 +58,37 @@ function harness({ timer = "running", idle = 0, outage = false, activeTaskIdleLo
   return { state, calls, context, nodes, intervals, run: source => vm.runInContext(source, context), check: () => context.checkSystemIdleState() };
 }
 
+test("desktop merged idle produces one preceding work row and matching timesheet totals", () => {
+  const h = harness();
+  const record = JSON.stringify({
+    startedAt: "2026-10-01T02:02:58Z", stoppedAt: "2026-10-01T02:08:09Z",
+    status: "stopped", totalWorkedSeconds: 311,
+    pauses: [{ reason: "idle", pausedAt: "2026-10-01T02:03:06Z",
+      resumedAt: "2026-10-01T02:08:09Z", mergedIntoPreviousWork: true }],
+  });
+  const rows = h.run(`buildTimeLogTimeline(${record})`);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].type, "work");
+  assert.equal(rows[0].seconds, 311);
+  assert.equal(rows[0].end.toISOString(), "2026-10-01T02:08:09.000Z");
+  assert.equal(h.run(`calculateCurrentWorkSeconds(${record}, new Date("2026-10-01T02:08:09Z").getTime())`), 311);
+});
+
+test("desktop restart restores merged time before a new open idle or break", () => {
+  const h = harness();
+  const record = {
+    startedAt: "2026-10-01T02:02:58Z", status: "paused",
+    pauses: [{ reason: "idle", pausedAt: "2026-10-01T02:03:06Z",
+      resumedAt: "2026-10-01T02:08:09Z", mergedIntoPreviousWork: true },
+    { reason: "idle", pausedAt: "2026-10-01T02:09:00Z", resumedAt: null }],
+  };
+  assert.equal(h.run(`calculateCurrentWorkSeconds(${JSON.stringify(record)}, new Date("2026-10-01T02:12:00Z").getTime())`), 362);
+  const rows = h.run(`buildTimeLogTimeline(${JSON.stringify(record)}, new Date("2026-10-01T02:12:00Z").getTime())`);
+  assert.equal(rows[0].seconds, 311);
+  assert.equal(rows.at(-1).type, "idle");
+  assert.equal(rows.at(-1).open, true);
+});
+
 test("five idle minutes stop work once and reset the task and clock", async () => {
   const h = harness();
   await h.check(); assert.equal(h.calls.length, 0);
@@ -65,6 +96,7 @@ test("five idle minutes stop work once and reset the task and clock", async () =
   await h.check(); await h.check();
   assert.equal(h.calls.filter(url => url.endsWith("/stop")).length, 1);
   assert.equal(h.state.stopBody.idleSeconds, 300);
+  assert.equal(h.state.stopBody.timeLogId, "existing");
   assert.equal(h.state.timer.status, "stopped");
   assert.equal(h.nodes.get("timerDuration").textContent, "00:00:00");
   assert.match(h.nodes.get("timerStatus").textContent, /Idle/);

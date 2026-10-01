@@ -54,7 +54,18 @@ export function buildTimeLogTimeline(record, now = Date.now()) {
     // counting the shared time in both entries and in the summed totals.
     const effectivePauseStart = Math.max(pauseStart, cursor);
     if (effectivePauseStart < pauseEnd) {
-      addEntry(isIntentionalBreak(pause) ? "break" : "idle", effectivePauseStart, pauseEnd, openPause);
+      if (pause.mergedIntoPreviousWork && pause.reason === "idle" && pause.endMs !== null) {
+        const previous = entries.at(-1);
+        if (previous?.type === "work" && validTime(previous.end) === effectivePauseStart) {
+          previous.end = new Date(pauseEnd).toISOString();
+          previous.durationSeconds = Math.floor((pauseEnd - validTime(previous.start)) / 1000);
+        } else {
+          // A date-range clip can begin inside an already merged idle pause.
+          addEntry("work", effectivePauseStart, pauseEnd);
+        }
+      } else {
+        addEntry(isIntentionalBreak(pause) ? "break" : "idle", effectivePauseStart, pauseEnd, openPause);
+      }
     }
     cursor = Math.max(cursor, pauseEnd);
   }

@@ -17,6 +17,9 @@ const pauseSchema = new mongoose.Schema(
       enum: ["manual", "idle", "break"],
       default: "manual",
     },
+    // Keep idle evidence while attributing its time only to preceding work.
+    // No default: existing stored pauses retain their representation.
+    mergedIntoPreviousWork: { type: Boolean },
   },
   {
     _id: false,

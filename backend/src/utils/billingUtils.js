@@ -100,7 +100,7 @@ const splitLogByDay = (log, rangeStart, rangeEnd, timezone) => {
   if (clippedEnd <= clippedStart) return [];
 
   const pauses = (log.pauses || []).
-    filter((pause) => pause.pausedAt && pause.resumedAt).
+    filter((pause) => pause.pausedAt && pause.resumedAt && !pause.mergedIntoPreviousWork).
     map((pause) => ({ start: new Date(pause.pausedAt), end: new Date(pause.resumedAt) }));
   const segments = [];
   let cursor = clippedStart;

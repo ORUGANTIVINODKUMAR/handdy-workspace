@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { getWorkedSeconds, getIdleSeconds, getPauseSeconds } from "../src/utils/timeLogReportHelpers.js";
 import test from "node:test";
 
 import {
@@ -107,6 +108,64 @@ test("task-filtered report timelines contain only work segments", () => {
   const filtered = buildReportTimeLogTimeline(record, { taskFiltered: true });
   assert.deepEqual(filtered.map((entry) => entry.type), ["work", "work", "work"]);
   assert.equal(filtered.reduce((sum, entry) => sum + entry.durationSeconds, 0), 480);
+});
+
+test("merged example displays 02:02:58–02:08:09 as one 311-second work entry", () => {
+  const record = {
+    _id: "task-a", startedAt: "2026-10-01T02:02:58Z", stoppedAt: "2026-10-01T02:08:09Z",
+    status: "stopped", totalWorkedSeconds: 311, totalIdleSeconds: 0,
+    pauses: [{ reason: "idle", pausedAt: "2026-10-01T02:03:06Z",
+      resumedAt: "2026-10-01T02:08:09Z", mergedIntoPreviousWork: true }],
+  };
+  const timeline = buildTimeLogTimeline(record);
+  assert.equal(timeline.length, 1);
+  assert.equal(timeline[0].type, "work");
+  assert.equal(timeline[0].start, "2026-10-01T02:02:58.000Z");
+  assert.equal(timeline[0].end, "2026-10-01T02:08:09.000Z");
+  assert.equal(timeline[0].durationSeconds, 311);
+  assert.equal(getWorkedSeconds(record), 311);
+  assert.equal(getIdleSeconds(record), 0);
+  assert.equal(getPauseSeconds(record), 0);
+  assert.equal(sumTimelineSeconds([record], "work"), 311);
+  assert.equal(sumTimelineSeconds([record], "idle"), 0);
+  assert.equal(buildChronologicalReportTimeline([record], { includeGaps: true }).length, 1);
+});
+
+test("a merged idle extends only previous work, preserving subsequent work and task-switch gaps", () => {
+  const record = {
+    _id: "a", startedAt: "2026-10-01T02:02:58Z", stoppedAt: "2026-10-01T02:09:00Z",
+    pauses: [{ reason: "idle", pausedAt: "2026-10-01T02:03:06Z",
+      resumedAt: "2026-10-01T02:08:09Z", mergedIntoPreviousWork: true }],
+  };
+  const timeline = buildTimeLogTimeline(record);
+  assert.deepEqual(timeline.map((entry) => entry.durationSeconds), [311, 51]);
+  const rows = buildChronologicalReportTimeline([record, {
+    _id: "b", startedAt: "2026-10-01T02:10:00Z", stoppedAt: "2026-10-01T02:11:00Z", pauses: [],
+  }], { includeGaps: true });
+  assert.equal(rows.filter(({ entry }) => entry.source === "between_sessions")[0].entry.durationSeconds, 60);
+});
+
+test("a report clipped inside merged idle retains its attributed work", () => {
+  const timeline = buildTimeLogTimeline({
+    startedAt: "2026-10-01T02:04:00Z", stoppedAt: "2026-10-01T02:08:00Z",
+    pauses: [{ reason: "idle", pausedAt: "2026-10-01T02:04:00Z",
+      resumedAt: "2026-10-01T02:08:00Z", mergedIntoPreviousWork: true }],
+  });
+  assert.deepEqual(timeline.map(({ type, durationSeconds }) => ({ type, durationSeconds })),
+    [{ type: "work", durationSeconds: 240 }]);
+});
+
+test("restored active totals include merged idle while an unfinished idle stays separate", () => {
+  const record = {
+    startedAt: new Date(Date.now() - 600_000).toISOString(), status: "running",
+    pauses: [{ reason: "idle", pausedAt: new Date(Date.now() - 500_000).toISOString(),
+      resumedAt: new Date(Date.now() - 200_000).toISOString(), mergedIntoPreviousWork: true }],
+  };
+  assert.ok(getWorkedSeconds(record) >= 600);
+  assert.equal(getIdleSeconds(record), 0);
+  record.pauses.push({ reason: "idle", pausedAt: new Date(Date.now() - 100_000).toISOString(), resumedAt: null });
+  assert.ok(getWorkedSeconds(record) >= 500 && getWorkedSeconds(record) <= 501);
+  assert.ok(getIdleSeconds(record) >= 100 && getIdleSeconds(record) <= 101);
 });
 
 test("clamps overlapping pauses so their shared time is never double-counted", () => {
