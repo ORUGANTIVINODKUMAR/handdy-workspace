@@ -71,13 +71,16 @@ test("idle popup appears once, acknowledges without resuming, and appears for th
   const dialog = h.nodes.get("idleStartedDialog");
   assert.equal(dialog.open, true);
   assert.equal(dialog.shown, 1);
-  assert.match(h.nodes.get("idleStartedMessage").textContent, /inactive for 5 minutes.*Idle time has started/);
+  assert.equal(h.nodes.get("idleStartedDuration").textContent, "05 mins");
+  assert.equal(h.nodes.get("idleLogoutCountdown").textContent, "25 Mins 00 Secs");
   assert.match(h.nodes.get("idleStartedTime").textContent, /Idle started at/);
   h.nodes.get("acknowledgeIdleButton").listeners.click();
   assert.equal(dialog.open, false);
+  assert.equal(h.run("idleNoticeInterval"), null);
   const calls = h.calls.length;
   await h.check(); await h.check();
   assert.equal(dialog.shown, 1);
+  assert.equal(h.intervals.size, 0, "acknowledgement removes the display interval");
   assert.equal(h.calls.length, calls);
   h.state.idle = 0;
   await h.check();
@@ -86,18 +89,80 @@ test("idle popup appears once, acknowledges without resuming, and appears for th
   h.context.nextSession = h.state.timer;
   h.run("currentTimeLog = nextSession");
   h.state.idle = 300;
+  h.run("idleAcknowledgedAt = Date.now() - 300_000");
   await h.check();
   assert.equal(dialog.shown, 2);
+  await h.check();
+  assert.equal(h.intervals.size, 1, "a new warning owns only one display interval");
 });
 
 test("idle popup uses the configured threshold and preserves independent idle records", async () => {
   const h = harness({ idle: 600 });
   h.run("idlePolicy = normalizedDesktopPolicy({ idleThresholdMinutes: 10, autoLogoutMinutes: 30 })");
   await h.check();
-  assert.match(h.nodes.get("idleStartedMessage").textContent, /inactive for 10 minutes/);
+  assert.equal(h.nodes.get("idleStartedDuration").textContent, "10 mins");
+  assert.equal(h.nodes.get("idleLogoutCountdown").textContent, "20 Mins 00 Secs");
   assert.equal(h.state.timer.pauses.at(-1).reason, "idle");
   assert.equal(h.state.timer.pauses.at(-1).mergedIntoPreviousWork, undefined);
   assert.equal(h.state.stopBody.idleSeconds, 600);
+});
+
+test("idle warning starts at five minutes and only Continue resets its fifty-minute countdown", async () => {
+  const h = harness({ idle: 300 });
+  h.run("idlePolicy = normalizedDesktopPolicy()");
+  await h.check();
+  assert.equal(h.nodes.get("idleStartedDuration").textContent, "05 mins");
+  assert.equal(h.nodes.get("idleLogoutCountdown").textContent, "45 Mins 00 Secs");
+  h.run("idleNoticeSnapshot.observedAt = Date.now() - 2200; updateIdleStartedPopup()");
+  assert.equal(h.nodes.get("idleLogoutCountdown").textContent, "44 Mins 58 Secs");
+  h.run("idleNoticeSnapshot.observedAt = Date.now() - 65_000");
+  h.state.idle = 0;
+  await h.check();
+  assert.equal(h.nodes.get("idleStartedDuration").textContent, "06 mins");
+  assert.equal(h.nodes.get("idleLogoutCountdown").textContent, "43 Mins 55 Secs");
+  assert.equal(h.nodes.get("idleStartedDialog").open, true, "mouse activity cannot close the warning");
+  h.nodes.get("acknowledgeIdleButton").listeners.click({ isTrusted: false });
+  assert.equal(h.nodes.get("idleStartedDialog").open, true, "programmatic clicks cannot acknowledge inactivity");
+  let cancelled = false;
+  h.nodes.get("idleStartedDialog").listeners.cancel({ preventDefault() { cancelled = true; } });
+  assert.equal(cancelled, true, "Escape cannot dismiss the warning");
+  const calls = h.calls.length;
+  await h.run("runTimerAction(() => stopTimer())");
+  assert.equal(h.calls.length, calls, "the modal prevents another timer action");
+  h.nodes.get("acknowledgeIdleButton").listeners.click({ isTrusted: true });
+  h.state.idle = 3000;
+  await h.check();
+  assert.ok(h.context.localStorage.getItem("token"), "Continue resets even a stale OS-idle reading");
+  assert.equal(h.run("currentTimeLog"), null);
+  h.run("idleAcknowledgedAt = Date.now() - 3000_000");
+  await h.check();
+  assert.equal(h.context.localStorage.getItem("token"), null, "existing OS monitor still logs out");
+  assert.equal(h.run("idleNoticeInterval"), null);
+  assert.equal(h.nodes.get("idleStartedDialog").open, false);
+});
+
+test("unacknowledged popup logs out at fifty minutes even after mouse or keyboard activity", async () => {
+  const h = harness({ idle: 299 });
+  h.run("idlePolicy = normalizedDesktopPolicy()");
+  await h.check();
+  assert.equal(h.nodes.get("idleStartedDialog").open, false);
+  h.state.idle = 300;
+  await h.check();
+  h.state.idle = 0;
+  h.run("idleNoticeSnapshot.observedAt = Date.now() - 2700_000");
+  await h.check();
+  assert.equal(h.context.localStorage.getItem("token"), null);
+  assert.equal(h.calls.filter(url => url.endsWith('/stop')).length, 1);
+  assert.equal(h.calls.filter(url => url.endsWith('/auth/logout')).length, 1);
+});
+
+test("thirty-second testing override is configured once without changing saved minute policies", () => {
+  const h = harness();
+  h.run("idleDefaults = { ...defaults, idleWarningTestSeconds: 30 }; idlePolicy = normalizedDesktopPolicy()");
+  assert.equal(h.run("idlePolicy.thresholdSeconds"), 30);
+  assert.equal(h.run("idlePolicy.logoutSeconds"), 3000);
+  h.run("showIdleStartedPopup(seed, 30)");
+  assert.equal(h.nodes.get("idleStartedDuration").textContent, '30 secs');
 });
 
 test("idle popup is absent before transition, during breaks, exemption, manual stop and network failure", async () => {
@@ -121,7 +186,26 @@ test("idle popup waits for a successful retry after an outage", async () => {
   assert.equal(h.nodes.get("idleStartedDialog").shown, 1);
 });
 
-test("five idle minutes stop work once and reset the task and clock", async () => {
+test("an offline idle stop freezes work and retries its original cutoff even after mouse activity", async () => {
+  const h = harness({ idle: 300, outage: true });
+  h.state.timer.startedAt = new Date(Date.now() - 600_000).toISOString();
+  await h.check();
+  assert.match(h.nodes.get("timerDuration").textContent, /00:05:0[01]/);
+  assert.ok(h.run("pendingIdleStop"));
+  const frozen = h.nodes.get("timerDuration").textContent;
+  h.run("pendingIdleStop.startedAt -= 60_000");
+  h.state.idle = 0;
+  await h.check();
+  assert.equal(h.nodes.get("timerDuration").textContent, frozen);
+  h.state.outage = false;
+  await h.check();
+  assert.ok(h.state.stopBody.idleSeconds >= 360);
+  assert.equal(h.state.timer.status, 'stopped');
+  assert.equal(h.run("pendingIdleStop"), null);
+  assert.equal(h.nodes.get("idleStartedDialog").shown, 1);
+});
+
+test("five idle minutes stop work once and reset the clock", async () => {
   const h = harness();
   await h.check(); assert.equal(h.calls.length, 0);
   h.state.idle = 300;
@@ -276,7 +360,7 @@ test("activity after idle stop cannot resume old work", async () => {
   assert.equal(h.calls.some(url => url.endsWith("/auth/logout")), false);
 });
 
-test("a later mouse movement still requires a fresh task selection", async () => {
+test("a later mouse movement leaves work stopped until Continue and Start", async () => {
   const h = harness({ idle: 300 }); await h.check();
   h.state.idle = 50; await h.check();
   assert.equal(h.state.timer.status, "stopped");
@@ -582,7 +666,7 @@ test("a restored idle-paused timer never auto-resumes after login", async () => 
 });
 
 test("settings outage uses defaults; pause outage blocks logout until retry succeeds", async () => {
-  const h = harness({ idle: 1800, outage: true });
+  const h = harness({ idle: 3000, outage: true });
   h.run("idlePolicy = null");
   await h.context.loadIdlePolicy();
   assert.equal(h.run("idlePolicy.logoutSeconds"), defaults.autoLogoutMinutes * 60);

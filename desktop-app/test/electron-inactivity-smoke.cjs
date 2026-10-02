@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
     let data = {};
     if (req.url === "/api/auth/login") data = { token: "local-test-token", user };
     else if (req.url === "/api/auth/me") data = { user };
-    else if (req.url === "/api/settings/idle-policy") data = { idlePolicy: { idleThresholdMinutes: 5, autoLogoutMinutes: 30 } };
+    else if (req.url === "/api/settings/idle-policy") data = { idlePolicy: { idleThresholdMinutes: 5, autoLogoutMinutes: 50 } };
     else if (req.url === "/api/time-logs/active") data = { timeLog: timer };
     else if (req.url.startsWith("/api/time-logs/history")) data = { timeLogs: [...completedLogs, ...(timer ? [timer] : [])] };
     else if (req.url === "/api/time-logs/start") {
@@ -86,6 +86,13 @@ app.whenReady().then(async () => {
       event.returnValue = { deviceId: "electron-smoke-device", deviceName: "Electron smoke test", clientType: "desktop" };
     });
     win = new BrowserWindow({ show: false, width: 1495, height: 1000, webPreferences: { preload: path.resolve(__dirname, "../preload.js"), contextIsolation: true, sandbox: true, nodeIntegration: false } });
+    const consoleErrors = [];
+    win.webContents.on('console-message', details => {
+      // The existing pages put frame-ancestors in a CSP meta tag. Chromium
+      // reports this unsupported meta directive independently of timer code.
+      const existingCspNotice = "The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a <meta> element.";
+      if (details.level === 'error' && details.message !== existingCspNotice) consoleErrors.push(details.message);
+    });
     await win.loadFile(path.resolve(__dirname, "../index.html"));
     const login = async () => {
       await win.webContents.executeJavaScript('document.getElementById("email").value="test@example.invalid"; document.getElementById("password").value="local-test-only"; document.getElementById("loginForm").requestSubmit();');
@@ -142,19 +149,41 @@ app.whenReady().then(async () => {
     assert.equal(timer, null);
     assert.equal(await win.webContents.executeJavaScript('document.getElementById("timerDuration").textContent'), "00:00:00");
     assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), true);
-    assert.match(await evaluate("document.getElementById('idleStartedMessage').textContent"), /inactive for 5 minutes/);
-    fs.writeFileSync(path.resolve(__dirname, "../../dashboard/ui-review/idle-popup.png"), (await win.webContents.capturePage()).toPNG());
+    assert.match(await evaluate("document.getElementById('idleStartedMessage').textContent"), /inactive for 05 mins/);
+    assert.equal(await evaluate("document.getElementById('idleLogoutCountdown').textContent"), '45 Mins 00 Secs');
+    assert.equal(await evaluate("document.getElementById('acknowledgeIdleButton').textContent"), 'Continue');
+    await delay(1100);
+    assert.notEqual(await evaluate("document.getElementById('idleLogoutCountdown').textContent"), '45 Mins 00 Secs');
+    assert.equal(await evaluate("document.getElementById('projectSelect').value"), 'project');
+    assert.equal(await evaluate("document.getElementById('taskSelect').value"), 'task');
+    idleSeconds = 0;
+    await evaluate("checkSystemIdleState()");
+    assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), true);
     await evaluate("document.getElementById('acknowledgeIdleButton').click()");
-    assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), false);
+    assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), true, 'synthetic click cannot confirm activity');
+    await evaluate("document.getElementById('acknowledgeIdleButton').focus()");
+    win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+    win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    await delay(100);
+    assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), true);
+    fs.writeFileSync(path.resolve(__dirname, "../../dashboard/ui-review/idle-popup.png"), (await win.webContents.capturePage()).toPNG());
+    const continuePoint = await evaluate(`(() => {
+      const rect = document.getElementById('acknowledgeIdleButton').getBoundingClientRect();
+      return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+    })()`);
+    win.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...continuePoint });
+    win.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...continuePoint });
+    await until(() => evaluate("!document.getElementById('idleStartedDialog').open"));
     await evaluate("checkSystemIdleState()");
     assert.equal(await evaluate("document.getElementById('idleStartedDialog').open"), false);
     idleSeconds = 0;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     assert.equal(timer, null);
-    idleSeconds = 1800;
+    idleSeconds = 3000;
+    await evaluate("idleAcknowledgedAt = Date.now() - 3000_000");
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     await until(() => win.webContents.getURL().endsWith("index.html"));
-    await until(() => win.webContents.executeJavaScript('document.getElementById("message")?.textContent === "You were logged out after 30 minutes of inactivity."'));
+    await until(() => win.webContents.executeJavaScript('document.getElementById("message")?.textContent === "You were logged out after 50 minutes of inactivity."'));
     assert.deepEqual(actions, ["stop", "logout"]);
     idleSeconds = 0;
     await login();
@@ -168,13 +197,14 @@ app.whenReady().then(async () => {
     // no-timer / no-task-opt-in scenario the desktop app previously never
     // exercised, and previously never enforced.
     assert.equal(await win.webContents.executeJavaScript("activeTaskIdleLogout"), false);
-    idleSeconds = 1800;
+    idleSeconds = 3000;
     await win.webContents.executeJavaScript("checkSystemIdleState()");
     await until(() => win.webContents.getURL().endsWith("index.html"));
     assert.deepEqual(actions, ["stop", "logout", "logout"]);
-    console.log("PASS: Electron break-task selection, idle stop, logout, and zeroed next session.");
+    assert.deepEqual(consoleErrors, [], 'no renderer console errors');
+    console.log("PASS: five-minute popup, live countdown, mandatory Continue, preserved selection, fifty-minute logout, breaks, and no timer runtime errors.");
   } catch (error) {
-    console.error(error.message);
+    console.error(error.stack || error.message);
     process.exitCode = 1;
   } finally {
     if (win) win.destroy();

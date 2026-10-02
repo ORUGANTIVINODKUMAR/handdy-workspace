@@ -127,6 +127,28 @@ test("desktop client selector uses all active clients and starts promptly", asyn
   assert.equal(h.run("timerStatus.textContent"), "Working");
 });
 
+test("idle stop preserves project/client/task for an explicit Start; manual Stop still clears the task", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  await h.context.loadClients();
+  await h.project.choose('p1');
+  await h.task.choose('t2');
+  await h.client.choose('client-b');
+  await h.context.startTimer();
+  await h.context.stopTimer({ idleSeconds: 300 });
+  assert.equal(h.project.value, 'p1');
+  assert.equal(h.task.value, 't2');
+  assert.equal(h.client.value, 'client-b');
+  await h.context.refreshDesktopData();
+  assert.equal(h.task.value, 't2');
+  await h.context.startTimer();
+  assert.deepEqual(h.state.startBodies.map(({ project, client, task }) => ({ project, client, task })), [
+    { project: 'p1', client: 'client-b', task: 't2' }, { project: 'p1', client: 'client-b', task: 't2' },
+  ]);
+  await h.context.stopTimer();
+  assert.equal(h.task.value, '');
+});
+
 test("selected project and task survive repeated and overlapping background refreshes", async () => {
   const h = harness();
   await h.context.loadProjects();

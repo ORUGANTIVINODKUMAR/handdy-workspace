@@ -66,7 +66,7 @@ export async function exportReportExcel({
   });
 
   rows.forEach((row) => worksheet.addRow(row));
-  const lastRow = Math.max(6, 5 + rows.length);
+  const lastRow = 6 + rows.length;
   worksheet.autoFilter = { from: { row: 6, column: 1 }, to: { row: lastRow, column: columns.length } };
   worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber > 6 && rowNumber % 2 === 0) {

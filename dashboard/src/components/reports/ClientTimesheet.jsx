@@ -11,8 +11,8 @@ function TimeTotals({ node }) {
 
 export default function ClientTimesheet({ employees }) {
   return <div className="client-timesheet" aria-label="Timesheet by employee, client, project and task">
-    <p className="client-timesheet-help">Expand an employee, client and project to view tasks. Worked time excludes breaks and idle. Older entries with an ambiguous client appear under Unassigned client.</p>
-    {employees.map((employee) => <details className="client-timesheet-employee" key={employee.key} open>
+    <p className="client-timesheet-help">Expand a row to see clients, projects and tasks. Worked time excludes breaks and idle.</p>
+    {employees.map((employee) => <details className="client-timesheet-employee" key={employee.key}>
       <summary><span><small>Employee</small>{employee.name}</span><TimeTotals node={employee} /></summary>
       <div className="client-timesheet-children">
         {employee.clients.map((client) => <details className="client-timesheet-client" key={client.key}>

@@ -24,6 +24,8 @@ const clientReportLogs = [
   totalWorkedSeconds: seconds, totalIdleSeconds: 0, pauses: [],
 }));
 const server = http.createServer((req, res) => {
+  // Match production: export libraries must work without unsafe-eval or inline scripts.
+  res.setHeader('Content-Security-Policy', "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'");
   const url = new URL(req.url, "http://localhost");
   if (url.pathname.startsWith("/api/")) {
     const endpoint = url.pathname.slice(4);
@@ -145,12 +147,42 @@ app.whenReady().then(async () => {
     assert.equal(await evaluate("document.querySelectorAll('.client-timesheet-employee').length"), 1);
     assert.equal(await evaluate("document.querySelectorAll('.client-timesheet-project').length"), 3);
     assert.equal(await evaluate("document.querySelectorAll('.client-timesheet tbody tr').length"), 4);
+    assert.equal(await evaluate("document.querySelector('.client-timesheet-employee').open"), false);
+    await evaluate("document.querySelector('.client-timesheet-employee > summary').click()");
     assert.ok((await evaluate("document.querySelector('.client-timesheet-employee > summary').textContent")).includes('Worked 10m'));
+    const exports = [];
+    win.webContents.session.on('will-download', (_event, item) => {
+      const output = path.resolve(__dirname, '../../dashboard/ui-review', `client-timesheet-export${path.extname(item.getFilename())}`);
+      item.setSavePath(output);
+      item.once('done', (_downloadEvent, state) => exports.push({ output, state }));
+    });
+    for (const format of ['Excel', 'PDF']) {
+      await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Export ${format}')).click()`);
+      for (let attempt = 0; attempt < 150 && exports.length < (format === 'Excel' ? 1 : 2); attempt++) {
+        const error = await evaluate("document.querySelector('.admin-report-message[role=alert]')?.textContent");
+        assert.ok(!error, error);
+        await delay(100);
+      }
+      assert.equal(exports.length, format === 'Excel' ? 1 : 2, `${format} download completed`);
+      assert.equal(exports.at(-1).state, 'completed');
+      assert.ok(fs.statSync(exports.at(-1).output).size > 1000);
+    }
+    const ExcelJS = require('../../dashboard/node_modules/exceljs');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(exports[0].output);
+    const sheet = workbook.worksheets[0];
+    assert.deepEqual(sheet.getRow(6).values.slice(1), ['Employee', 'Client', 'Project', 'Task', 'Sessions', 'Worked', 'Break', 'Idle']);
+    assert.equal(sheet.rowCount, 10, 'four task rows, without duplicated parent totals');
+    assert.deepEqual(sheet.autoFilter, 'A6:H10', 'Excel filtering includes the final task');
+    assert.deepEqual(sheet.getRow(7).values.slice(1), ['John', 'ABC Corporation', 'Bookkeeping', 'Monthly', 1, '3m', '0s', '0s']);
+    assert.match(fs.readFileSync(exports[1].output, 'latin1'), /ABC Corporation/);
+    assert.match(fs.readFileSync(exports[1].output, 'latin1'), /Reconciliation/);
     assert.equal(await evaluate(`(() => {
       const buttons = [...document.querySelectorAll('.client-timesheet-view-buttons button')];
       return getComputedStyle(buttons[0]).backgroundColor !== getComputedStyle(buttons[1]).backgroundColor;
     })()`), true);
     await evaluate("document.querySelectorAll('.client-timesheet details').forEach(node => node.open = true)");
+    assert.equal(await evaluate("[...document.querySelectorAll('.client-timesheet summary')].every(row => row.getBoundingClientRect().height <= 44)"), true);
     await evaluate("document.querySelector('.client-timesheet-client > summary').click()");
     assert.equal(await evaluate("document.querySelector('.client-timesheet-client').open"), false);
     await evaluate("document.querySelector('.client-timesheet-client > summary').click()");
@@ -159,15 +191,20 @@ app.whenReady().then(async () => {
     assert.equal(await evaluate("document.querySelector('.client-timesheet')"), null);
     assert.ok((await evaluate("document.querySelector('.admin-report-results').textContent")).includes('John'));
     await evaluate(`document.querySelector('[aria-label="Team timesheet view"] button:last-child').click()`);
+    await until("document.querySelector('[aria-label=\"Team timesheet view\"] button:last-child').getAttribute('aria-pressed') === 'true' && !!document.querySelector('.client-timesheet')");
     const screenshotPath = path.resolve(__dirname, "../../dashboard/ui-review/client-timesheet.png");
     await evaluate("document.querySelectorAll('.client-timesheet details').forEach(node => node.open = true)");
     win.setSize(1200, 1100);
     await delay(250);
     await evaluate("document.querySelector('.client-timesheet').scrollIntoView({block: 'start'})");
-    await delay(200);
+    win.webContents.invalidate();
+    await delay(1000);
     fs.writeFileSync(screenshotPath, (await win.webContents.capturePage()).toPNG());
     win.setSize(520, 900);
     await delay(250);
+    await evaluate("document.querySelector('.client-timesheet').scrollIntoView({block: 'start'})");
+    win.webContents.invalidate();
+    await delay(1000);
     assert.equal(await evaluate("document.documentElement.scrollWidth <= window.innerWidth"), true);
     fs.writeFileSync(path.resolve(__dirname, "../../dashboard/ui-review/client-timesheet-mobile.png"), (await win.webContents.capturePage()).toPNG());
     win.setSize(1200, 900);
@@ -181,7 +218,7 @@ app.whenReady().then(async () => {
     revoked = true;
     await until("location.pathname === '/login'");
     assert.equal(await evaluate("localStorage.getItem('token')"), null);
-    console.log("PASS: Teams polling, navigation, bulk task controls, session restoration, slow report completion, device approval, and session revocation.");
+    console.log("PASS: Teams polling, navigation, bulk task controls, session restoration, compact Client timesheets, Excel/PDF downloads, device approval, and session revocation.");
   } catch (error) {
     console.error(error);
     process.exitCode = 1;

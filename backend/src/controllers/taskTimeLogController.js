@@ -428,7 +428,7 @@ const stopTimer = async (req, res) => {
 
         const stoppedAt = new Date();
         const reportedIdleSeconds = Number(req.body?.idleSeconds);
-        if (activeTimer.status === "running" && Number.isInteger(reportedIdleSeconds) && reportedIdleSeconds >= 300) {
+        if (activeTimer.status === "running" && Number.isInteger(reportedIdleSeconds) && reportedIdleSeconds > 0) {
             const lastPauseEnd = (activeTimer.pauses || []).reduce((latest, pause) =>
                 Math.max(latest, new Date(pause.resumedAt || pause.pausedAt).getTime()), activeTimer.startedAt.getTime());
             const idleStart = Math.max(lastPauseEnd, stoppedAt.getTime() - Math.min(reportedIdleSeconds, 12 * 60 * 60) * 1000);

@@ -61,12 +61,12 @@
         </div>
       </section>
     </main>
-    <dialog id="idleStartedDialog" class="idle-started-dialog" aria-labelledby="idleStartedTitle" aria-describedby="idleStartedMessage idleStartedTime">
-      <p class="section-eyebrow">ACTIVITY NOTICE</p>
-      <h2 id="idleStartedTitle">Idle time has started</h2>
-      <p id="idleStartedMessage"></p>
+    <dialog id="idleStartedDialog" class="idle-started-dialog" closedby="none" aria-label="Idle time has started" aria-describedby="idleStartedMessage idleStartedExplanation idleStartedTime">
+      <p id="idleStartedMessage" class="idle-started-heading">You have been inactive for <strong id="idleStartedDuration"></strong>.</p>
+      <p class="idle-started-heading">CRM will log out in <strong id="idleLogoutCountdown"></strong>.</p>
+      <p id="idleStartedExplanation" class="idle-started-explanation">We have stopped the timer because you were inactive.<br>Please restart it after you come back.</p>
       <p id="idleStartedTime" class="idle-started-time" hidden></p>
-      <div class="idle-started-actions"><button id="acknowledgeIdleButton" type="button" autofocus>OK / Acknowledge</button></div>
+      <div class="idle-started-actions"><button id="acknowledgeIdleButton" type="button" autofocus>Continue</button></div>
     </dialog>
     <script src="./renderer.js"></script>
   </body>

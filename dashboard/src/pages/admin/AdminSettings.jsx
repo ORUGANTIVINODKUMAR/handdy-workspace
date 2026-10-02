@@ -17,7 +17,7 @@ import "../../styles/adminSettings.css";
 // and enforces the real limits regardless of what this form sends.
 const idleDefaults = {
   idleThresholdMinutes: 5,
-  autoLogoutMinutes: 30,
+  autoLogoutMinutes: 50,
   minIdleMinutes: 1,
   maxIdleMinutes: 240,
   minLogoutMinutes: 2,

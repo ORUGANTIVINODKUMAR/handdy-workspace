@@ -5,7 +5,7 @@
 // file's contents if the require fails.
 const FALLBACK_DEFAULTS = {
   idleThresholdMinutes: 5,
-  autoLogoutMinutes: 30,
+  autoLogoutMinutes: 50,
   minIdleMinutes: 1,
   maxIdleMinutes: 240,
   minLogoutMinutes: 2,

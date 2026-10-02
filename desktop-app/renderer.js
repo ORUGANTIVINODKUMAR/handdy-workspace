@@ -80,7 +80,8 @@ const deviceLoginMessage = document.getElementById("deviceLoginMessage");
 const keepThisDeviceButton = document.getElementById("keepThisDeviceButton");
 const allowNewDeviceButton = document.getElementById("allowNewDeviceButton");
 const idleStartedDialog = document.getElementById("idleStartedDialog");
-const idleStartedMessage = document.getElementById("idleStartedMessage");
+const idleStartedDuration = document.getElementById("idleStartedDuration");
+const idleLogoutCountdown = document.getElementById("idleLogoutCountdown");
 const idleStartedTime = document.getElementById("idleStartedTime");
 const acknowledgeIdleButton = document.getElementById("acknowledgeIdleButton");
 
@@ -98,6 +99,10 @@ let idlePolicyRefreshInterval = null;
 let dataRefreshInterval = null;
 let idleCheckInProgress = false;
 let lastIdleNoticeKey = null;
+let idleNoticeInterval = null;
+let idleNoticeSnapshot = null;
+let idleAcknowledgedAt = null;
+let pendingIdleStop = null;
 let idlePolicy = null;
 let currentTimeLog = null;
 let automaticIdlePause = false;
@@ -252,7 +257,10 @@ function normalizedDesktopPolicy(policy = {}) {
     ? logout
     : Math.max(idleDefaults.autoLogoutMinutes, thresholdMinutes + 1);
   return {
-    thresholdSeconds: thresholdMinutes * 60,
+    // Local testing override: set idleWarningTestSeconds to 30 in the shared
+    // defaults, then restore it to 0 to use the administrator's minute policy.
+    thresholdSeconds: Number(idleDefaults.idleWarningTestSeconds) > 0
+      ? Number(idleDefaults.idleWarningTestSeconds) : thresholdMinutes * 60,
     logoutSeconds: logoutMinutes * 60,
     exempt: Boolean(policy.idleTrackingExempt),
   };
@@ -288,11 +296,14 @@ function clearSessionLoops() {
   timerHeartbeatInterval = null;
   automaticIdlePause = false;
   lastIdleNoticeKey = null;
+  idleAcknowledgedAt = null;
+  pendingIdleStop = null;
+  clearIdleNoticeDisplay();
   if (idleStartedDialog?.open) idleStartedDialog.close();
 }
 
 async function runTimerAction(action) {
-  if (logoutPending || appClosePending || !getToken() || timerAction) return;
+  if (logoutPending || appClosePending || !getToken() || timerAction || idleStartedDialog?.open) return;
   timerAction = action();
   try { return await timerAction; } finally { timerAction = null; }
 }
@@ -321,7 +332,8 @@ async function signOut(inactivity = false) {
           const stopResponse = await fetch(API_BASE_URL + "/time-logs/stop", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-            body: JSON.stringify({ logoutReason: inactivity ? "inactivity" : "manual" }),
+            body: JSON.stringify({ logoutReason: inactivity ? "inactivity" : "manual",
+              ...(pendingIdleStop ? { idleSeconds: Math.max(1, Math.floor((Date.now() - pendingIdleStop.startedAt) / 1000)) } : {}) }),
             signal: AbortSignal.timeout(10000),
           });
           if (!stopResponse.ok && stopResponse.status !== 404) throw new Error("Timer close pending");
@@ -380,32 +392,74 @@ async function signOut(inactivity = false) {
   }
 }
 
+function clearIdleNoticeDisplay() {
+  clearInterval(idleNoticeInterval);
+  idleNoticeInterval = null;
+  idleNoticeSnapshot = null;
+}
+
+function getIdleNoticeSeconds() {
+  if (!idleNoticeSnapshot) return 0;
+  return Math.max(0, Math.floor(idleNoticeSnapshot.seconds + (Date.now() - idleNoticeSnapshot.observedAt) / 1000));
+}
+
+function updateIdleStartedPopup() {
+  if (!idleStartedDialog?.open || !idlePolicy) return;
+  if (!idleNoticeSnapshot) return;
+  // This interval only paints the notice. OS-idle polling remains the sole
+  // source for activity, stopping the timer and enforcing automatic logout.
+  const inactive = getIdleNoticeSeconds();
+  const remaining = Math.max(0, idlePolicy.logoutSeconds - inactive);
+  idleStartedDuration.textContent = inactive < 60
+    ? `${String(inactive).padStart(2, "0")} secs`
+    : `${String(Math.floor(inactive / 60)).padStart(2, "0")} mins`;
+  idleLogoutCountdown.textContent = `${String(Math.floor(remaining / 60)).padStart(2, "0")} Mins ${String(remaining % 60).padStart(2, "0")} Secs`;
+}
+
 function showIdleStartedPopup(timeLog, idleSeconds) {
   if (!idleStartedDialog || typeof idleStartedDialog.showModal !== "function") return;
   const noticeKey = timeLog?._id || timeLog?.stoppedAt;
   if (noticeKey && noticeKey === lastIdleNoticeKey) return;
   lastIdleNoticeKey = noticeKey;
-  const minutes = (idlePolicy?.thresholdSeconds || idleSeconds) / 60;
-  idleStartedMessage.textContent = `You have been inactive for ${minutes} minute${minutes === 1 ? "" : "s"}. Idle time has started.`;
   const idlePause = [...(timeLog?.pauses || [])].reverse().find((pause) => pause.reason === "idle");
   const idleStart = validTimelineTime(idlePause?.pausedAt);
   idleStartedTime.textContent = idleStart === null ? "" : `Idle started at ${new Date(idleStart).toLocaleTimeString()}.`;
   idleStartedTime.hidden = idleStart === null;
   if (!idleStartedDialog.open) idleStartedDialog.showModal();
+  clearIdleNoticeDisplay();
+  idleNoticeSnapshot = { seconds: idleSeconds, observedAt: Date.now() };
+  updateIdleStartedPopup();
+  idleNoticeInterval = setInterval(updateIdleStartedPopup, 1000);
 }
 
 async function checkSystemIdleState() {
   if (idleCheckInProgress || appClosePending || !idlePolicy || !getToken()) return;
   idleCheckInProgress = true;
   try {
-    const idleSeconds = await window.electronAPI.getSystemIdleTime();
+    const systemIdleSeconds = await window.electronAPI.getSystemIdleTime();
     if (!getToken()) return;
+    // Returning activity does not acknowledge an open warning. The employee
+    // must press Continue; until then its inactivity/countdown remains live.
+    const idleSeconds = idleStartedDialog?.open ? getIdleNoticeSeconds()
+      : idleAcknowledgedAt === null ? systemIdleSeconds
+        : Math.min(systemIdleSeconds, Math.max(0, Math.floor((Date.now() - idleAcknowledgedAt) / 1000)));
+    updateIdleStartedPopup();
     // Close the work session at the first idle poll. The backend records the
     // preceding OS-idle interval as an idle pause, not as worked time.
     if (!isIntentionalBreak() && !idlePolicy.exempt
       && currentTimeLog?.status === "running" && !isBreakTask()
-      && idleSeconds >= idlePolicy.thresholdSeconds) {
-      await runTimerAction(() => stopTimer({ idleSeconds }));
+      && (pendingIdleStop || idleSeconds >= idlePolicy.thresholdSeconds)) {
+      if (!pendingIdleStop) {
+        pendingIdleStop = { startedAt: Date.now() - idleSeconds * 1000 };
+        stopLiveDuration();
+        const frozen = { ...currentTimeLog, pauses: [...(currentTimeLog.pauses || []),
+          { reason: "idle", pausedAt: new Date(pendingIdleStop.startedAt).toISOString() }] };
+        timerDuration.textContent = formatDuration(calculateCurrentWorkSeconds(frozen));
+        if (pauseTimerButton) pauseTimerButton.disabled = true;
+        if (resumeTimerButton) resumeTimerButton.disabled = true;
+      }
+      await runTimerAction(() => stopTimer({ idleSeconds: Math.max(idleSeconds,
+        Math.floor((Date.now() - pendingIdleStop.startedAt) / 1000)) }));
     }
     // Session-level auto-logout applies to every logged-in session regardless
     // of timer state, task type, intentional break, or the old per-task flag.
@@ -415,8 +469,8 @@ async function checkSystemIdleState() {
       await signOut(true);
       return;
     }
-    // Activity never resumes an idle-ended task. The employee selects a task
-    // and presses Start to begin a fresh zeroed session.
+    // Activity never resumes an idle-ended task. Continue acknowledges the
+    // warning; Start explicitly opens the next session on the selected task.
   } catch {
     if (timerMessage) timerMessage.textContent = "CRM could not check inactivity. Please try again.";
   } finally {
@@ -1544,6 +1598,7 @@ async function loadActiveTimer() {
     stopLiveDuration();
     if (!data.timeLog) {
       currentTimeLog = null;
+      pendingIdleStop = null;
       automaticIdlePause = false;
       activeTaskIdleLogout = false;
       // A completed/closed timer must never leave a hidden task ID that can
@@ -1626,6 +1681,7 @@ async function loadActiveTimer() {
   }
 }
 async function stopTimer({ idleSeconds = 0 } = {}) {
+  if (pendingIdleStop) idleSeconds = Math.max(idleSeconds, Math.floor((Date.now() - pendingIdleStop.startedAt) / 1000));
   const token = getToken();
 
   timerMessage.textContent = "";
@@ -1674,9 +1730,12 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
     currentTimeLog = null;
     automaticIdlePause = false;
     activeTaskIdleLogout = false;
-    setSelectedTaskId("", "timer stopped");
-    taskSelect.value = "";
-    timerStatus.textContent = idleSeconds > 0 ? "Idle — select a task" : "Stopped";
+    pendingIdleStop = null;
+    if (idleSeconds <= 0) {
+      setSelectedTaskId("", "timer stopped");
+      taskSelect.value = "";
+    }
+    timerStatus.textContent = idleSeconds > 0 ? "Idle" : "Stopped";
     updateBreakUI(null);
     updateNoteControlsUI(null);
 
@@ -1685,7 +1744,7 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
     timerDuration.textContent = "00:00:00";
 
     timerMessage.textContent = idleSeconds > 0
-      ? "Five minutes without activity ended this task. Select a task and press Start to work again."
+      ? "Your timer stopped due to inactivity. Click Continue, then Start to work again."
       : data.message || "Timer stopped successfully.";
 
     startTimerButton.disabled = false;
@@ -2141,7 +2200,15 @@ stopTimerButton?.addEventListener(
   () => runTimerAction(stopTimer)
 );
 logoutButton?.addEventListener("click", () => signOut(false));
-acknowledgeIdleButton?.addEventListener("click", () => idleStartedDialog.close());
+acknowledgeIdleButton?.addEventListener("click", (event) => {
+  if (event && !event.isTrusted) return;
+  idleAcknowledgedAt = Date.now();
+  clearIdleNoticeDisplay();
+  idleStartedDialog.close();
+  if (timerMessage) timerMessage.textContent = "Idle time was saved separately. Press Start to continue the selected task.";
+});
+idleStartedDialog?.addEventListener("cancel", (event) => event.preventDefault());
+idleStartedDialog?.addEventListener("close", clearIdleNoticeDisplay);
 keepThisDeviceButton?.addEventListener("click", () => decideDeviceLogin("deny"));
 allowNewDeviceButton?.addEventListener("click", () => decideDeviceLogin("allow"));
 
