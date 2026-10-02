@@ -4,7 +4,6 @@ import "../../styles/clientTimesheet.css";
 function TimeTotals({ node }) {
   return <span className="client-timesheet-totals">
     <strong>Worked {formatReportDuration(node.workedSeconds)}</strong>
-    <span>Break {formatReportDuration(node.breakSeconds)}</span>
     <span>Idle {formatReportDuration(node.idleSeconds)}</span>
   </span>;
 }
@@ -21,10 +20,10 @@ export default function ClientTimesheet({ employees }) {
             {client.projects.map((project) => <details className="client-timesheet-project" key={project.key}>
               <summary><span><small>Project</small>{project.name}</span><TimeTotals node={project} /></summary>
               <div className="admin-report-table-wrap"><table>
-                <thead><tr><th>Task</th><th>Sessions</th><th>Worked</th><th>Break</th><th>Idle</th></tr></thead>
+                <thead><tr><th>Task</th><th>Sessions</th><th>Worked</th><th>Idle</th></tr></thead>
                 <tbody>{project.tasks.map((task) => <tr key={task.key}>
                   <td>{task.name}</td><td>{task.sessions}</td><td>{formatReportDuration(task.workedSeconds)}</td>
-                  <td>{formatReportDuration(task.breakSeconds)}</td><td>{formatReportDuration(task.idleSeconds)}</td>
+                  <td>{formatReportDuration(task.idleSeconds)}</td>
                 </tr>)}</tbody>
               </table></div>
             </details>)}

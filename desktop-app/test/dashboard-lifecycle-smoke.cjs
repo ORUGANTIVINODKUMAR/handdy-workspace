@@ -8,6 +8,7 @@ const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "../../dashboard/dist");
 const user = { _id: "test-admin", role: "admin", fullName: "Test Admin", permissions: [] };
 const calls = new Map();
+const lastQueries = new Map();
 let revoked = false;
 let pending = false;
 let clientReportEnabled = false;
@@ -30,6 +31,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname.startsWith("/api/")) {
     const endpoint = url.pathname.slice(4);
     calls.set(endpoint, (calls.get(endpoint) || 0) + 1);
+    lastQueries.set(endpoint, url.searchParams);
     setTimeout(() => {
       res.setHeader("Content-Type", "application/json");
       if (revoked) {
@@ -140,8 +142,19 @@ app.whenReady().then(async () => {
     clientReportEnabled = true;
     await evaluate(`document.querySelector('a[href="/admin/timesheets/team"]').click()`);
     await until(`location.pathname === '/admin/timesheets/team'`);
+    // The team timesheet filters by team, project and task (no employee filter).
+    await until(`!!document.querySelector('select[aria-label="Team"] option[value="team"]')`);
+    assert.equal(await evaluate(`document.querySelector('select[aria-label="Employee"]')`), null);
+    assert.ok(await evaluate(`!!document.querySelector('select[aria-label="Project"]') && !!document.querySelector('select[aria-label="Task"]')`));
+    await evaluate(`(() => {
+      const select = document.querySelector('select[aria-label="Team"]');
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'team');
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
     await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Generate')).click()`);
     await until(`document.querySelector('.admin-report-results').textContent.includes('John')`);
+    assert.equal(lastQueries.get('/time-logs/admin').get('team'), 'team', 'the selected team is sent to the report API');
+    assert.equal(lastQueries.get('/time-logs/admin').has('employee'), false);
     await evaluate(`document.querySelector('[aria-label="Team timesheet view"] button:last-child').click()`);
     await until(`document.querySelectorAll('.client-timesheet-client').length === 2`);
     assert.equal(await evaluate("document.querySelectorAll('.client-timesheet-employee').length"), 1);
@@ -150,6 +163,9 @@ app.whenReady().then(async () => {
     assert.equal(await evaluate("document.querySelector('.client-timesheet-employee').open"), false);
     await evaluate("document.querySelector('.client-timesheet-employee > summary').click()");
     assert.ok((await evaluate("document.querySelector('.client-timesheet-employee > summary').textContent")).includes('Worked 10m'));
+    // The client view shows worked and idle time only, never break time.
+    assert.equal(await evaluate("/Break/.test(document.querySelector('.client-timesheet').textContent)"), false);
+    assert.equal(await evaluate("document.querySelector('.admin-report-break-total')"), null);
     const exports = [];
     win.webContents.session.on('will-download', (_event, item) => {
       const output = path.resolve(__dirname, '../../dashboard/ui-review', `client-timesheet-export${path.extname(item.getFilename())}`);
@@ -171,10 +187,10 @@ app.whenReady().then(async () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(exports[0].output);
     const sheet = workbook.worksheets[0];
-    assert.deepEqual(sheet.getRow(6).values.slice(1), ['Employee', 'Client', 'Project', 'Task', 'Sessions', 'Worked', 'Break', 'Idle']);
+    assert.deepEqual(sheet.getRow(6).values.slice(1), ['Employee', 'Client', 'Project', 'Task', 'Sessions', 'Worked', 'Idle']);
     assert.equal(sheet.rowCount, 10, 'four task rows, without duplicated parent totals');
-    assert.deepEqual(sheet.autoFilter, 'A6:H10', 'Excel filtering includes the final task');
-    assert.deepEqual(sheet.getRow(7).values.slice(1), ['John', 'ABC Corporation', 'Bookkeeping', 'Monthly', 1, '3m', '0s', '0s']);
+    assert.deepEqual(sheet.autoFilter, 'A6:G10', 'Excel filtering includes the final task');
+    assert.deepEqual(sheet.getRow(7).values.slice(1), ['John', 'ABC Corporation', 'Bookkeeping', 'Monthly', 1, '3m', '0s']);
     assert.match(fs.readFileSync(exports[1].output, 'latin1'), /ABC Corporation/);
     assert.match(fs.readFileSync(exports[1].output, 'latin1'), /Reconciliation/);
     assert.equal(await evaluate(`(() => {

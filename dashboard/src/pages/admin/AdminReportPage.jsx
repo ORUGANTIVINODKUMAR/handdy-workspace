@@ -18,7 +18,7 @@ import { exportReportExcel, exportReportPdf } from "../../utils/reportExport";
 import useDataRefresh from "../../hooks/useDataRefresh";
 import { buildChronologicalReportTimeline, sumTimelineSeconds } from "../../utils/timeLogTimeline";
 import { formatReportDateTime, formatReportDuration, reportEntryStatus } from "../../utils/reportFormatting";
-import { getIdleSeconds, getWorkedSeconds, localDate } from "../../utils/timeLogReportHelpers";
+import { getIdleSeconds, getWorkedSeconds, localDate, projectServesTeam } from "../../utils/timeLogReportHelpers";
 import { buildProjectWorkDetails } from "../../utils/projectWorkDetails";
 import { buildClientTimesheet, flattenClientTimesheet } from "../../utils/clientTimesheet";
 import ClientTimesheet from "../../components/reports/ClientTimesheet";
@@ -85,13 +85,17 @@ function AdminReportContent({
   const { pathname } = useLocation();
   const { user } = useAuth();
   const reportStorageKey = `crm-report:${user?._id || user?.email || "user"}:${pathname}`;
+  // The team timesheet filters by team instead of by employee.
+  const hasTeamFilter = variant === "project" || variant === "team";
+  const showEmployeeFilter = allowEmployeeFilter && variant !== "team";
   const [savedReportState] = useState(() => {
     const saved = readReportState(reportStorageKey);
     // Older navigations could copy the Project Hours team into this route's
-    // storage. Other reports have no team control, so discard that filter.
-    return variant !== "project" && saved.team
-      ? { ...saved, team: "", employee: "" }
-      : saved;
+    // storage. Reports without a team control discard that filter, and a
+    // report without an employee control must not apply a hidden saved one.
+    if (!hasTeamFilter && saved.team) return { ...saved, team: "", employee: "" };
+    if (!showEmployeeFilter && saved.employee) return { ...saved, employee: "" };
+    return saved;
   });
   const restoredReportRef = useRef(false);
   const latestReportRequestRef = useRef(0);
@@ -142,13 +146,13 @@ function AdminReportContent({
     const loadOptions = async () => {
       try {
         const [employeeData, projectData, teamData] = await Promise.all([
-          allowEmployeeFilter
+          showEmployeeFilter
             ? getAllEmployees()
             : Promise.resolve([]),
           mode === "time"
             ? getAllActiveProjects()
             : Promise.resolve([]),
-          variant === "project" ? getAllTeams() : Promise.resolve([]),
+          hasTeamFilter && mode === "time" ? getAllTeams() : Promise.resolve([]),
         ]);
         setEmployees(employeeData);
         setProjects(projectData);
@@ -161,11 +165,14 @@ function AdminReportContent({
     };
 
     void loadOptions();
-  }, [allowEmployeeFilter, mode, scope, variant]);
+  }, [hasTeamFilter, mode, showEmployeeFilter]);
 
   const availableEmployees = useMemo(() => team
     ? employees.filter((item) => String(item.team?._id || item.team || "") === team)
     : employees, [employees, team]);
+  const availableProjects = useMemo(() => variant === "team"
+    ? projects.filter((item) => projectServesTeam(item, team))
+    : projects, [projects, team, variant]);
 
   useEffect(() => {
     let active = true;
@@ -234,6 +241,8 @@ function AdminReportContent({
     () => variant === "team" ? buildClientTimesheet(records, timelineRows) : [],
     [records, timelineRows, variant],
   );
+  // The client view reports worked and idle time per task only.
+  const showBreakTotals = !(variant === "team" && teamView === "client");
 
   const resultCount = variant === "team"
     ? teamRows.length
@@ -378,10 +387,10 @@ function AdminReportContent({
 
     if (variant === "team") {
       if (teamView === "client") return {
-        columns: ["Employee", "Client", "Project", "Task", "Sessions", "Worked", "Break", "Idle"],
+        columns: ["Employee", "Client", "Project", "Task", "Sessions", "Worked", "Idle"],
         rows: flattenClientTimesheet(clientDetails).map((row) => [
           row.employee, row.client, row.project, row.task, row.sessions,
-          formatDuration(row.workedSeconds), formatDuration(row.breakSeconds), formatDuration(row.idleSeconds),
+          formatDuration(row.workedSeconds), formatDuration(row.idleSeconds),
         ]),
       };
       return {
@@ -446,7 +455,7 @@ function AdminReportContent({
           { label: variant === "detailed" && mode === "time" ? "Timeline entries" : variant === "project" ? "Employees" : "Records", value: resultCount },
           ...(mode === "time" ? [
             { label: "Worked", value: formatDuration(totalSeconds) },
-            { label: "Break", value: formatDuration(totalBreakSeconds) },
+            ...(showBreakTotals ? [{ label: "Break", value: formatDuration(totalBreakSeconds) }] : []),
             { label: "Idle", value: formatDuration(totalIdleSeconds) },
           ] : []),
         ],
@@ -481,12 +490,19 @@ function AdminReportContent({
           </div>
 
           <div className="admin-report-controls">
-            {variant === "project" && mode === "time" && (
+            {hasTeamFilter && mode === "time" && (
               <select
                 value={team}
                 onChange={(event) => {
-                  setTeam(event.target.value);
+                  const nextTeam = event.target.value;
+                  setTeam(nextTeam);
                   setEmployee("");
+                  // Clear a project (and its task) the new team does not use.
+                  const selectedProject = projects.find((item) => item._id === project);
+                  if (variant === "team" && selectedProject && !projectServesTeam(selectedProject, nextTeam)) {
+                    setProject("");
+                    setTask("");
+                  }
                   setError("");
                 }}
                 aria-label="Team"
@@ -497,7 +513,7 @@ function AdminReportContent({
                 ))}
               </select>
             )}
-            {allowEmployeeFilter && mode !== "tracking" && (
+            {showEmployeeFilter && mode !== "tracking" && (
               <select
                 value={employee}
                 onChange={(event) => setEmployee(event.target.value)}
@@ -520,7 +536,7 @@ function AdminReportContent({
                 aria-label="Project"
               >
                 <option value="">All projects</option>
-                {projects.map((item) => (
+                {availableProjects.map((item) => (
                   <option value={item._id} key={item._id}>{item.projectName}</option>
                 ))}
               </select>
@@ -573,7 +589,7 @@ function AdminReportContent({
               {mode === "time" && variant !== "detailed" && (
                 <div className="admin-report-totals">
                   <strong><Clock3 size={16} />Worked {formatDuration(totalSeconds)}</strong>
-                  <strong className="admin-report-break-total"><Clock3 size={16} />Break {formatDuration(totalBreakSeconds)}</strong>
+                  {showBreakTotals && <strong className="admin-report-break-total"><Clock3 size={16} />Break {formatDuration(totalBreakSeconds)}</strong>}
                   <strong className="admin-report-idle-total"><Activity size={16} />Idle {formatDuration(totalIdleSeconds)}</strong>
                 </div>
               )}

@@ -10,6 +10,11 @@ export const localDate = () => {
     .slice(0, 10);
 };
 
+// A project with no team restriction (legacy records) is available to every team.
+export const projectServesTeam = (project, teamId) => !teamId
+  || !project?.teams?.length
+  || project.teams.some((item) => String(item?._id || item) === String(teamId));
+
 export const getPauseSeconds = (record, reason) => {
   const now = Date.now();
 
