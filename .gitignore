@@ -11,6 +11,9 @@
 # Logs
 *.log
 
+# Local database repair snapshots (employee billing fields)
+backend/.local-repairs/
+
 # OS files
 .DS_Store
 Thumbs.db

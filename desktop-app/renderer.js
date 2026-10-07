@@ -1978,6 +1978,13 @@ async function startTimer() {
     return;
   }
 
+  if (clientSelect && !clientsLoaded) {
+    timerMessage.textContent = clientLoadFailed
+      ? "Unable to load clients. Please try again."
+      : "Clients are still loading. Please try again.";
+    return;
+  }
+
   if (clientSelect && clientSelect.options.length > 1 && !clientId) {
     timerMessage.textContent = "Please select a client first.";
     return;

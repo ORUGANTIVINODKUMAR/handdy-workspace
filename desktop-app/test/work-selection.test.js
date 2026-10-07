@@ -31,7 +31,7 @@ class FakeSelect {
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-function harness() {
+function harness({ role = "employee" } = {}) {
   const nodes = new Map([["projectSelect", new FakeSelect()], ["clientSelect", new FakeSelect()], ["taskSelect", new FakeSelect()]]);
   const values = new Map([["token", "test-only"]]);
   const localStorage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
@@ -51,9 +51,13 @@ function harness() {
     startBodies: [],
     pending: null,
     pendingStart: null,
+    clientRequests: [],
+    clientPending: null,
+    clientFailure: false,
+    clientResponse: null,
   };
   const context = vm.createContext({
-    console: { ...console, log() {}, trace() {} },
+    console: { ...console, log() {}, trace() {}, debug() {}, warn() {} },
     AbortSignal, Date, Intl, JSON, localStorage, sessionStorage: localStorage,
     setInterval: () => 1, clearInterval() {}, setTimeout, Option: FakeOption,
     document: {
@@ -68,7 +72,14 @@ function harness() {
     window: { electronAPI: {}, location: { replace() {} }, addEventListener() {} },
     fetch: async (url, options = {}) => {
       const json = (body, ok = true) => ({ ok, status: ok ? 200 : 500, json: async () => body });
-      if (url.includes("/clients")) return json({ clients: state.clients });
+      if (url.includes("/clients")) {
+        assert.equal(options.headers.Authorization, "Bearer test-only");
+        state.clientRequests.push(url);
+        const clients = [...state.clients];
+        if (state.clientPending) await state.clientPending;
+        if (state.clientFailure) throw new Error("offline");
+        return json(state.clientResponse || { clients });
+      }
       if (url.includes("/projects")) {
         const page = Number(new URL(url).searchParams.get("page") || 1);
         const pages = state.projectPages || [state.projects];
@@ -97,11 +108,12 @@ function harness() {
           task: { _id: body.task, taskType: "work" }, pauses: [],
         } });
       }
-      if (url.includes("/auth/me")) return json({ user: { fullName: "Bhargav Kommanaboina", role: "employee" } });
+      if (url.includes("/auth/me")) return json({ user: { _id: "test-user", fullName: "Test Employee", role } });
       return json({ timeLogs: [] });
     },
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../renderer.js"), "utf8"), context);
+  localStorage.setItem("user", JSON.stringify({ _id: "test-user", role }));
   return { state, context, project: nodes.get("projectSelect"), client: nodes.get("clientSelect"), task: nodes.get("taskSelect"), run: (source) => vm.runInContext(source, context) };
 }
 
@@ -125,6 +137,134 @@ test("desktop client selector uses all active clients and starts promptly", asyn
   assert.equal(h.state.startBodies[0].client, "client-b");
   assert.equal(h.client.disabled, true);
   assert.equal(h.run("timerStatus.textContent"), "Working");
+});
+
+for (const role of ["employee", "team_lead"]) {
+  test(`${role}: client catalog is available after project selection, even without project client links`, async () => {
+    const h = harness({ role });
+    await h.context.loadClients();
+    assert.equal(h.client.disabled, true);
+    assert.equal(h.client.options[0].textContent, "Select project first");
+    await h.context.loadProjects();
+    await h.project.choose("p1");
+    assert.equal(h.client.disabled, false);
+    assert.deepEqual(h.client.options.map(option => option.value), ["", "client-a", "client-b"]);
+    await h.client.choose("client-a");
+    await h.task.choose("t1");
+    await h.client.choose("client-b");
+    assert.equal(h.task.value, "t1");
+    await h.context.startTimer();
+    assert.deepEqual(h.state.startBodies[0].client, "client-b");
+    assert.equal(h.state.startBodies[0].project, "p1");
+    assert.equal(h.state.startBodies[0].task, "t1");
+  });
+}
+
+test("one client is selected automatically; a genuinely empty catalog uses the empty state", async () => {
+  const h = harness();
+  h.state.clients = [h.state.clients[0]];
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  assert.equal(h.client.value, "client-a");
+  assert.equal(h.client.disabled, false);
+  h.state.clients = [];
+  await h.context.loadClients();
+  assert.equal(h.client.value, "");
+  assert.equal(h.client.disabled, true);
+  assert.equal(h.client.options[0].textContent, "No clients available");
+});
+
+test("project changes preserve a valid shared client; removal from the catalog clears it", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  await h.client.choose("client-b");
+  await h.task.choose("t1");
+  await h.project.choose("p2");
+  assert.equal(h.client.value, "client-b");
+  assert.equal(h.task.value, "");
+  h.state.clients = [h.state.clients[0], { _id: "client-c", clientName: "Gamma", status: "Active" }];
+  await h.context.loadClients();
+  assert.equal(h.client.value, "");
+  await h.project.choose("");
+  assert.equal(h.client.disabled, true);
+  assert.equal(h.client.options[0].textContent, "Select project first");
+});
+
+test("refresh and saved selection restore retain client IDs and names without rebuilding unchanged options", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  await h.client.choose("client-b");
+  await h.task.choose("t2");
+  const rebuilds = h.client.rebuilds;
+  await h.context.refreshDesktopData();
+  assert.equal(h.client.value, "client-b");
+  assert.equal(h.client.selectedOptions[0].textContent, "Beta");
+  assert.equal(h.client.rebuilds, rebuilds);
+  h.run('selectedClientId = ""; selectedProjectId = ""; selectedTaskId = "";');
+  h.context.restoreWorkSelection();
+  await h.context.loadClients();
+  await h.context.loadProjects();
+  await h.context.loadTasks("p1");
+  assert.equal(h.client.value, "client-b");
+  assert.equal(h.task.value, "t2");
+});
+
+test("failed or malformed client requests show an error and never masquerade as an empty catalog", async () => {
+  const h = harness();
+  h.state.clientFailure = true;
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  assert.equal(h.client.options[0].textContent, "Unable to load clients");
+  await h.task.choose("t1");
+  await h.context.startTimer();
+  assert.equal(h.state.startRequests.length, 0);
+  h.state.clientFailure = false;
+  h.state.clientResponse = { success: true };
+  assert.equal(await h.context.loadClients(), false);
+  assert.equal(h.client.options[0].textContent, "Unable to load clients");
+  h.state.clientResponse = null;
+  await h.context.loadClients();
+  await h.client.choose("client-b");
+  h.state.clientFailure = true;
+  await h.context.loadClients();
+  assert.equal(h.client.value, "client-b", "A transient failure preserves the last successfully authorized options");
+});
+
+test("stale client responses cannot replace a newer authorized list", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  let release;
+  h.state.clientPending = new Promise(resolve => { release = resolve; });
+  const first = h.project.choose("p1");
+  h.state.clientPending = null;
+  h.state.clients = [{ _id: "new", clientName: "New client", status: "Active" }];
+  await h.project.choose("p2");
+  release();
+  await first;
+  assert.equal(h.project.value, "p2");
+  assert.deepEqual(h.client.options.map(option => option.value), ["", "new"]);
+});
+
+test("inactive and malformed rows never create selectable clients; duplicate IDs are deduplicated", async () => {
+  const h = harness();
+  h.state.clients.push(null, { _id: "inactive", clientName: "Inactive", status: "Inactive" },
+    { clientName: "Missing ID" }, { _id: "blank", clientName: " " }, h.state.clients[0]);
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  assert.deepEqual(h.client.options.map(option => option.value), ["", "client-a", "client-b"]);
+});
+
+test("an active timer retains its recorded client even if it is no longer selectable for new work", async () => {
+  const h = harness();
+  await h.context.loadProjects();
+  await h.project.choose("p1");
+  h.run('currentTimeLog = { project: {_id: "p1"}, client: {_id: "old", clientName: "Recorded client"} };');
+  h.context.updateClientName();
+  assert.equal(h.client.value, "old");
+  assert.equal(h.client.selectedOptions[0].textContent, "Recorded client");
+  assert.equal(h.client.disabled, true);
 });
 
 test("idle stop preserves project/client/task for an explicit Start; manual Stop still clears the task", async () => {

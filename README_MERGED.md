@@ -137,6 +137,39 @@ employee records without changing data, run `npm run audit:teams` inside
 Ambiguous records are never changed automatically and are reported for manual
 review.
 
+### Rates after recreating a project
+
+Billing matches each employee's charge rate to the exact project ID. Creating
+a new project with an old project's name does not transfer its rates. A
+missing service-type classification does not prevent billing when the project
+rate is configured.
+
+For one employee, edit their Project & Charge Rate rows in Admin Employees and
+assign the active project with the agreed rate. Preserve the completed
+project's row for historical reports.
+
+For a confirmed recreation of the same project and team assignments, preview
+existing rates from a completed project using the maintenance command inside
+`backend`:
+
+```powershell
+node scripts/copyRecreatedProjectRates.js --source OLD_PROJECT_ID --target NEW_PROJECT_ID
+```
+
+After confirming the business mapping and reviewing the rates, supply the
+explicit employee IDs and apply:
+
+```powershell
+node scripts/copyRecreatedProjectRates.js --source OLD_PROJECT_ID --target NEW_PROJECT_ID --employees EMP001,EMP002 --apply
+```
+
+Only employees with time logs on the new project and one valid existing source
+rate are eligible. Existing destination rates are preserved. The command
+saves a local snapshot in `backend/.local-repairs/` before changes and skips
+concurrent rate edits. Repeating it does not add duplicate rates. Missing
+source rates require manual configuration; no default rate is invented.
+Refresh the billing report after repair; a desktop reinstall is unnecessary.
+
 ## Validation
 
 ```bash

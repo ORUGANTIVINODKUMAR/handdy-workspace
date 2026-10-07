@@ -35,6 +35,7 @@ const server = http.createServer((req, res) => {
         startedAt: new Date().toISOString(),
         pauses: [],
         project: { _id: "project", projectName: "Project" },
+        client: { _id: request.client, clientName: request.client === "client-b" ? "XYZ LLC" : "ABC Company" },
         task: { _id: request.task, taskName: request.task === "break-task" ? "Lunch" : "Task", taskType: request.task === "break-task" ? "break" : "work", idleLogout: true },
       };
       data = { timeLog: timer };
@@ -53,7 +54,11 @@ const server = http.createServer((req, res) => {
       data = { timeLog: stopped };
       timer = null;
     } else if (req.url === "/api/auth/logout") actions.push("logout");
-    else if (req.url.startsWith("/api/projects")) data = { projects: [{ _id: "project", projectName: "Project", clientName: "Client" }], totalPages: 1 };
+    else if (req.url === "/api/clients") data = { clients: [
+      { _id: "client-a", clientName: "ABC Company", status: "Active" },
+      { _id: "client-b", clientName: "XYZ LLC", status: "Active" },
+    ] };
+    else if (req.url.startsWith("/api/projects")) data = { projects: [{ _id: "project", projectName: "Project", clientName: "" }], totalPages: 1 };
     else if (req.url.startsWith("/api/tasks")) data = {
       tasks: req.url.includes("taskType=break")
         ? [{ _id: "break-task", taskName: "Lunch", taskType: "break", project: null }]
@@ -104,10 +109,16 @@ app.whenReady().then(async () => {
     await evaluate(`document.getElementById("projectSelect").value = "project";
       document.getElementById("projectSelect").dispatchEvent(new Event("change"));`);
     await until(() => evaluate("[...document.getElementById('taskSelect').options].some(option => option.value === 'break-task')"));
+    await until(() => evaluate("!document.getElementById('clientSelect').disabled"));
+    assert.deepEqual(await evaluate("[...document.getElementById('clientSelect').options].map(option => option.textContent)"), ["Select client", "ABC Company", "XYZ LLC"]);
+    await evaluate(`document.getElementById("clientSelect").value = "client-b";
+      document.getElementById("clientSelect").dispatchEvent(new Event("change"));`);
     await evaluate(`document.getElementById("taskSelect").value = "task";
       document.getElementById("taskSelect").dispatchEvent(new Event("change"));
       document.getElementById("startTimerButton").click();`);
     await until(() => evaluate("document.getElementById('timerStatus').textContent === 'Working'"));
+    assert.equal(timer.client._id, "client-b", "Timer payload must use the selected database ID");
+    assert.equal(await evaluate("document.getElementById('clientSelect').selectedOptions[0].textContent"), "XYZ LLC");
     await delay(1100);
     assert.notEqual(await evaluate("document.getElementById('timerDuration').textContent"), "00:00:00");
     assert.equal(await evaluate("document.getElementById('breakTimerButton')"), null);
