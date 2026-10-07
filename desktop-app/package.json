@@ -1,6 +1,6 @@
 {
   "name": "handdy-desktop-app",
-  "version": "1.2.22",
+  "version": "1.2.23",
   "description": "Employee Time & Attendance System Desktop App",
   "main": "main.js",
   "scripts": {
@@ -8,8 +8,10 @@
     "test:electron": "set \"ELECTRON_RUN_AS_NODE=\" && electron test/electron-inactivity-smoke.cjs",
     "test:dashboard": "set \"VITE_API_URL=/api\" && npm --prefix ../dashboard run build && set \"ELECTRON_RUN_AS_NODE=\" && electron test/dashboard-lifecycle-smoke.cjs",
     "start": "set \"ELECTRON_RUN_AS_NODE=\" && electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win"
+    "build": "electron-builder --win nsis --x64 --publish never",
+    "build:win": "electron-builder --win nsis --x64 --publish never",
+    "publish": "node scripts/publish-release.cjs",
+    "test:updater": "node --test --test-isolation=none test/app-updater.test.js test/release-config.test.js test/updater-close.test.js"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +25,7 @@
     },
     "files": [
       "main.js",
+      "app-updater.js",
       "preload.js",
       "api-config.js",
       "idle-policy-defaults.json",
@@ -34,8 +37,7 @@
     ],
     "win": {
       "target": [
-        "nsis",
-        "zip"
+        "nsis"
       ],
       "artifactName": "CRM-${version}-Windows-${arch}.${ext}"
     },
@@ -48,10 +50,24 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "CRM"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ORUGANTIVINODKUMAR",
+        "repo": "handdy-workspace",
+        "private": false,
+        "releaseType": "draft"
+      }
+    ]
   },
   "devDependencies": {
     "electron": "^44.1.1",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.0.0",
+    "semver": "^7.7.3"
+  },
+  "dependencies": {
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.9"
   }
 }

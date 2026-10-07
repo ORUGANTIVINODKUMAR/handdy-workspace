@@ -20,6 +20,11 @@ Thumbs.db
 
 # npm
 npm-debug.log*
+**/.npm-cache/
+
+# Local signing secrets
+*.pfx
+*.p12
 
 # Locally generated desktop installer (GitHub rejects files over 100 MB)
 dashboard/public/downloads/CRM-Setup.zip

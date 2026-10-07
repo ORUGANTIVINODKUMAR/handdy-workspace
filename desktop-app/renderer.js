@@ -528,6 +528,9 @@ let selectedProjectId = "";
 let selectedTaskId = "";
 let selectedClientId = "";
 let activeClients = [];
+let clientsLoaded = false;
+let clientLoadFailed = false;
+let clientRequestId = 0;
 let projectsSignature = null;
 let clientOptionsSignature = null;
 let tasksSignature = null;
@@ -652,7 +655,10 @@ function setSelectedProjectId(projectId, source) {
   const nextProjectId = String(projectId || "");
   if (nextProjectId === selectedProjectId) return;
   selectedProjectId = nextProjectId;
-  selectedClientId = "";
+  // The current API exposes a shared active-client catalog. A client remains
+  // valid across projects; only clear it when the project is cleared or the
+  // refreshed authorized catalog no longer contains it.
+  if (!nextProjectId) selectedClientId = "";
   saveWorkSelection();
 }
 
@@ -679,11 +685,16 @@ function ensureOption(select, value, label) {
 
 function updateClientName() {
   if (!clientSelect) return;
-  const signature = JSON.stringify(activeClients);
+  const hasProject = Boolean(selectedProjectId || currentTimeLog?.project);
+  const clients = hasProject ? activeClients : [];
+  const placeholder = !hasProject ? "Select project first"
+    : !clientsLoaded ? clientLoadFailed ? "Unable to load clients" : "Loading clients..."
+      : clients.length ? "Select client" : "No clients available";
+  const signature = JSON.stringify([placeholder, clients]);
   if (signature !== clientOptionsSignature) {
     clientSelect.replaceChildren(
-      new Option(activeClients.length ? "Select client" : "No active clients", ""),
-      ...activeClients.map((client) => new Option(client.clientName, client._id))
+      new Option(placeholder, ""),
+      ...clients.map((client) => new Option(client.clientName, client._id))
     );
     clientOptionsSignature = signature;
   }
@@ -691,35 +702,59 @@ function updateClientName() {
   if (activeClientId && !hasOption(clientSelect, activeClientId)) {
     clientSelect.appendChild(new Option(currentTimeLog?.client?.clientName || "Previously selected client", activeClientId));
   }
-  const nextClientId = [activeClientId, selectedClientId, activeClients.length === 1 ? activeClients[0]._id : ""]
+  const nextClientId = [activeClientId, selectedClientId, clients.length === 1 ? clients[0]._id : ""]
     .find((id) => hasOption(clientSelect, id)) || "";
   clientSelect.value = nextClientId;
-  if (selectedClientId !== nextClientId) {
+  // A failed/unfinished request is not evidence that a saved client vanished.
+  if ((clientsLoaded || activeClientId) && selectedClientId !== nextClientId) {
     selectedClientId = nextClientId;
     saveWorkSelection();
   }
-  clientSelect.disabled = Boolean(currentTimeLog) || activeClients.length === 0;
+  clientSelect.disabled = Boolean(currentTimeLog) || !hasProject || !clientsLoaded || clients.length === 0;
 }
 
 async function loadClients() {
   const token = getToken();
   if (!token || !clientSelect) return false;
+  const requestId = ++clientRequestId;
+  const isCurrent = () => requestId === clientRequestId && token === getToken();
+  const requestUrl = `${API_BASE_URL}/clients`;
+  updateClientName();
 
   try {
-    const response = await fetch(`${API_BASE_URL}/clients`, {
+    const response = await fetch(requestUrl, {
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
     });
     const data = await response.json().catch(() => ({}));
+    if (!isCurrent()) return false;
     if (!response.ok) {
-      workSelectionMessage.textContent = data.message || "Unable to load clients.";
-      return false;
+      throw new Error(`Client request failed (HTTP ${response.status}).`);
     }
-    activeClients = data.clients || [];
+    if (!Array.isArray(data.clients)) throw new Error("Client API returned an invalid clients list.");
+    // Match the existing {_id, clientName, status} response. Never use a
+    // display name as the timer's client ID or synthesize clients from projects.
+    activeClients = [...new Map(data.clients
+      .filter((client) => client?._id && typeof client.clientName === "string" && client.clientName.trim() && client.status !== "Inactive")
+      .map((client) => [String(client._id), { _id: String(client._id), clientName: client.clientName, status: client.status }])).values()];
+    clientsLoaded = true;
+    clientLoadFailed = false;
     updateClientName();
+    if (localStorage.getItem("debug-time-tracker") === "true") console.debug("[TimeTracker] Clients loaded", {
+      projectId: selectedProjectId,
+      employeeId: getStoredUser()?._id || null,
+      endpoint: requestUrl,
+      returned: data.clients.length,
+      available: activeClients.length,
+      scope: "authenticated active-client catalog",
+    });
     return true;
-  } catch {
-    workSelectionMessage.textContent = "Unable to reach the backend server.";
+  } catch (error) {
+    if (!isCurrent()) return false;
+    clientLoadFailed = true;
+    updateClientName();
+    workSelectionMessage.textContent = "Unable to load clients. Check your connection and try again.";
+    console.warn(`[TimeTracker] ${error.message || "Unable to load clients"}`);
     return false;
   }
 }
@@ -2041,7 +2076,7 @@ projectSelect?.addEventListener(
     setSelectedTaskId("", "employee changed project");
     updateClientName();
 
-    await loadTasks(selectedProjectId);
+    await Promise.all([loadClients(), loadTasks(selectedProjectId)]);
   }
 );
 

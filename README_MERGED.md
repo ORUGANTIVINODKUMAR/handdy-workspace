@@ -161,29 +161,26 @@ cd ../dashboard && npm run lint && npm run build
 
 ## CRM branding and desktop release publishing
 
-The dashboard and desktop product display name is CRM. Technical identifiers,
-including `HANDDY_API_URL`, `com.handdy.timetracker`, the Render service name,
-and the existing GitHub repository and production URLs remain unchanged.
-The app pins its existing package-derived user-data folder before setting the CRM display name, preserving sessions in development and packaged builds.
+The display name remains CRM. The application ID `com.handdy.timetracker`,
+package name, existing profile and Render API configuration remain unchanged.
 
-Build the Windows installer from `desktop-app` with `npm run build`.
-The configured output is `desktop-app/dist/CRM-Setup.exe`, with `CRM.exe`
-and CRM shortcuts. The old installer is retained.
+Desktop version **1.2.23** adds GitHub Releases automatic updates through
+`electron-updater`. Packaged Windows builds check after startup, download in
+the background, and install on normal quit after the existing timer-stop
+confirmation. Older versions need one final manual NSIS installation.
 
-The current download manifest still describes the already hosted
-`Handdy-Setup.exe`. Do not rename that download URL before uploading the new
-asset. Publish the CRM installer to the existing GitHub release repository,
-then update `dashboard/public/desktop-release.json` with the actual download URL,
-filename, version, size, SHA-256, release date and notes. The Team Lead download
-in `dashboard/src/pages/teamLead/TeamLeadApps.jsx` also retains the old hosted
-asset and must be updated after publication. For automatic update prompts,
-choose a version higher than the currently published 1.2.0 and rebuild before
-publishing; this branding-only build keeps the existing version.
+From `desktop-app`, run `npm run build` for a Windows x64 NSIS installer without
+publishing. Run `npm run publish` with a build-terminal `GH_TOKEN` to build and
+upload a draft release after repository/version validation. Review the draft
+before making it public. Installer, blockmap and `latest.yml` belong on GitHub
+Releases; Render continues to handle the existing backend/API.
 
-No Render service or environment-variable changes are required. Deploy the
-updated dashboard through the existing process when ready.
+The selected `ORUGANTIVINODKUMAR/handdy-workspace` repository currently returns
+HTTP 404 without authentication. Resolve public release hosting before rollout.
+Local installers are unsigned; the previous README certificate mention does
+not represent a verified signing configuration.
 
-A CRM Windows icon still needs to be supplied. Existing icons remain untouched.
-The certificate `CN=Handdy Internal Code Signing` is not changed by rebranding.
-If CRM publisher branding is desired, obtain/use a separate certificate such as
-`CN=CRM Internal Code Signing`; verify trust and signing before distribution.
+See [the automatic-update audit and one-PC pilot guide](desktop-app/AUTO_UPDATE.md)
+for build/publish commands, token/signing setup, release verification, completed
+tests and remaining limitations. A CRM icon still needs to be supplied; existing
+icons remain unchanged.
