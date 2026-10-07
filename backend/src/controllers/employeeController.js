@@ -114,6 +114,27 @@ const getAllEmployees = async (req, res) => {
     return handleEmployeeError(res, error);
   }
 };
+// Minimal, paginated identities for reports, task assignment and scheduling.
+const getEmployeeOptions = async (req, res) => {
+  try {
+    const { page, limit, skip } = getPagination(req.query);
+    const filter = {};
+    if (req.query.role) filter.role = req.query.role;
+    if (req.query.team) filter.team = req.query.team;
+    if (req.query.isActive !== undefined) filter.isActive = req.query.isActive === "true";
+    const totalEmployees = await Employee.countDocuments(filter);
+    const employees = await Employee.find(filter)
+      .select("employeeId fullName email role department designation team teamLead isActive")
+      .populate("team", "teamName isActive")
+      .sort("fullName")
+      .skip(skip)
+      .limit(limit);
+    return res.status(200).json({ success: true, page, limit,
+      totalPages: Math.ceil(totalEmployees / limit), count: employees.length, totalEmployees, employees });
+  } catch (error) {
+    return handleEmployeeError(res, error);
+  }
+};
 // Get one employee by MongoDB ID
 const getEmployeeById = async (req, res) => {
   try {
@@ -517,6 +538,7 @@ const getMyTeamMemberById = async (req, res) => {
 };
 module.exports = {
   getAllEmployees,
+  getEmployeeOptions,
   getMyTeam,
   getMyTeamMemberById,
   getEmployeeById,

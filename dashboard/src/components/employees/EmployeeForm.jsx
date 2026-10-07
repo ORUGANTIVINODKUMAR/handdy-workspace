@@ -71,7 +71,7 @@ function EmployeeForm({
           </label>
           <label>
             Email address <em>*</em>
-            <input type="email" value={formData.email} onChange={(event) => onFieldChange("email", event.target.value)} placeholder="name@company.com" autoComplete="email" required />
+            <input type="email" value={formData.email} onChange={(event) => onFieldChange("email", event.target.value)} placeholder="name@company.com" autoComplete="email" disabled={!isCreate && !isAdmin} required />
           </label>
           {isCreate && (
             <label>

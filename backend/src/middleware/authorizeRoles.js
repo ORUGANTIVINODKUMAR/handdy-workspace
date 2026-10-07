@@ -50,4 +50,10 @@ const authorizeAccess = (...permissionKeys) => {
 module.exports = {
   authorizeRoles,
   authorizeAccess,
+  authorizeRolesOrPermissions: ({ roles = [], permissions = [] }) => (req, res, next) => {
+    if (!req.user) return res.status(401).json({ success: false, message: "Authentication is required." });
+    if (isAdminRole(req.user.role) || roles.includes(req.user.role)
+        || permissions.some((key) => (req.user.permissions || []).includes(key))) return next();
+    return res.status(403).json({ success: false, message: "You do not have permission to access this resource." });
+  },
 };

@@ -76,7 +76,7 @@ export default function AppShell({ children }) {
       await logout();
       navigate("/login", { replace: true });
     } catch {
-      setSignOutError("Unable to close the active timer. Check your connection and try again.");
+      setSignOutError("Unable to sign out. Check your connection and try again.");
     } finally { setSigningOut(false); }
   };
   const decideDevice = async (decision) => {

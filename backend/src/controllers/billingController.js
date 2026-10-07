@@ -4,6 +4,7 @@ const Project = require("../models/Project");
 const Task = require("../models/Task");
 const TaskTimeLog = require("../models/TaskTimeLog");
 const Team = require("../models/Team");
+const Client = require("../models/Client");
 const { aggregateBillingLogs, DEFAULT_TIMEZONE, getBillingDateRange, getBillingEmployeeAccess } = require("../utils/billingUtils");
 
 // Billing needs both relationships: `team` is the authoritative assignment
@@ -63,20 +64,34 @@ const getBillingReport = async (req, res) => {
       status: "stopped",
       startedAt: { $lt: range.endExclusive },
       stoppedAt: { $gt: range.start },
-    }).select("project task startedAt stoppedAt pauses totalWorkedSeconds").sort("startedAt").lean();
+    }).select("project task client startedAt stoppedAt pauses totalWorkedSeconds").sort("startedAt").lean();
 
     const taskIds = [...new Set(logs.map((log) => String(log.task)))];
     const projectIds = [...new Set(logs.map((log) => String(log.project)))];
     const [tasks, projects] = await Promise.all([
       Task.find({ _id: { $in: taskIds } }).select("taskCode taskName description taskType project isActive").lean(),
-      Project.find({ _id: { $in: projectIds } }).select("projectCode projectName clientName serviceType status").lean(),
+      Project.find({ _id: { $in: projectIds } }).select("projectCode projectName clientName client clients serviceType status").lean(),
     ]);
+    // Preserve missing client references so deleting one client cannot make
+    // ambiguous historical work on a shared project look single-client.
+    const clientIds = [...new Set([
+      ...logs.map((log) => log.client),
+      ...projects.flatMap((project) => [...(project.clients || []), project.client]),
+    ].filter(Boolean).map(String))];
+    const clients = await Client.find({ _id: { $in: clientIds } }).select("clientName").lean();
     const tasksById = new Map(tasks.map((task) => [String(task._id), task]));
-    const projectsById = new Map(projects.map((project) => [String(project._id), project]));
+    const clientsById = new Map(clients.map((client) => [String(client._id), client]));
+    const clientReference = (id) => id ? (clientsById.get(String(id)) || { _id: id, clientName: "Deleted client" }) : null;
+    const projectsById = new Map(projects.map((project) => [String(project._id), {
+      ...project,
+      client: clientReference(project.client),
+      clients: (project.clients || []).map(clientReference),
+    }]));
     const enrichedLogs = logs.map((log) => ({
       ...log,
       taskRecord: tasksById.get(String(log.task)),
       projectRecord: projectsById.get(String(log.project)),
+      clientRecord: clientsById.get(String(log.client)),
     }));
 
     const report = aggregateBillingLogs({

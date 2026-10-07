@@ -10,6 +10,8 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import "../../styles/adminSchedule.css";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import { getAllEmployeeOptions } from "../../api/employeeApi";
+import { getAllSchedules, getAllShifts } from "../../api/schedulingApi";
 
 function AdminSchedule() {
   const [activeTab, setActiveTab] =
@@ -108,8 +110,8 @@ function AdminSchedule() {
           shiftsResponse,
         ] = await Promise.all([
           axiosInstance.get("/teams"),
-          axiosInstance.get("/employees", { params: { limit: 100 } }),
-          axiosInstance.get("/shifts", { params: { limit: 100 } }),
+          getAllEmployeeOptions(),
+          getAllShifts(),
         ]);
 
         setTeams(
@@ -117,11 +119,11 @@ function AdminSchedule() {
         );
 
         setEmployees(
-          employeesResponse.data.employees || []
+          employeesResponse
         );
 
         setShifts(
-          shiftsResponse.data.shifts || []
+          shiftsResponse
         );
       } catch (requestError) {
         console.error(
@@ -158,17 +160,17 @@ function AdminSchedule() {
       setScheduleLoading(true);
       setError("");
 
-      const params = { limit: 100 };
+      const params = {};
       if (filters.team) params.team = filters.team;
       if (filters.employee) params.employee = filters.employee;
       if (filters.shift) params.shift = filters.shift;
       if (filters.date) params.date = filters.date;
 
-      const { data } = await axiosInstance.get("/schedules", { params });
+      const schedules = await getAllSchedules(params);
 
       if (!isCurrent()) return;
       setSchedules(
-        data.schedules || []
+        schedules
       );
     } catch (requestError) {
       if (!isCurrent()) return;

@@ -6,6 +6,7 @@ const {
 
 const {
   authorizeRoles,
+  authorizeRolesOrPermissions,
 } = require("../middleware/authorizeRoles");
 
 const Team = require("../models/Team");
@@ -22,7 +23,7 @@ const router = express.Router();
 router.get(
   "/",
   protect,
-  authorizeRoles("admin", "manager", "hr"),
+  authorizeRolesOrPermissions({ roles: ["hr"], permissions: ["create_employees", "edit_employees"] }),
   async (req, res) => {
     try {
       const teams = await Team.find()

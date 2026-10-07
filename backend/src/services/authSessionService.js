@@ -67,13 +67,15 @@ async function replaceSameDeviceSession(activeSession, employeeId, device) {
   }
 }
 
-async function createPendingRequest(employeeId, activeSession, device) {
+async function createPendingRequest(employeeId, activeSession, device, credentials) {
   const pendingSession = await createSession(employeeId, device, "pending");
   const requestToken = newSecret();
   const now = Date.now();
   const request = await DeviceLoginRequest.create({
     requestId: newId(),
     requestTokenHash: hashSecret(requestToken),
+    tokenVersion: credentials.tokenVersion ?? 0,
+    rememberedTokenHash: credentials.rememberedTokenHash || null,
     employee: employeeId,
     existingSession: activeSession._id,
     requestedSession: pendingSession._id,
@@ -84,7 +86,7 @@ async function createPendingRequest(employeeId, activeSession, device) {
   return { request, requestToken, activeSession };
 }
 
-async function beginLoginSession(employeeId, device) {
+async function beginLoginSession(employeeId, device, credentials = {}) {
   await expireStaleSessions(employeeId);
 
   // Browser sessions do not participate in desktop device approval. Refreshing
@@ -130,17 +132,24 @@ async function beginLoginSession(employeeId, device) {
   if (activeSession.deviceId === device.deviceId) {
     const session = await replaceSameDeviceSession(activeSession, employeeId, device);
     if (session) return { kind: "active", session };
-    return beginLoginSession(employeeId, device);
+    return beginLoginSession(employeeId, device, credentials);
   }
-  return { kind: "pending", ...(await createPendingRequest(employeeId, activeSession, device)) };
+  return { kind: "pending", ...(await createPendingRequest(employeeId, activeSession, device, credentials)) };
 }
 
 async function expireLoginRequest(request) {
-  if (!request || request.status !== "pending" || request.expiresAt > new Date()) return request;
+  const now = new Date();
+  if (!request || !["pending", "approving", "approved"].includes(request.status) || request.expiresAt > now) return request;
+  // Expiry must compete atomically with redemption; a stale waiter must not
+  // revoke a session whose approval was already consumed by another waiter.
+  const expired = await DeviceLoginRequest.findOneAndUpdate(
+    { _id: request._id, status: { $in: ["pending", "approving", "approved"] }, expiresAt: { $lte: now } },
+    { $set: { status: "expired", resolvedAt: now } },
+    { returnDocument: "after" },
+  );
   request.status = "expired";
-  request.resolvedAt = new Date();
-  await request.save();
-  await AuthSession.updateOne({ _id: request.requestedSession, status: "pending" }, { $set: { status: "expired", revokedAt: new Date(), revokeReason: "request_expired" } });
+  request.resolvedAt = now;
+  if (expired) await AuthSession.updateOne({ _id: request.requestedSession, status: { $in: ["pending", "active"] } }, { $set: { status: "expired", revokedAt: now, revokeReason: "request_expired" } });
   return request;
 }
 
@@ -181,9 +190,8 @@ async function reconcileApprovingRequest(request) {
 
 async function findRequestForRequester(requestId, requestToken) {
   if (!requestId || !requestToken) return null;
-  const request = await DeviceLoginRequest.findOne({ requestId, requestTokenHash: hashSecret(requestToken) }).select("+requestTokenHash");
-  const reconciled = await reconcileApprovingRequest(request);
-  return expireLoginRequest(reconciled);
+  const request = await DeviceLoginRequest.findOne({ requestId, requestTokenHash: hashSecret(requestToken) }).select("+requestTokenHash +rememberedTokenHash");
+  return reconcileApprovingRequest(await expireLoginRequest(request));
 }
 
 async function findPendingForSession(sessionDocument) {
@@ -269,7 +277,7 @@ async function revokeEmployeeSessions(employeeId, reason = "account_security_cha
     { $set: { status: "revoked", revokedAt: now, revokeReason: reason } },
   );
   await DeviceLoginRequest.updateMany(
-    { employee: employeeId, status: { $in: ["pending", "approving"] } },
+    { employee: employeeId, status: { $in: ["pending", "approving", "approved"] } },
     { $set: { status: "cancelled", resolvedAt: now } },
   );
 }

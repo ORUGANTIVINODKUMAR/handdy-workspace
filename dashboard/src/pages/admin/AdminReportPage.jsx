@@ -3,7 +3,7 @@ import { Activity, Clock3, FileDown, FileSearch, Search, Sheet } from "lucide-re
 import { useLocation } from "react-router-dom";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
-import { getAllEmployees } from "../../api/employeeApi";
+import { getAllEmployeeOptions } from "../../api/employeeApi";
 import { getAllActiveProjects } from "../../api/projectApi";
 import { getAllTeams } from "../../api/teamApi";
 import { getAllActiveTasksByProject } from "../../api/taskApi";
@@ -147,7 +147,7 @@ function AdminReportContent({
       try {
         const [employeeData, projectData, teamData] = await Promise.all([
           showEmployeeFilter
-            ? getAllEmployees()
+            ? getAllEmployeeOptions()
             : Promise.resolve([]),
           mode === "time"
             ? getAllActiveProjects()

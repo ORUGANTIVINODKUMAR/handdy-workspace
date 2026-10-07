@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getTasksByProject } from "../../api/taskApi";
+import { getAllActiveTasksByProject } from "../../api/taskApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useDataRefresh from "../../hooks/useDataRefresh";
 
@@ -16,8 +16,7 @@ function TaskSelector({ selectedProject, selectedTask, onTaskChange }) {
     }
     try {
       setError("");
-      const data = await getTasksByProject(selectedProject);
-      setTasks(data.tasks || []);
+      setTasks(await getAllActiveTasksByProject(selectedProject));
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Unable to load tasks."));
     } finally {

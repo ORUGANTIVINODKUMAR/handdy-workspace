@@ -139,6 +139,11 @@ const startTimer = async (req, res) => {
             : false;
         const teamMatch = { $or: [{ team: req.user.team }, { teams: req.user.team }] };
         const isElevatedRole = isAdminRole(req.user.role) || ["manager", "hr"].includes(req.user.role);
+        const projectTeams = (projectExists.teams || []).map(String);
+        if (!isElevatedRole && projectTeams.length
+            && (!hasActiveTeam || !projectTeams.includes(String(req.user.team)))) {
+            return res.status(403).json({ success: false, message: "This project is not available to your team." });
+        }
         // A team lead's own team already proves they lead the task's team, so
         // they don't also need to appear in assignedTo (they never can — see
         // validateTaskRelations, which restricts assignedTo to role:"employee").

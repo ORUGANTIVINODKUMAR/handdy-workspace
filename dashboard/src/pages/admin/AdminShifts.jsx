@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import { getAllShifts } from "../../api/schedulingApi";
 import "../../styles/adminShifts.css";
 
 function AdminShifts() {
@@ -21,10 +22,9 @@ function AdminShifts() {
   useEffect(() => {
     let active = true;
 
-    axiosInstance
-      .get("/shifts", { params: { limit: 100 } })
-      .then(({ data }) => {
-        if (active) setShifts(data.shifts || []);
+    getAllShifts()
+      .then((shifts) => {
+        if (active) setShifts(shifts);
       })
       .catch((requestError) => {
         if (active) setError(getApiErrorMessage(requestError, "Unable to load shifts."));

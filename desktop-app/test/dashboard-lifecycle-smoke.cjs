@@ -9,9 +9,27 @@ const root = path.resolve(__dirname, "../../dashboard/dist");
 const user = { _id: "test-admin", role: "admin", fullName: "Test Admin", permissions: [] };
 const calls = new Map();
 const lastQueries = new Map();
+const lastBodies = new Map();
 let revoked = false;
 let pending = false;
 let clientReportEnabled = false;
+let auditRegressionMode = false;
+let desktopTimerRunning = true;
+const employees = Array.from({ length: 125 }, (_, index) => ({
+  _id: `employee-${index + 1}`, employeeId: `EMP${index + 1}`, fullName: `Employee ${index + 1}`,
+  email: `employee${index + 1}@example.test`, role: "employee", isActive: true,
+  team: { _id: "team", teamName: "Stable team" }, projectRates: [],
+}));
+const shifts = employees.map((_, index) => ({ _id: `shift-${index + 1}`, title: `Shift ${index + 1}`, startTime: "09:00", endTime: "17:00" }));
+const schedules = employees.map((employee, index) => ({
+  _id: `schedule-${index + 1}`, scheduleTitle: `Schedule ${index + 1}`, date: "2026-10-01",
+  team: employee.team, employee, shift: shifts[index],
+}));
+const paginate = (records, key, params) => {
+  const page = Number(params.get("page") || 1);
+  const limit = Number(params.get("limit") || 10);
+  return { [key]: records.slice((page - 1) * limit, page * limit), totalPages: Math.ceil(records.length / limit), totalEmployees: records.length };
+};
 const clientReportLogs = [
   ["log-1", "ABC Corporation", "client-a", "Tax Return", "tax", "Preparation", "prepare", 60],
   ["log-2", "ABC Corporation", "client-a", "Tax Return", "tax", "Review", "review", 120],
@@ -32,6 +50,9 @@ const server = http.createServer((req, res) => {
     const endpoint = url.pathname.slice(4);
     calls.set(endpoint, (calls.get(endpoint) || 0) + 1);
     lastQueries.set(endpoint, url.searchParams);
+    let requestBody = "";
+    req.on("data", chunk => { requestBody += chunk; });
+    req.on("end", () => { if (requestBody) lastBodies.set(endpoint, JSON.parse(requestBody)); });
     setTimeout(() => {
       res.setHeader("Content-Type", "application/json");
       if (revoked) {
@@ -46,6 +67,22 @@ const server = http.createServer((req, res) => {
       if (endpoint === "/teams") body = { teams: [{ _id: "team", teamName: "Stable team", isActive: true }] };
       if (endpoint === "/employees") body = { employees: [], totalPages: 1, totalEmployees: 0 };
       if (endpoint === "/tasks") body = { tasks: [] };
+      if (endpoint === "/time-logs/stop") desktopTimerRunning = false;
+      if (auditRegressionMode) {
+        if (endpoint === "/employees/options" || endpoint === "/employees/my-team") body = paginate(employees, "employees", url.searchParams);
+        if (endpoint === "/employees" && user.role === "hr") {
+          res.writeHead(403);
+          res.end(JSON.stringify({ message: "Account administration is restricted." }));
+          return;
+        }
+        if (endpoint === "/employees") body = paginate(employees, "employees", url.searchParams);
+        if (endpoint === "/shifts") body = paginate(shifts, "shifts", url.searchParams);
+        if (endpoint === "/schedules") body = paginate(schedules, "schedules", url.searchParams);
+        if (endpoint.startsWith("/employees/") && req.method === "PUT") {
+          assert.equal(Object.hasOwn(lastBodies.get(endpoint), "email"), false, "delegated update must omit email");
+          body = { success: true };
+        }
+      }
       if (endpoint === "/time-logs/admin" && clientReportEnabled) body = { timeLogs: clientReportLogs, totalPages: 1 };
       res.end(JSON.stringify(body));
     }, endpoint.startsWith("/time-logs/") ? 6500 : 150);
@@ -234,7 +271,48 @@ app.whenReady().then(async () => {
     revoked = true;
     await until("location.pathname === '/login'");
     assert.equal(await evaluate("localStorage.getItem('token')"), null);
-    console.log("PASS: Teams polling, navigation, bulk task controls, session restoration, compact Client timesheets, Excel/PDF downloads, device approval, and session revocation.");
+    // Exercise the permission and pagination fixes through the built React app.
+    revoked = false;
+    auditRegressionMode = true;
+    user.role = "hr";
+    const restoreUser = async route => {
+      await evaluate(`localStorage.setItem('token', 'test-token'); localStorage.setItem('user', ${JSON.stringify(JSON.stringify(user))});`);
+      await win.loadURL(`${base}${route}`);
+    };
+    const employeeReadsBefore = calls.get("/employees");
+    await restoreUser("/admin/timesheets/detailed");
+    await until(`!!document.querySelector('select[aria-label="Employee"] option[value="employee-125"]')`);
+    assert.equal(calls.get("/employees"), employeeReadsBefore, "HR reports use safe employee options");
+    await win.loadURL(`${base}/admin/scheduler/schedule`);
+    await until(`!!document.querySelector('.schedule-filter-row option[value="employee-125"]')`);
+    await until(`document.querySelectorAll('.schedule-table tbody tr').length === 125`);
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Add New Schedule')).click()`);
+    await until(`!!document.querySelector('.schedule-add-filter-row option[value="shift-125"]')`);
+    assert.equal(await evaluate(`!!document.querySelector('.schedule-add-filter-row option[value="team"]')`), true);
+    user.role = "employee";
+    user.permissions = ["create_employees", "edit_employees"];
+    await restoreUser("/admin/employees");
+    await until(`[...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Edit')`);
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Edit').click()`);
+    await until(`!!document.querySelector('.employee-editor-form--edit select option[value="team"]')`);
+    assert.equal(await evaluate(`document.querySelector('.employee-editor-form--edit input[type=email]').disabled`), true);
+    await evaluate(`(() => {
+      const form = document.querySelector('.employee-editor-form--edit');
+      const input = form.querySelector('input[placeholder="Employee name"]');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'Employee updated');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await evaluate(`document.querySelector('.employee-editor-form--edit button[type=submit]').click()`);
+    await until(`!document.querySelector('.employee-editor-form--edit')`);
+    assert.equal(lastBodies.get("/employees/employee-1").fullName, "Employee updated");
+    assert.equal(lastBodies.get("/employees/employee-1").team, "team");
+    assert.equal(Object.hasOwn(lastBodies.get("/employees/employee-1"), "email"), false);
+    const timerStopsBefore = calls.get("/time-logs/stop") || 0;
+    await evaluate(`document.querySelector('.crm-signout').click()`);
+    await until(`location.pathname === '/login'`);
+    assert.equal(calls.get("/time-logs/stop") || 0, timerStopsBefore, "web sign-out never stops the desktop timer");
+    assert.equal(desktopTimerRunning, true);
+    console.log("PASS: Teams polling, navigation, bulk task controls, session restoration, Client timesheets/exports, device approval/revocation, HR lookups, 125 employees/shifts/schedules, delegated editing, and independent web sign-out.");
   } catch (error) {
     console.error(error);
     process.exitCode = 1;

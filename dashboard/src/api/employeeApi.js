@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import fetchAllRecords from "./fetchAllRecords";
 
 // Admin - list employees with filters and pagination
 export const getEmployees = async (params = {}) => {
@@ -16,6 +17,9 @@ export const getAllEmployees = async (params = {}) => {
   return employees;
 };
 
+export const getAllEmployeeOptions = (params = {}) => fetchAllRecords("/employees/options", "employees", params);
+export const getAllMyTeamMembers = (params = {}) => fetchAllRecords("/employees/my-team", "employees", params);
+
 // Admin - get one employee
 export const getEmployeeById = async (employeeId) => {
   const response = await axiosInstance.get(`/employees/${employeeId}`);
@@ -23,9 +27,7 @@ export const getEmployeeById = async (employeeId) => {
 };
 
 // Team Lead - get assigned team
-// Note: the backend endpoint does not currently paginate this list (it
-// always returns every active team member), so `params` is forwarded for
-// forward-compatibility but callers should not assume it is honored yet.
+// This endpoint is paginated; selectors should use getAllMyTeamMembers.
 export const getMyTeam = async (params = {}) => {
   const response = await axiosInstance.get("/employees/my-team", { params });
   return response.data;

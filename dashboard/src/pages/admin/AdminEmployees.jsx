@@ -364,13 +364,10 @@ function AdminEmployees() {
           fullName:
             editFormData.fullName.trim(),
 
-          email:
-            editFormData.email.trim(),
-
-          // role/isActive are admin-only fields on the backend — the request
+          // Email, role and status are admin-only fields on the backend — the request
           // is rejected outright if a delegated (non-admin) editor sends them
           // at all, even unchanged, so they must be omitted entirely here.
-          ...(isAdmin ? { role: editFormData.role, isActive: editFormData.isActive } : {}),
+          ...(isAdmin ? { email: editFormData.email.trim(), role: editFormData.role, isActive: editFormData.isActive } : {}),
 
           team: ["admin", "hr", "manager"].includes(editFormData.role) ? null : editFormData.team,
 

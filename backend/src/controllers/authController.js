@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const Employee = require("../models/Employee");
 const { getFrontendUrl } = require("../config/productionConfig");
 const generateToken = require("../utils/generateToken");
@@ -24,6 +25,7 @@ const {
   findPendingForSession,
   decideLoginRequest,
   revokeEmployeeSessions,
+  hashSecret,
 } = require("../services/authSessionService");
 
 const issueRememberedSession = (employee) => {
@@ -362,7 +364,9 @@ const login = async (req, res) => {
       });
     }
 
-    const sessionResult = await beginLoginSession(employee._id, normalizeDevice(req.body, req));
+    const sessionResult = await beginLoginSession(employee._id, normalizeDevice(req.body, req), {
+      tokenVersion: employee.tokenVersion ?? 0,
+    });
     if (sessionResult.kind === "pending") return pendingLoginResponse(res, sessionResult);
 
     return res.status(200).json(await completeLogin(employee, sessionResult.session));
@@ -393,7 +397,10 @@ const quickLogin = async (req, res) => {
     if (!employee || !employee.isActive) {
       return res.status(employee && !employee.isActive ? 403 : 401).json({ success: false, message: "Your remembered session is no longer valid." });
     }
-    const sessionResult = await beginLoginSession(employee._id, normalizeDevice(req.body, req));
+    const sessionResult = await beginLoginSession(employee._id, normalizeDevice(req.body, req), {
+      tokenVersion: employee.tokenVersion ?? 0,
+      rememberedTokenHash: tokenHash,
+    });
     if (sessionResult.kind === "pending") return pendingLoginResponse(res, sessionResult);
 
     return res.status(200).json(await completeLogin(employee, sessionResult.session, {
@@ -441,11 +448,28 @@ const waitForLoginRequest = async (req, res) => {
       Employee.findById(request.employee).select("+tokenVersion +rememberedSessionTokenHash +rememberedSessionExpires +rememberedSessions"),
       AuthSession.findOne({ _id: request.requestedSession, status: "active", expiresAt: { $gt: new Date() } }),
     ]);
-    if (!employee?.isActive || !session) {
+    if (!employee?.isActive || !session || (employee.tokenVersion ?? 0) !== (request.tokenVersion ?? 0)) {
       return res.status(403).json({ success: false, code: "DEVICE_LOGIN_UNAVAILABLE", message: "The approved session is no longer available." });
     }
 
-    return res.status(200).json(await completeLogin(employee, session));
+    // Only one waiter may exchange this short-lived approval for credentials.
+    // A password change also invalidates outstanding, unconsumed approvals.
+    const consumed = await DeviceLoginRequest.findOneAndUpdate(
+      {
+        _id: request._id,
+        status: "approved",
+        requestTokenHash: hashSecret(requestToken),
+        expiresAt: { $gt: new Date() },
+      },
+      { $set: { status: "consumed", requestTokenHash: crypto.randomBytes(32).toString("hex"), resolvedAt: new Date() } },
+      { returnDocument: "after" },
+    );
+    if (!consumed) {
+      return res.status(410).json({ success: false, code: "DEVICE_APPROVAL_EXPIRED", message: "This login approval has expired or was already used. Please log in again." });
+    }
+    return res.status(200).json(await completeLogin(employee, session, {
+      consumedRememberedHash: request.rememberedTokenHash,
+    }));
   } catch (error) {
     return handleControllerError(res, error);
   }
@@ -908,7 +932,7 @@ const changePassword = async (req, res) => {
       { $set: { status: "revoked", revokedAt: new Date(), revokeReason: "password_changed" } },
     );
     await DeviceLoginRequest.updateMany(
-      { employee: employee._id, status: { $in: ["pending", "approving"] } },
+      { employee: employee._id, status: { $in: ["pending", "approving", "approved"] } },
       { $set: { status: "cancelled", resolvedAt: new Date() } },
     );
     const token = generateToken(employee._id, employee.tokenVersion, req.authSession);

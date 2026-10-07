@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import axiosInstance from "../../api/axiosInstance";
-import { getMyTeam } from "../../api/employeeApi";
+import { getAllEmployeeOptions, getAllMyTeamMembers } from "../../api/employeeApi";
 import useAuth from "../../context/useAuth";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
@@ -67,16 +67,17 @@ function TaskForm({
   }, [scope]);
 
   useEffect(() => {
+    let active = true;
     if (scope === "admin") {
-      axiosInstance
-        .get("/employees", { params: { limit: 100, isActive: true } })
-        .then(({ data }) => setAllEmployees(data.employees || []))
-        .catch(() => {});
+      getAllEmployeeOptions({ isActive: true })
+        .then((employees) => { if (active) setAllEmployees(employees); })
+        .catch((requestError) => { if (active) setError(getApiErrorMessage(requestError, "Unable to load employees.")); });
     } else {
-      getMyTeam()
-        .then((data) => setTeamMembers(data.employees || []))
-        .catch(() => {});
+      getAllMyTeamMembers()
+        .then((employees) => { if (active) setTeamMembers(employees); })
+        .catch((requestError) => { if (active) setError(getApiErrorMessage(requestError, "Unable to load your team.")); });
     }
+    return () => { active = false; };
   }, [scope]);
 
   const teamsKey = teams.join(",");

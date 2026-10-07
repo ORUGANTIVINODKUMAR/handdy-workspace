@@ -38,6 +38,30 @@ const reportFor = (logs, startDate = "2026-08-01", endDate = "2026-08-03", emplo
   return aggregateBillingLogs({ logs, employee: employeeRecord, startDate, endDate, timezone: "UTC", rangeStart: range.start, rangeEnd: range.endExclusive });
 };
 
+test("recorded clients split shared-project billing without duplicating totals", () => {
+  const first = { ...log("client-a-log", workTask, "2026-08-01T09:00:00Z", 3600), client: "client-a", clientRecord: { clientName: "Selected A" } };
+  const second = { ...log("client-b-log", workTask, "2026-08-01T10:00:00Z", 7200), client: "client-b", clientRecord: { clientName: "Selected B" } };
+  const report = reportFor([first, second]);
+  assert.deepEqual(report.taskSummary.map((task) => [task.clientName, task.totalSeconds]), [["Selected A", 3600], ["Selected B", 7200]]);
+  assert.equal(report.projects.length, 2);
+  assert.equal(report.summary.projectCount, 1);
+  assert.equal(report.summary.taskCount, 1);
+  assert.equal(report.summary.taskSeconds, 10_800);
+  assert.equal(report.summary.totalBillableAmount, 75);
+  assert.deepEqual(report.dailyDetails[0].entries.map((entry) => entry.clientName), ["Selected A", "Selected B"]);
+});
+
+test("ambiguous legacy work and deleted recorded clients are never assigned to a different client", () => {
+  const shared = { ...project, clients: [{ _id: "a", clientName: "A" }, { _id: "b", clientName: "B" }] };
+  const report = reportFor([
+    log("legacy", workTask, "2026-08-01T09:00:00Z", 3600, shared),
+    { ...log("deleted", workTask, "2026-08-01T10:00:00Z", 3600, shared), client: "deleted-client" },
+  ]);
+  assert.deepEqual(report.dailyDetails[0].entries.map((entry) => entry.clientName), ["Unassigned client", "Deleted client"]);
+  assert.equal(report.summary.taskSeconds, 7200);
+  assert.equal(report.summary.totalBillableAmount, 50);
+});
+
 test("same task across days and sessions is aggregated by task ID", () => {
   const report = reportFor([
     log("1", workTask, "2026-08-01T09:00:00Z", 3600),

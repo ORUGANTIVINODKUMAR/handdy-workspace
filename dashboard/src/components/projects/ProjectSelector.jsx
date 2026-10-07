@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getAllProjects } from "../../api/projectApi";
+import { getAllActiveProjects } from "../../api/projectApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useDataRefresh from "../../hooks/useDataRefresh";
 
@@ -12,9 +12,7 @@ function ProjectSelector({ selectedProject, onProjectChange }) {
     try {
       setError("");
 
-      const data = await getAllProjects();
-
-      setProjects(data.projects || []);
+      setProjects(await getAllActiveProjects());
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Unable to load projects."));
     } finally {

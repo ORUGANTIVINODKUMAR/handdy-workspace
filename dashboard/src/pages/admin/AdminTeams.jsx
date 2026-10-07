@@ -4,6 +4,7 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import axiosInstance from "../../api/axiosInstance";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useDataRefresh from "../../hooks/useDataRefresh";
+import { getAllEmployeeOptions } from "../../api/employeeApi";
 
 function AdminTeams() {
   const [teams, setTeams] = useState([]);
@@ -45,8 +46,8 @@ function AdminTeams() {
   useDataRefresh(() => loadTeams({ background: true }));
 
   useEffect(() => {
-    axiosInstance.get("/employees", { params: { role: "team_lead", isActive: "true", limit: 100 } })
-      .then(({ data }) => setTeamLeads(data.employees || []))
+    getAllEmployeeOptions({ role: "team_lead", isActive: true })
+      .then(setTeamLeads)
       .catch((requestError) => setError(getApiErrorMessage(requestError, "Unable to load team leads.")));
   }, []);
 

@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
   getAllEmployees,
+  getEmployeeOptions,
   getMyTeam,
   getMyTeamMemberById,
   getEmployeeById,
@@ -13,9 +14,17 @@ const {
 } = require("../controllers/employeeController");
 
 const { protect } = require("../middleware/authMiddleware");
-const { authorizeRoles, authorizeAccess } = require("../middleware/authorizeRoles");
+const { authorizeRoles, authorizeAccess, authorizeRolesOrPermissions } = require("../middleware/authorizeRoles");
 
 const router = express.Router();
+
+// Operational selectors need identity/team data, not account administration.
+router.get(
+  "/options",
+  protect,
+  authorizeRolesOrPermissions({ roles: ["hr"], permissions: ["create_employees", "edit_employees"] }),
+  getEmployeeOptions
+);
 
 // Admin, or anyone granted create_employees/edit_employees - get all employees
 router.get(

@@ -13,7 +13,6 @@ import {
   logoutUser,
   waitForLoginApproval,
 } from "../api/authApi";
-import { stopTimer } from "../api/timerApi";
 
 function normalizeRole(role = "") {
   const normalized = String(role)
@@ -268,9 +267,6 @@ function AuthProvider({ children }) {
       if (
         localStorage.getItem("token")
       ) {
-        try { await stopTimer(); } catch (timerError) {
-          if (timerError?.response?.status !== 404) throw timerError;
-        }
         await logoutUser(localStorage.getItem("rememberedSessionToken"));
       }
     } catch (error) {
@@ -279,7 +275,7 @@ function AuthProvider({ children }) {
         clearRememberedLogin();
         return;
       }
-      console.error("Logout was deferred until the timer can be finalized:", error);
+      console.error("Unable to end the web session:", error);
       throw error;
     }
     clearAuth();

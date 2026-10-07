@@ -143,6 +143,24 @@ const calculateBillableAmount = (seconds, chargeRate) => {
   return roundCurrency(billableHours * chargeRate);
 };
 
+const resolveBillingClient = (log, project) => {
+  if (log.client) {
+    const clientId = String(log.client._id || log.client);
+    return { key: clientId, clientId, clientName: log.clientRecord?.clientName || log.client.clientName || "Deleted client" };
+  }
+  const candidates = [...(project.clients || []), project.client].filter(Boolean);
+  const unique = new Map(candidates.map((client) => [String(client._id || client), client]));
+  if (unique.size === 1) {
+    const [clientId, client] = [...unique.entries()][0];
+    return { key: clientId, clientId, clientName: client.clientName || project.clientName || "Unknown client" };
+  }
+  if (unique.size === 0 && project.clientName?.trim()) {
+    const clientName = project.clientName.trim();
+    return { key: `legacy:${clientName.toLowerCase()}`, clientId: null, clientName };
+  }
+  return { key: "unassigned", clientId: null, clientName: "Unassigned client" };
+};
+
 const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, rangeStart, rangeEnd }) => {
   const taskGroups = new Map();
   const dailyGroups = new Map();
@@ -155,6 +173,7 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     const isBreak = task.taskType === "break";
     const serviceType = isBreak ? null : project.serviceType || null;
     const projectId = project._id || log.project;
+    const client = resolveBillingClient(log, project);
     const chargeRate = isBreak ? null : getEmployeeChargeRate(employee, projectId);
     const billingWarning = isBreak
       ? null
@@ -166,12 +185,14 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       else taskSeconds += segment.seconds;
 
       if (!isBreak) {
-        const key = `${project._id || log.project}:${task._id || log.task}`;
+        const key = `${client.key}:${projectId}:${task._id || log.task}`;
         const current = taskGroups.get(key) || {
           projectId: String(projectId),
           projectCode: project.projectCode || "",
           projectName: project.projectName || "Deleted project",
-          clientName: project.clientName || "",
+          clientKey: client.key,
+          clientId: client.clientId,
+          clientName: client.clientName,
           taskId: String(task._id || log.task),
           taskCode: task.taskCode || "",
           taskName: task.taskName || "Deleted task",
@@ -192,7 +213,8 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
         type: isBreak ? "break" : "work",
         projectId: String(projectId),
         projectName: project.projectName || "Deleted project",
-        clientName: project.clientName || "",
+        clientId: client.clientId,
+        clientName: client.clientName,
         taskId: String(task._id || log.task),
         taskName: task.taskName || "Deleted task",
         taskDescription: task.description || "",
@@ -216,14 +238,17 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
         ? "Charge rate not configured for this employee and project."
         : null,
     }))
-    .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.taskName.localeCompare(b.taskName));
+    .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.clientName.localeCompare(b.clientName) || a.taskName.localeCompare(b.taskName));
   const projectsMap = new Map();
   for (const task of taskSummary) {
-    const project = projectsMap.get(task.projectId) || {
+    const key = `${task.clientKey}:${task.projectId}`;
+    const project = projectsMap.get(key) || {
+      key,
       projectId: task.projectId,
       projectCode: task.projectCode,
       projectName: task.projectName,
       clientName: task.clientName,
+      clientId: task.clientId,
       totalSeconds: 0,
       totalBillableAmount: 0,
       hasMissingRates: false,
@@ -233,7 +258,7 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
     if (task.billableAmount === null) project.hasMissingRates = true;
     else project.totalBillableAmount = roundCurrency(project.totalBillableAmount + task.billableAmount);
     project.tasks.push(task);
-    projectsMap.set(task.projectId, project);
+    projectsMap.set(key, project);
   }
 
   const dailyDetails = [...dailyGroups.values()].sort((a, b) => a.date.localeCompare(b.date));
@@ -262,7 +287,7 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       totalSeconds: taskSeconds + breakSeconds,
       workingDays: dailyDetails.length,
       taskCount: new Set(taskSummary.map((task) => task.taskId)).size,
-      projectCount: projectsMap.size,
+      projectCount: new Set(taskSummary.map((task) => task.projectId)).size,
       totalBillableAmount,
       missingRateCount: missingRateTasks.length,
     },
@@ -271,6 +296,8 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
       taskName: task.taskName,
       projectId: task.projectId,
       projectName: task.projectName,
+      clientId: task.clientId,
+      clientName: task.clientName,
       serviceType: task.serviceType,
       message: task.billingWarning,
     })),
