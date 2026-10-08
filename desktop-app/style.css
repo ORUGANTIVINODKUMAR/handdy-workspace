@@ -197,6 +197,10 @@ body[data-page="dashboard"] .clock-actions button { width:100%; min-width:0; min
 body[data-page="dashboard"] .clock-status.status-break { color:#ff9fac; font-weight:700; }
 .break-clock.is-on-break { border-color:rgba(226,73,92,.5); background:rgba(226,73,92,.14); }
 .break-clock.is-on-break strong { color:#ff9fac; }
+.break-clock #stopBreakButton { min-height:36px; margin-top:8px; padding:0 14px; border-radius:7px; background:#fff; color:#a72f43; font-size:12px; font-weight:800; }
+.break-clock #stopBreakButton:hover:not(:disabled) { background:#ffe4e9; }
+.break-clock #stopBreakButton:disabled { opacity:.6; cursor:wait; }
+.break-clock #stopBreakButton[hidden] { display:none; }
 @media(max-width:850px) {
   body[data-page="dashboard"] .timer-header { padding:12px 20px 0; }
   body[data-page="dashboard"] .timer-stage { width:calc(100% - 28px); margin:28px auto; }

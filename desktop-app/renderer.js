@@ -57,6 +57,7 @@ const pauseTimerButton = null;
 const resumeTimerButton = null;
 const breakClock = document.getElementById("breakClock");
 const breakDuration = document.getElementById("breakDuration");
+const stopBreakButton = document.getElementById("stopBreakButton");
 
 const stopTimerButton = document.getElementById(
   "stopTimerButton"
@@ -305,7 +306,11 @@ function clearSessionLoops() {
 async function runTimerAction(action) {
   if (logoutPending || appClosePending || !getToken() || timerAction || idleStartedDialog?.open) return;
   timerAction = action();
-  try { return await timerAction; } finally { timerAction = null; }
+  updateBreakUI();
+  try { return await timerAction; } finally {
+    timerAction = null;
+    updateBreakUI();
+  }
 }
 
 async function signOut(inactivity = false) {
@@ -318,7 +323,7 @@ async function signOut(inactivity = false) {
     // Finish an already submitted timer action before closing the timer.
     if (timerAction) await timerAction;
     {
-      [startTimerButton, pauseTimerButton, resumeTimerButton, stopTimerButton].forEach(button => {
+      [startTimerButton, pauseTimerButton, resumeTimerButton, stopTimerButton, stopBreakButton].forEach(button => {
         if (button) button.disabled = true;
       });
       const response = await fetch(API_BASE_URL + "/time-logs/active", {
@@ -1494,6 +1499,11 @@ function calculateBreakSeconds(timeLog) {
 
 function updateBreakUI(timeLog = currentTimeLog) {
   const onBreak = isBreakTask(timeLog) || isIntentionalBreak(timeLog);
+  const activeBreak = onBreak && ["running", "paused"].includes(timeLog?.status);
+  if (stopBreakButton) {
+    stopBreakButton.hidden = !activeBreak;
+    stopBreakButton.disabled = !activeBreak || Boolean(timerAction) || logoutPending || appClosePending;
+  }
   if (breakClock) breakClock.hidden = false;
   const currentBreakDuration = formatDuration(calculateBreakSeconds(timeLog));
   if (breakDuration) breakDuration.textContent = currentBreakDuration;
@@ -1728,6 +1738,7 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
 
   try {
     stopTimerButton.disabled = true;
+    if (stopBreakButton) stopBreakButton.disabled = true;
 
     const response = await fetch(
       `${API_BASE_URL}/time-logs/stop`,
@@ -1757,6 +1768,7 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
         data.message || "Unable to stop timer.";
 
       stopTimerButton.disabled = false;
+      updateBreakUI();
       return;
     }
 
@@ -1802,6 +1814,7 @@ async function stopTimer({ idleSeconds = 0 } = {}) {
       "Unable to reach the backend server.";
 
     stopTimerButton.disabled = false;
+    updateBreakUI();
   }
 }
 async function pauseTimer(reason = "manual") {
@@ -2241,6 +2254,12 @@ stopTimerButton?.addEventListener(
   "click",
   () => runTimerAction(stopTimer)
 );
+stopBreakButton?.addEventListener("click", () => {
+  if (["running", "paused"].includes(currentTimeLog?.status)
+    && (isBreakTask() || isIntentionalBreak())) {
+    return runTimerAction(stopTimer);
+  }
+});
 logoutButton?.addEventListener("click", () => signOut(false));
 acknowledgeIdleButton?.addEventListener("click", (event) => {
   if (event && !event.isTrusted) return;

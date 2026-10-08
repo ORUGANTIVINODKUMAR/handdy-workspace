@@ -319,6 +319,43 @@ test("stopping a long session resets the live clock while preserving the saved d
   assert.equal(h.nodes.get("stopTimerButton").disabled, true);
 });
 
+test("Stop Break ends an active break once and restores task selection", async () => {
+  const h = harness();
+  h.run('currentTimeLog.task = { _id: "lunch", taskType: "break" }; currentTimeLog.startedAt = new Date(Date.now() - 60000).toISOString(); updateBreakUI()');
+  const button = h.nodes.get("stopBreakButton");
+  assert.equal(button.hidden, false);
+  assert.equal(button.disabled, false);
+  const pending = button.listeners.click();
+  assert.equal(button.disabled, true);
+  await button.listeners.click();
+  await pending;
+  assert.equal(h.calls.filter(url => url.endsWith("/stop")).length, 1);
+  assert.equal(h.state.timer.status, "stopped");
+  assert.equal(h.run("currentTimeLog"), null);
+  assert.equal(h.nodes.get("taskSelect").value, "");
+  assert.equal(h.nodes.get("startTimerButton").disabled, false);
+  assert.equal(h.nodes.get("breakDuration").textContent, "00:00:00");
+  assert.equal(button.hidden, true);
+});
+
+test("Stop Break stays available after a failed request and is absent for work", async () => {
+  const h = harness({ outage: true });
+  h.run('currentTimeLog.task = { taskType: "break" }; updateBreakUI()');
+  const button = h.nodes.get("stopBreakButton");
+  await button.listeners.click();
+  assert.equal(h.run("currentTimeLog.status"), "running");
+  assert.equal(button.hidden, false);
+  assert.equal(button.disabled, false);
+  h.state.outage = false;
+  await button.listeners.click();
+  assert.equal(button.hidden, true);
+  h.run('currentTimeLog = { status: "running", task: { taskType: "work" } }; updateBreakUI()');
+  assert.equal(button.hidden, true);
+  const calls = h.calls.length;
+  await button.listeners.click();
+  assert.equal(h.calls.length, calls);
+});
+
 test("completed break tasks contribute only to break totals", () => {
   const h = harness({ timer: null });
   const result = h.run(`(() => {
