@@ -37,6 +37,7 @@ const teamSchema = new mongoose.Schema(
   }
 );
 
+teamSchema.plugin(require("../services/readRevisions").readRevisionPlugin);
 const Team = mongoose.model(
   "Team",
   teamSchema

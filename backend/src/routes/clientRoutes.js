@@ -6,10 +6,11 @@ const { escapeRegExp } = require("../utils/requestUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
 
 const router = express.Router();
+const catalogCache = require("../middleware/catalogCache");
 
 // Employees use this list to choose a client when starting desktop work.
 // Creating, changing, and deactivating clients remains administrative.
-router.get("/", protect, async (req, res) => {
+router.get("/", protect, catalogCache([Client], { shared: true }), async (req, res) => {
   try {
     const filter = { status: { $ne: "Inactive" } };
     if (req.query.search) {

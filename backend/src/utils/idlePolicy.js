@@ -20,6 +20,7 @@ try {
 }
 
 function normalizeIdlePolicy(settings = {}) {
+  settings ||= {};
   const idleThresholdMinutes = settings.idleThresholdMinutes ?? defaults.idleThresholdMinutes;
   return {
     idleThresholdMinutes,

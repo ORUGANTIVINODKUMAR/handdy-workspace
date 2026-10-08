@@ -97,6 +97,7 @@ taskSchema.index({ teams: 1 });
 taskSchema.index({ assignedTo: 1 });
 taskSchema.index({ project: 1 });
 
+taskSchema.plugin(require("../services/readRevisions").readRevisionPlugin);
 const Task = mongoose.model("Task", taskSchema);
 
 module.exports = Task;

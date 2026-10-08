@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { loginNotificationPlugin } = require("../services/loginNotifications");
 
 const authSessionSchema = new mongoose.Schema({
   employee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", required: true, index: true },
@@ -29,4 +30,5 @@ authSessionSchema.index(
 );
 authSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
+authSessionSchema.plugin(loginNotificationPlugin);
 module.exports = mongoose.model("AuthSession", authSessionSchema);

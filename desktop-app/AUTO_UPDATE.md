@@ -1,5 +1,68 @@
 # CRM automatic updates: implementation and pilot release guide
 
+## Version 1.2.24: company shortcut repair
+
+Version 1.2.24 adds Stop Break below the active break clock and an NSIS installer
+hook in `build/installer.nsh`. After installing/updating CRM, the hook recreates
+existing CRM desktop, Start menu and current-user taskbar shortcuts using the
+newly installed executable and `com.handdy.timetracker` application identity.
+The replacement is created locally, so it does not inherit the downloaded
+shortcut's `Zone.Identifier` stream. Existing taskbar pins can point to the old
+ZIP copy; the hook redirects the named CRM pin to the installed app. It does not
+create a taskbar pin when there was none, change unrelated shortcuts, scan other
+users' profiles, or change Windows security policy. It stages a new shortcut
+and backs up the old one before replacement; a locked file is left intact.
+
+This addresses the screenshot's blocked `CRM.lnk`. It cannot approve a blocked
+installer or `CRM.exe`, or override company application-control policy.
+Installer-generated shortcuts and trusted, signed executables are separate
+requirements. The ordinary `npm run build` output remains an unsigned local
+pilot when no signing credentials are configured.
+
+For company releases, configure your trusted signing certificate/service in
+the build environment, then run `npm run build:signed`. This command requires
+code signing. `npm run publish` also now requires signing before uploading its
+draft; credentials stay out of source and employee machines. Maintain the same
+publisher identity for subsequent updates. A self-signed certificate is not a
+substitute for a trusted public certificate unless company IT explicitly
+deploys and allows it under its managed policy.
+
+### Rollout to 20 employees
+
+1. Test on one affected PC while Windows protection remains enabled. Confirm
+   the installer and CRM executable are allowed; open the existing CRM taskbar
+   pin and verify version 1.2.24 and Stop Break. Use the NSIS installer, not a ZIP
+   containing downloaded shortcuts. Close CRM normally before deployment so
+   an active timer is not interrupted by an installer.
+2. If the company uses Intune/another management tool or domain deployment,
+   have IT deploy `CRM-1.2.24-Windows-x64.exe /S` in each employee's user context.
+   Configure retry/detection and use the real installation path from a pilot.
+   The existing default is per user: running as LocalSystem repairs the system
+   account's shortcuts, not the employee's. A machine-wide installation still
+   repairs only the invoking user's taskbar pin. Other user profiles need a
+   managed user-context install/repair.
+3. If PCs are unmanaged, there is no central deployment channel in this
+   project. Each employee needs the approved installer once, or IT needs to set
+   up an authorized deployment channel. No individual Unblock steps are needed
+   for shortcuts successfully recreated by the installer.
+4. Later releases can use automatic updates only after employees have a working
+   updater-enabled installation and public release hosting has been resolved.
+   A blocked application cannot launch its own updater. Versions 1.2.22 and
+   older require the initial installer deployment.
+
+Run `npm run test:installer` on Windows after a build has populated the NSIS
+cache. It compiles and runs the actual repair macro only inside isolated test
+folders under `dist`, checking downloaded-file markers, target migration,
+repeat installs, unrelated links, locked files and missing links/executables.
+It never changes real desktop or taskbar shortcuts. A one-PC policy-enabled
+pilot is still required; local tests cannot establish company policy approval.
+
+References: [Microsoft Smart App Control guidance](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview),
+[Windows signing configuration](https://www.electron.build/v26/docs/features/code-signing/code-signing-win/),
+[Intune Win32 deployment](https://learn.microsoft.com/en-us/intune/app-management/deployment/win32).
+
+## Earlier baseline audit (1.2.23)
+
 Prepared on 7 October 2026. Implementation is ready for a one-PC pilot;
 no release has been uploaded or published, and no employee PC has been modified.
 Public release hosting and Windows signing still need attention before rollout.

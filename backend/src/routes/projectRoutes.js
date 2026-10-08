@@ -12,9 +12,14 @@ const { protect } = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/authorizeRoles");
 
 const router = express.Router();
+const catalogCache = require("../middleware/catalogCache");
+const Project = require("../models/Project");
+const Client = require("../models/Client");
+const Team = require("../models/Team");
+const Employee = require("../models/Employee");
 
 // All logged-in users can view projects
-router.get("/", protect, getAllProjects);
+router.get("/", protect, catalogCache([Project, Client, Team, Employee], { shared: true }), getAllProjects);
 router.get("/:id", protect, getProjectById);
 
 // Admin and Manager can manage projects

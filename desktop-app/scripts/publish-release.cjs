@@ -48,6 +48,7 @@ async function publish() {
   await build({
     projectDir: path.resolve(__dirname, ".."),
     targets: Platform.WINDOWS.createTarget(["nsis"], Arch.x64),
+    config: { forceCodeSigning: true },
     publish: "always",
   });
   console.log(`Draft v${pkg.version} uploaded. Review installer, blockmap and latest.yml before publishing the draft on GitHub.`);

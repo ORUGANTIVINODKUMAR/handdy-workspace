@@ -194,6 +194,64 @@ cd ../dashboard && npm run lint && npm run build
 
 ## CRM branding and desktop release publishing
 
+Version **1.2.26** reduces repeated database reads and report downloads:
+
+- Device approval monitors use local change notifications with a five-second
+  database fallback, instead of querying every half second. Disconnected
+  clients stop their pending monitor. Browser sessions skip desktop approval
+  lookups while retaining session revocation checks.
+- `/auth/me` reuses the employee already validated by authentication.
+  Inactivity settings GETs share a five-second read cache and never create or
+  update a settings document. Missing documents still use the safe defaults;
+  administrator saves invalidate the cache.
+- Authorized project, task and client lists use a bounded server cache
+  (64 entries, eight MiB total). Task results remain scoped to each employee;
+  project/client sharing retains role, team and permission boundaries. Model
+  writes invalidate their revisions locally; other server instances detect
+  changes through metadata reads cached for at most five seconds. Payload
+  entries expire after sixty seconds. Cache failures use the normal handlers.
+- Desktop timesheets and browser attendance/time-log reports opt into an
+  incremental protocol. Background refreshes merge changed rows and active
+  timers. Reference changes such as task renaming, deletion or reassignment
+  trigger full reloads. Manual refreshes and five-minute reconciliation fetch
+  complete paginated data. Large change batches also fall back to pagination.
+  Client snapshots are bounded to twelve reports and 50,000 rows per report.
+- Original endpoint paths and legacy response formats remain available to old
+  employee apps. Authentication, timer mutations, twenty-second heartbeats,
+  ninety-second lease expiry, OS idle checks and report refresh intervals keep
+  their existing behavior. Additional report-query indexes are defined in the
+  models; confirm they are created by the database deployment's index policy.
+
+**Rollout:** deploy the updated backend/dashboard first using the existing
+Render build configuration, then install the 1.2.26 NSIS installer over the
+existing installation on one or two pilot PCs. Close CRM normally before
+installation. Test login, Start/Stop, Stop Break, task assignment changes and
+timesheets before rolling out to the remaining twenty employees. Portable ZIP
+users should use the new installed CRM shortcut. No task/history deletion or
+data migration is required. If the backend is rolled back, 1.2.26 clients fall
+back to full pagination when the server does not supply synchronization markers.
+
+**Verified locally:** 116 backend tests, 31 dashboard tests and 82 desktop Node
+tests passed; dashboard ESLint and production build passed; both real Electron
+timer/dashboard smoke tests passed. The Windows x64 installer built without
+publishing, and its packaged version, report code, size and SHA-512 metadata
+were checked. Tests use isolated fixtures and mock APIs, not production data.
+The installer remains unsigned. These changes have not been pushed or deployed;
+actual Render/Atlas bandwidth savings require measurement after rollout.
+
+Version **1.2.25** adds filters to the desktop **My task timesheet** by entry
+type, task and session status. Selected results show work time, break time,
+break count and completed timer sessions. A completed session is a stopped
+timer, counted once even if it contains several work/break segments. The daily
+summary stays visible and filters survive automatic refreshes. Active breaks
+contribute to filtered break time; Total break today remains completed breaks.
+
+Version **1.2.24** adds **Stop Break** below the active break clock and recreates
+existing CRM shortcuts during NSIS installation/update to address downloaded
+taskbar shortcut blocks. Company publishing now requires code signing; see
+[the company rollout and shortcut repair guide](desktop-app/AUTO_UPDATE.md)
+for deployment to employee PCs and remaining signing/hosting prerequisites.
+
 The display name remains CRM. The application ID `com.handdy.timetracker`,
 package name, existing profile and Render API configuration remain unchanged.
 

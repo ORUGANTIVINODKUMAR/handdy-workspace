@@ -27,6 +27,15 @@ const todayTasks = document.getElementById("todayTasks");
 const todayTimesheetBody = document.getElementById("todayTimesheetBody");
 const todayTimesheetEmpty = document.getElementById("todayTimesheetEmpty");
 const timesheetMessage = document.getElementById("timesheetMessage");
+const timesheetTypeFilter = document.getElementById("timesheetTypeFilter");
+const timesheetTaskFilter = document.getElementById("timesheetTaskFilter");
+const timesheetStatusFilter = document.getElementById("timesheetStatusFilter");
+const clearTimesheetFilters = document.getElementById("clearTimesheetFilters");
+const filteredWorkTime = document.getElementById("filteredWorkTime");
+const filteredBreakTime = document.getElementById("filteredBreakTime");
+const filteredBreakCount = document.getElementById("filteredBreakCount");
+const filteredCompletedSessions = document.getElementById("filteredCompletedSessions");
+const timesheetFilterDetails = document.getElementById("timesheetFilterDetails");
 const refreshTimesheetButton = document.getElementById(
   "refreshTimesheetButton"
 );
@@ -117,6 +126,11 @@ let loginInProgress = false;
 let deviceApprovalMonitorActive = false;
 let pendingDeviceLoginRequest = null;
 let noteDirty = false;
+let todayTimesheetLogs = [];
+const reportSnapshots = new Map();
+let deviceApprovalAbortController = null;
+let todayTimesheetReportDate = null;
+let timesheetTaskOptionsSignature = null;
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const DATA_REFRESH_INTERVAL_MS = 10 * 1000;
 const API_REQUEST_TIMEOUT_MS = 10 * 1000;
@@ -182,15 +196,21 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
-async function fetchAllPages(endpoint, collectionKey, token, { isCurrent } = {}) {
+async function fetchAllPages(endpoint, collectionKey, token, { isCurrent, reportSync = false, force = false } = {}) {
   const items = [];
   let page = 1;
   let data = {};
   let response;
+  const cacheKey = JSON.stringify([token, endpoint, collectionKey]);
+  const previous = reportSync ? reportSnapshots.get(cacheKey) : null;
+  const marker = !force && previous && Date.now() - previous.loadedAt < 5 * 60_000 ? previous.data.sync : null;
+  let firstPage;
 
   do {
     const separator = endpoint.includes("?") ? "&" : "?";
-    response = await fetch(`${endpoint}${separator}page=${page}&limit=100`, {
+    const syncQuery = reportSync ? `&sync=true${page === 1 && marker
+      ? `&syncSince=${encodeURIComponent(marker.since)}&syncScope=${encodeURIComponent(marker.scope)}&syncReferences=${encodeURIComponent(marker.references)}` : ""}` : "";
+    response = await fetch(`${endpoint}${separator}page=${page}&limit=100${syncQuery}`, {
       method: "GET",
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
@@ -199,9 +219,32 @@ async function fetchAllPages(endpoint, collectionKey, token, { isCurrent } = {})
     data = await response.json();
     if (!response.ok) return { response, data, items: [] };
     if (isCurrent && !isCurrent()) return { response, data, items: [], cancelled: true };
+    if (getToken() !== token) return { response, data, items: [], cancelled: true };
+    firstPage ||= data;
+    if (page === 1 && reportSync && marker && data.delta && previous) {
+      const merged = new Map(previous.items.map((row) => [String(row._id), row]));
+      for (const id of data.removedIds || []) merged.delete(String(id));
+      for (const row of data[collectionKey] || []) merged.set(String(row._id), row);
+      items.push(...[...merged.values()].sort((a, b) =>
+        (new Date(b.startedAt || 0) - new Date(a.startedAt || 0)) || String(b._id).localeCompare(String(a._id))));
+      data = { ...previous.data, ...data, delta: false, count: items.length, totalRecords: items.length, [collectionKey]: items };
+      break;
+    }
     items.push(...(Array.isArray(data[collectionKey]) ? data[collectionKey] : []));
     page += 1;
   } while (page <= Math.max(Number(data.totalPages) || 1, 1));
+
+  if (reportSync) {
+    const unique = [...new Map(items.map((row) => [String(row._id), row])).values()];
+    items.length = 0;
+    for (const row of unique) items.push(row);
+    data = { ...firstPage, ...data, sync: firstPage.sync, [collectionKey]: items, count: items.length };
+    if (firstPage.sync && items.length <= 50_000) {
+      reportSnapshots.delete(cacheKey);
+      while (reportSnapshots.size >= 12) reportSnapshots.delete(reportSnapshots.keys().next().value);
+      reportSnapshots.set(cacheKey, { data, items: [...items], loadedAt: firstPage.delta ? previous.loadedAt : Date.now() });
+    } else reportSnapshots.delete(cacheKey);
+  }
 
   return { response, data, items };
 }
@@ -287,6 +330,9 @@ async function loadIdlePolicy() {
 }
 
 function clearSessionLoops() {
+  reportSnapshots.clear();
+  deviceApprovalAbortController?.abort();
+  deviceApprovalAbortController = null;
   deviceApprovalMonitorActive = false;
   clearInterval(idleMonitorInterval);
   clearInterval(timerHeartbeatInterval);
@@ -1003,13 +1049,17 @@ function showDeviceLoginRequest(loginRequest) {
 async function monitorDeviceLoginRequests() {
   if (deviceApprovalMonitorActive || isLoginPage || !getToken()) return;
   deviceApprovalMonitorActive = true;
+  deviceApprovalAbortController?.abort();
+  const controller = new AbortController();
+  deviceApprovalAbortController = controller;
   while (deviceApprovalMonitorActive && getToken() && !logoutPending) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login-requests/pending`, {
         headers: { Authorization: `Bearer ${getToken()}` },
-        signal: AbortSignal.timeout(25_000),
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
       });
       const data = await response.json();
+      if (controller.signal.aborted) return;
       if ([401, 403].includes(response.status)) {
         endRevokedDeviceSession(data.message);
         return;
@@ -1021,6 +1071,7 @@ async function monitorDeviceLoginRequests() {
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
+      if (controller.signal.aborted) return;
       if (error.name !== "TimeoutError") await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
@@ -1322,8 +1373,73 @@ function summarizeTimeline(timeline) {
   }, { workSeconds: 0, breakSeconds: 0, idleSeconds: 0 });
 }
 
+function timesheetTaskId(timeLog) {
+  const task = timeLog?.task;
+  return String(typeof task === "object" ? task?._id || "" : task || "");
+}
+
+function getTimesheetView(timeLogs, { type = "all", taskId = "", status = "all" } = {}, now = Date.now()) {
+  // Build gaps from the full history before filtering. A gap between two
+  // sessions belongs to neither task and must not inflate a selected task.
+  const timeline = buildChronologicalTimeline(timeLogs, now).filter(({ timeLog, entry }) => {
+    if (type !== "all" && entry.type !== type) return false;
+    if (taskId && (entry.source === "between_sessions" || timesheetTaskId(timeLog) !== taskId)) return false;
+    if (status !== "all" && entry.source === "between_sessions") return false;
+    if (status === "completed" && timeLog.status !== "stopped") return false;
+    if (status === "active" && !["running", "paused"].includes(timeLog.status)) return false;
+    return true;
+  });
+  const sessions = new Map();
+  const totals = { workSeconds: 0, breakSeconds: 0, breakCount: 0, completedSessions: 0 };
+  timeline.forEach(({ timeLog, timeLogIndex, entry }) => {
+    if (entry.type === "work") totals.workSeconds += entry.seconds;
+    if (entry.type === "break") {
+      totals.breakSeconds += entry.seconds;
+      totals.breakCount += 1;
+    }
+    if (entry.source !== "between_sessions") sessions.set(timeLog._id || timeLogIndex, timeLog);
+  });
+  totals.completedSessions = [...sessions.values()].filter((timeLog) => timeLog.status === "stopped").length;
+  return { timeline, ...totals, sessions: sessions.size };
+}
+
+function updateTimesheetTaskOptions(timeLogs) {
+  if (!timesheetTaskFilter) return;
+  const selected = timesheetTaskFilter.value || "";
+  const previousLabel = timesheetTaskFilter.selectedOptions?.[0]?.textContent;
+  const tasks = new Map();
+  timeLogs.forEach((timeLog) => {
+    const id = timesheetTaskId(timeLog);
+    if (!id || tasks.has(id)) return;
+    const taskName = timeLog.task?.taskName || "Task";
+    const projectName = timeLog.project?.projectName;
+    const label = timeLog.task?.taskType === "break" ? `${taskName} (Break)`
+      : projectName ? `${taskName} — ${projectName}` : taskName;
+    tasks.set(id, label);
+  });
+  const options = [...tasks].sort((first, second) => first[1].localeCompare(second[1]));
+  // Keep a filter that no longer has matching records until explicitly cleared.
+  if (selected && !tasks.has(selected)) options.push([selected, previousLabel || "Selected task"]);
+  const signature = JSON.stringify(options);
+  if (signature !== timesheetTaskOptionsSignature) {
+    const makeOption = (value, label) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      return option;
+    };
+    timesheetTaskFilter.replaceChildren(makeOption("", "All tasks"), ...options.map(([value, label]) => makeOption(value, label)));
+    timesheetTaskOptionsSignature = signature;
+  }
+  timesheetTaskFilter.value = selected;
+}
+
 function renderTodayTimesheet(timeLogs, reportDate) {
-  const timeline = buildChronologicalTimeline(timeLogs);
+  todayTimesheetLogs = timeLogs;
+  todayTimesheetReportDate = reportDate;
+  updateTimesheetTaskOptions(timeLogs);
+  const reportNow = Date.now();
+  const timeline = buildChronologicalTimeline(timeLogs, reportNow);
   const {
     workSeconds: totalSeconds,
     idleSeconds: totalIdleSeconds,
@@ -1350,9 +1466,22 @@ function renderTodayTimesheet(timeLogs, reportDate) {
   todaySessions.textContent = String(timeLogs.length);
   todayTasks.textContent = String(taskIds.size);
   todayTimesheetBody.textContent = "";
-  todayTimesheetEmpty.hidden = timeLogs.length > 0;
+  const view = getTimesheetView(timeLogs, {
+    type: timesheetTypeFilter?.value || "all",
+    taskId: timesheetTaskFilter?.value || "",
+    status: timesheetStatusFilter?.value || "all",
+  }, reportNow);
+  if (filteredWorkTime) filteredWorkTime.textContent = formatDuration(view.workSeconds);
+  if (filteredBreakTime) filteredBreakTime.textContent = formatDuration(view.breakSeconds);
+  if (filteredBreakCount) filteredBreakCount.textContent = String(view.breakCount);
+  if (filteredCompletedSessions) filteredCompletedSessions.textContent = String(view.completedSessions);
+  if (timesheetFilterDetails) timesheetFilterDetails.textContent = `${view.timeline.length} ${view.timeline.length === 1 ? "entry" : "entries"} across ${view.sessions} ${view.sessions === 1 ? "session" : "sessions"}`;
+  todayTimesheetEmpty.hidden = view.timeline.length > 0;
+  todayTimesheetEmpty.textContent = timeLogs.length > 0
+    ? "No entries match the selected filters. Try another task or clear the filters."
+    : "No task time has been recorded today.";
 
-  timeline.forEach(({ timeLog, entry }) => {
+  view.timeline.forEach(({ timeLog, entry }) => {
       const row = document.createElement("tr");
       row.className = `timesheet-timeline-row timesheet-${entry.type}-row`;
       appendTimelineTypeCell(row, entry, timeLog);
@@ -1390,7 +1519,7 @@ function renderTodayTimesheet(timeLogs, reportDate) {
   });
 }
 
-async function loadTodayTimesheet() {
+async function loadTodayTimesheet({ force = false } = {}) {
   const token = getToken();
 
   if (!token) {
@@ -1409,11 +1538,14 @@ async function loadTodayTimesheet() {
       String(now.getMonth() + 1).padStart(2, "0"),
       String(now.getDate()).padStart(2, "0"),
     ].join("-");
-    const { response, data, items: todaysTimeLogs } = await fetchAllPages(
+    const { response, data, items: todaysTimeLogs, cancelled } = await fetchAllPages(
       `${API_BASE_URL}/time-logs/history?today=true&startDate=${localDateKey}&endDate=${localDateKey}`,
       "timeLogs",
-      token
+      token,
+      { reportSync: true, force }
     );
+
+    if (cancelled) return;
 
     if (!response.ok) {
       timesheetMessage.textContent =
@@ -2228,8 +2360,17 @@ loginForm?.addEventListener(
 
 refreshTimesheetButton?.addEventListener(
   "click",
-  loadTodayTimesheet
+  () => loadTodayTimesheet({ force: true })
 );
+[timesheetTypeFilter, timesheetTaskFilter, timesheetStatusFilter].forEach((filter) => {
+  filter?.addEventListener("change", () => renderTodayTimesheet(todayTimesheetLogs, todayTimesheetReportDate));
+});
+clearTimesheetFilters?.addEventListener("click", () => {
+  if (timesheetTypeFilter) timesheetTypeFilter.value = "all";
+  if (timesheetTaskFilter) timesheetTaskFilter.value = "";
+  if (timesheetStatusFilter) timesheetStatusFilter.value = "all";
+  renderTodayTimesheet(todayTimesheetLogs, todayTimesheetReportDate);
+});
 
 quickLoginButton?.addEventListener("click", () => {
   emailInput.value = "";

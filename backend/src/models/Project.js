@@ -97,4 +97,5 @@ const projectSchema = new mongoose.Schema(
 projectSchema.index({ teams: 1 });
 projectSchema.index({ client: 1 });
 
+projectSchema.plugin(require("../services/readRevisions").readRevisionPlugin);
 module.exports = mongoose.model("Project", projectSchema);

@@ -16,8 +16,8 @@ export const waitForLoginApproval = async ({ requestId, requestToken }) => {
   return response.data;
 };
 
-export const getPendingLoginRequest = async () => {
-  const response = await axiosInstance.get("/auth/login-requests/pending", { timeout: 25000 });
+export const getPendingLoginRequest = async (signal) => {
+  const response = await axiosInstance.get("/auth/login-requests/pending", { timeout: 25000, signal });
   return response.data;
 };
 

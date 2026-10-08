@@ -301,11 +301,11 @@ function AdminReportContent({
       };
       const data = mode === "attendance"
         ? scope === "personal"
-          ? await getMyAttendance(params)
-          : await getAdminAttendance(params)
+          ? await getMyAttendance(params, { force: !silent })
+          : await getAdminAttendance(params, { force: !silent })
         : scope === "personal"
-          ? await getMyTimeLogs(params)
-          : await getAdminTimeLogs(params);
+          ? await getMyTimeLogs(params, { force: !silent })
+          : await getAdminTimeLogs(params, { force: !silent });
 
       if (!isCurrent()) return;
       const fetched = mode === "attendance" ? data.attendance || [] : data.timeLogs || [];

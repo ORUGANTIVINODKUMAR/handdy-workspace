@@ -20,6 +20,11 @@ const {
 } = require("../middleware/authorizeRoles");
 
 const router = express.Router();
+const catalogCache = require("../middleware/catalogCache");
+const Task = require("../models/Task");
+const Project = require("../models/Project");
+const Team = require("../models/Team");
+const Employee = require("../models/Employee");
 
 // ==============================================
 // CREATE TASK
@@ -46,6 +51,7 @@ router.post(
 router.get(
   "/",
   protect,
+  catalogCache([Task, Project, Team, Employee]),
   getAllTasks
 );
 

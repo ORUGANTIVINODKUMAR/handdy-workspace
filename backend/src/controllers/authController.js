@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { createLoginWaiter } = require("../services/loginNotifications");
 const Employee = require("../models/Employee");
 const { getFrontendUrl } = require("../config/productionConfig");
 const generateToken = require("../utils/generateToken");
@@ -411,11 +412,10 @@ const quickLogin = async (req, res) => {
   }
 };
 
-const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
 // A requesting device holds this authenticated-by-secret request open, avoiding
 // rapid polling while the current device's user decides.
 const waitForLoginRequest = async (req, res) => {
+  const waiter = createLoginWaiter(req, res, ["requests", `request:${req.params.requestId}`]);
   try {
     const { requestId } = req.params;
     const requestToken = req.body?.requestToken;
@@ -423,13 +423,16 @@ const waitForLoginRequest = async (req, res) => {
     let request;
 
     do {
+      if (waiter.closed) return;
       request = await findRequestForRequester(requestId, requestToken);
+      if (waiter.closed) return;
       if (!request) {
         return res.status(404).json({ success: false, code: "LOGIN_REQUEST_NOT_FOUND", message: "This login request is not valid." });
       }
       if (request.status !== "pending" && request.status !== "approving") break;
-      await wait(500);
-    } while (Date.now() < deadline);
+      await waiter.wait(Math.min(5_000, deadline - Date.now(), Math.max(0, new Date(request.expiresAt).getTime() - Date.now())));
+    } while (!waiter.closed && Date.now() < deadline);
+    if (waiter.closed) return;
 
     if (request.status === "pending" || request.status === "approving") {
       return res.status(202).json({ success: false, code: "DEVICE_APPROVAL_PENDING", status: request.status, expiresAt: request.expiresAt });
@@ -471,19 +474,27 @@ const waitForLoginRequest = async (req, res) => {
       consumedRememberedHash: request.rememberedTokenHash,
     }));
   } catch (error) {
-    return handleControllerError(res, error);
+    if (!waiter.closed) return handleControllerError(res, error);
+  } finally {
+    waiter.dispose();
   }
 };
 
 const getPendingLoginRequest = async (req, res) => {
+  const waiter = createLoginWaiter(req, res, [`session:${req.authSession._id}`, `employee:${req.authSession.employee}`]);
   try {
     const deadline = Date.now() + 20_000;
     do {
+      if (waiter.closed) return;
       const activeSession = await AuthSession.findOne({ _id: req.authSession._id, status: "active" });
+      if (waiter.closed) return;
       if (!activeSession) {
         return res.status(401).json({ success: false, code: "SESSION_REVOKED", message: "This device session is no longer active." });
       }
-      const request = await findPendingForSession(activeSession);
+      // Browser sessions do not participate in desktop approval. Retain the
+      // held request/session checks for older web clients and revocation.
+      const request = activeSession.clientType === "web" ? null : await findPendingForSession(activeSession);
+      if (waiter.closed) return;
       if (request) {
         return res.status(200).json({
           success: true,
@@ -497,12 +508,15 @@ const getPendingLoginRequest = async (req, res) => {
           },
         });
       }
-      await wait(500);
-    } while (Date.now() < deadline);
+      await waiter.wait(Math.min(5_000, deadline - Date.now()));
+    } while (!waiter.closed && Date.now() < deadline);
+    if (waiter.closed) return;
 
     return res.status(200).json({ success: true, loginRequest: null });
   } catch (error) {
-    return handleControllerError(res, error);
+    if (!waiter.closed) return handleControllerError(res, error);
+  } finally {
+    waiter.dispose();
   }
 };
 
@@ -556,10 +570,7 @@ const cancelLoginRequest = async (req, res) => {
 // ======================================================
 const getProfile = async (req, res) => {
   try {
-    const employee =
-      await Employee.findById(
-        req.user._id
-      );
+    const employee = req.user;
 
     if (!employee) {
       return res.status(404).json({

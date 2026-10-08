@@ -1,15 +1,17 @@
 {
   "name": "handdy-desktop-app",
-  "version": "1.2.23",
+  "version": "1.2.26",
   "description": "Employee Time & Attendance System Desktop App",
   "main": "main.js",
   "scripts": {
     "test": "node --test --test-isolation=none test/*.test.js && npm run test:electron && npm run test:dashboard",
     "test:electron": "set \"ELECTRON_RUN_AS_NODE=\" && electron test/electron-inactivity-smoke.cjs",
+    "test:installer": "powershell -NoProfile -File test/installer-shortcut-smoke.ps1",
     "test:dashboard": "set \"VITE_API_URL=/api\" && npm --prefix ../dashboard run build && set \"ELECTRON_RUN_AS_NODE=\" && electron test/dashboard-lifecycle-smoke.cjs",
     "start": "set \"ELECTRON_RUN_AS_NODE=\" && electron .",
     "build": "electron-builder --win nsis --x64 --publish never",
     "build:win": "electron-builder --win nsis --x64 --publish never",
+    "build:signed": "electron-builder --win nsis --x64 --publish never --config.forceCodeSigning=true",
     "publish": "node scripts/publish-release.cjs",
     "test:updater": "node --test --test-isolation=none test/app-updater.test.js test/release-config.test.js test/updater-close.test.js"
   },
@@ -42,6 +44,7 @@
       "artifactName": "CRM-${version}-Windows-${arch}.${ext}"
     },
     "nsis": {
+      "include": "build/installer.nsh",
       "oneClick": false,
       "perMachine": false,
       "allowElevation": true,

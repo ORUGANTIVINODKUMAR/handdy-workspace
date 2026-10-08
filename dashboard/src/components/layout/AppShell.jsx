@@ -29,23 +29,25 @@ export default function AppShell({ children }) {
   useEffect(() => {
     if (!isAuthenticated || isAuthLoading || pendingLoginRequest) return undefined;
     let active = true;
+    const controller = new AbortController();
     const monitor = async () => {
       while (active) {
         try {
-          const response = await getPendingLoginRequest();
+          const response = await getPendingLoginRequest(controller.signal);
           if (active && response?.loginRequest) {
             setPendingLoginRequest(response.loginRequest);
             return;
           }
           await new Promise((resolve) => setTimeout(resolve, 1000));
         } catch (error) {
+          if (!active || controller.signal.aborted) return;
           if ([401, 403].includes(error?.response?.status)) return;
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       }
     };
     void monitor();
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, [isAuthenticated, isAuthLoading, pendingLoginRequest]);
   if (!isAuthenticated || isAuthLoading || /login|password/.test(location.pathname)) return children;
 

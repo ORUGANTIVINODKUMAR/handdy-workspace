@@ -9,6 +9,7 @@ const { getBillingDateRange, getDateKeyInTimezone } = require("../utils/billingU
 const sendErrorResponse = require("../utils/sendErrorResponse");
 const { isAdminRole } = require("../utils/roles");
 const { closeStaleDesktopTimers } = require("../services/desktopTimerLease");
+const { beginReportSync, changedTimeLogFilter, deltaRows } = require("../services/reportSync");
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
 // Expose existing client relationships for reports; no new data or permissions.
@@ -106,6 +107,24 @@ const clipTimeLogToRange = (log, range, now = new Date()) => {
     isActiveTimer: remainsOpen && log.isActiveTimer,
   };
 };
+
+async function prepareTimeLogSync(req, res, filter, range, includeEmployee = false) {
+    const sync = await beginReportSync(req, filter, [Project, Task, Client, Employee, Team]);
+    if (!sync?.delta) return { sync, handled: false };
+    let query = TaskTimeLog.find(changedTimeLogFilter(filter, sync.previous))
+        .populate(reportProjectPopulation)
+        .populate("client", "clientName")
+        .populate("task", "taskCode taskName taskType");
+    if (includeEmployee) query = query.populate("employee", "employeeId fullName email department designation");
+    const rows = await query.sort("-startedAt").limit(101).lean();
+    // Large reconnect batches fall back to the original complete pagination.
+    if (rows.length > 100) return { sync, handled: false };
+    const { records, removedIds } = deltaRows(rows, (log) =>
+        filter.status && filter.status !== log.status ? null : clipTimeLogToRange(log, range));
+    res.status(200).json({ success: true, delta: true, timeLogs: records, removedIds,
+        sync: sync.marker, timezone: APP_TIMEZONE });
+    return { sync, handled: true };
+}
 
 // Start Timer
 const startTimer = async (req, res) => {
@@ -538,6 +557,8 @@ const getMyTimeLogs = async (req, res) => {
             filter.status = status;
         }
 
+        const { sync, handled } = await prepareTimeLogSync(req, res, filter, reportRange);
+        if (handled) return;
         const totalRecords = await TaskTimeLog.countDocuments(filter);
 
         const rawTimeLogs = await TaskTimeLog.find(filter)
@@ -561,6 +582,7 @@ const getMyTimeLogs = async (req, res) => {
             totalRecords,
             timezone: APP_TIMEZONE,
             date: todayDateKey || undefined,
+            ...(sync ? { sync: sync.marker } : {}),
             timeLogs,
         });
     } catch (error) {
@@ -647,6 +669,8 @@ const getMyTeamTimeLogs = async (req, res) => {
         if (task) filter.task = task;
         if (status) filter.status = status;
 
+        const { sync, handled } = await prepareTimeLogSync(req, res, filter, reportRange, true);
+        if (handled) return;
         const totalRecords = await TaskTimeLog.countDocuments(filter);
         const rawTimeLogs = await TaskTimeLog.find(filter)
             .populate(
@@ -671,6 +695,7 @@ const getMyTeamTimeLogs = async (req, res) => {
             totalPages: Math.ceil(totalRecords / limit),
             count: timeLogs.length,
             totalRecords,
+            ...(sync ? { sync: sync.marker } : {}),
             timeLogs,
         });
     } catch (error) {
@@ -703,6 +728,8 @@ const getAllTimeLogs = async (req, res) => {
         if (task) filter.task = task;
         if (status) filter.status = status;
 
+        const { sync, handled } = await prepareTimeLogSync(req, res, filter, reportRange, true);
+        if (handled) return;
         const totalRecords = await TaskTimeLog.countDocuments(filter);
         const rawTimeLogs = await TaskTimeLog.find(filter)
             .populate("employee", "employeeId fullName email department designation")
@@ -724,6 +751,7 @@ const getAllTimeLogs = async (req, res) => {
             totalPages: Math.ceil(totalRecords / limit),
             count: timeLogs.length,
             totalRecords,
+            ...(sync ? { sync: sync.marker } : {}),
             timeLogs,
         });
     } catch (error) {

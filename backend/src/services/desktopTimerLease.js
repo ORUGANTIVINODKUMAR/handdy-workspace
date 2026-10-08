@@ -1,6 +1,7 @@
 const TaskTimeLog = require("../models/TaskTimeLog");
 
 const HEARTBEAT_TIMEOUT_MS = 90_000;
+const sweeps = new Map();
 
 function stoppedValues(log, stoppedAt) {
   const pauses = (log.pauses || []).map((pause) => ({
@@ -26,7 +27,7 @@ function stoppedValues(log, stoppedAt) {
   };
 }
 
-async function closeStaleDesktopTimers(now = new Date(), employeeId = null) {
+async function sweepStaleDesktopTimers(now, employeeId) {
   const cutoff = new Date(now.getTime() - HEARTBEAT_TIMEOUT_MS);
   const filter = {
     isActiveTimer: true,
@@ -44,6 +45,18 @@ async function closeStaleDesktopTimers(now = new Date(), employeeId = null) {
     closed += result.modifiedCount || 0;
   }
   return closed;
+}
+
+function closeStaleDesktopTimers(now = new Date(), employeeId = null) {
+  // Coalesce identical concurrent checks without caching completed sweeps or
+  // relaxing the 90-second lease boundary for subsequent timer actions.
+  const key = `${employeeId || "all"}:${now.getTime()}`;
+  if (sweeps.has(key)) return sweeps.get(key);
+  const pending = sweepStaleDesktopTimers(now, employeeId).finally(() => {
+    if (sweeps.get(key) === pending) sweeps.delete(key);
+  });
+  sweeps.set(key, pending);
+  return pending;
 }
 
 module.exports = { closeStaleDesktopTimers, HEARTBEAT_TIMEOUT_MS, stoppedValues };

@@ -12,4 +12,5 @@ const clientSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+clientSchema.plugin(require("../services/readRevisions").readRevisionPlugin);
 module.exports = mongoose.model("Client", clientSchema);

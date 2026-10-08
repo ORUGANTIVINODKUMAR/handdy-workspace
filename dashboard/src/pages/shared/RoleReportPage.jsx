@@ -160,8 +160,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
         task: activeFilters.task || undefined,
       };
       const data = mode === "attendance"
-        ? isTeamReport ? await getTeamAttendance(params) : await getMyAttendance(params)
-        : isTeamReport ? await getTeamTimeLogs(params) : await getMyTimeLogs(params);
+        ? isTeamReport ? await getTeamAttendance(params, { force: !silent }) : await getMyAttendance(params, { force: !silent })
+        : isTeamReport ? await getTeamTimeLogs(params, { force: !silent }) : await getMyTimeLogs(params, { force: !silent });
 
       if (!isCurrent()) return;
       setRecords(mode === "attendance" ? data.attendance || [] : data.timeLogs || []);

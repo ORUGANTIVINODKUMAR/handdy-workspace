@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { loginNotificationPlugin } = require("../services/loginNotifications");
 
 const deviceLoginRequestSchema = new mongoose.Schema({
   requestId: { type: String, required: true, unique: true, index: true },
@@ -26,4 +27,5 @@ const deviceLoginRequestSchema = new mongoose.Schema({
 deviceLoginRequestSchema.index({ cleanupAt: 1 }, { expireAfterSeconds: 0 });
 deviceLoginRequestSchema.index({ existingSession: 1, status: 1, createdAt: 1 });
 
+deviceLoginRequestSchema.plugin(loginNotificationPlugin, { requests: true });
 module.exports = mongoose.model("DeviceLoginRequest", deviceLoginRequestSchema);

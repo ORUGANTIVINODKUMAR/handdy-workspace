@@ -323,6 +323,7 @@ employeeSchema.methods.comparePassword = async function (
   );
 };
 
+employeeSchema.plugin(require("../services/readRevisions").readRevisionPlugin);
 const Employee = mongoose.model(
   "Employee",
   employeeSchema

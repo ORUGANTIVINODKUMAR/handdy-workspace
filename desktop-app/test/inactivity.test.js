@@ -565,6 +565,68 @@ test("desktop timesheet interleaves work and break segments chronologically", ()
   ]);
 });
 
+test("task filters total stopped sessions once across several work segments and exclude task gaps", () => {
+  const h = harness({ timer: null });
+  const result = h.run(`(() => {
+    const logs = [
+      { _id: "one", status: "stopped", task: { _id: "task-a" },
+        startedAt: "2026-10-08T10:00:00Z", stoppedAt: "2026-10-08T10:10:00Z", totalWorkedSeconds: 480,
+        pauses: [{ reason: "break", pausedAt: "2026-10-08T10:03:00Z", resumedAt: "2026-10-08T10:05:00Z" }] },
+      { _id: "two", status: "stopped", task: { _id: "task-a" },
+        startedAt: "2026-10-08T10:15:00Z", stoppedAt: "2026-10-08T10:20:00Z", totalWorkedSeconds: 300 },
+      { _id: "three", status: "stopped", task: { _id: "task-b" },
+        startedAt: "2026-10-08T10:25:00Z", stoppedAt: "2026-10-08T10:30:00Z", totalWorkedSeconds: 300 }
+    ];
+    const view = getTimesheetView(logs, { type: "work", taskId: "task-a", status: "completed" });
+    const allTaskRows = getTimesheetView(logs, { taskId: "task-a" });
+    return { seconds: view.workSeconds, completed: view.completedSessions, sessions: view.sessions,
+      workRows: view.timeline.length, taskGapCount: allTaskRows.timeline.filter(row => row.entry.source === "between_sessions").length };
+  })()`);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { seconds: 780, completed: 2, sessions: 2, workRows: 3, taskGapCount: 0 });
+});
+
+test("break filters include active break time and count only stopped sessions as completed", () => {
+  const h = harness({ timer: null });
+  const result = h.run(`(() => {
+    const logs = [
+      { _id: "lunch", status: "stopped", task: { _id: "break", taskType: "break" },
+        startedAt: "2026-10-08T10:00:00Z", stoppedAt: "2026-10-08T10:05:00Z" },
+      { _id: "tea", status: "running", task: { _id: "break", taskType: "break" }, startedAt: "2026-10-08T10:06:00Z" },
+      { _id: "work", status: "paused", task: { _id: "task" }, startedAt: "2026-10-08T10:07:00Z",
+        pauses: [{ reason: "break", pausedAt: "2026-10-08T10:08:00Z", resumedAt: null }] }
+    ];
+    const now = new Date("2026-10-08T10:10:00Z").getTime();
+    const view = getTimesheetView(logs, { type: "break" }, now);
+    const completed = getTimesheetView(logs, { type: "break", status: "completed" }, now);
+    const active = getTimesheetView(logs, { type: "break", taskId: "break", status: "active" }, now);
+    return { work: view.workSeconds, breakSeconds: view.breakSeconds, breaks: view.breakCount,
+      completed: view.completedSessions, sessions: view.sessions,
+      completedSeconds: completed.breakSeconds, activeSeconds: active.breakSeconds, activeCompleted: active.completedSessions };
+  })()`);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    work: 0, breakSeconds: 660, breaks: 3, completed: 1, sessions: 3,
+    completedSeconds: 300, activeSeconds: 240, activeCompleted: 0,
+  });
+});
+
+test("filters build idle gaps before selecting rows and return zeros for missing tasks", () => {
+  const h = harness({ timer: null });
+  const result = h.run(`(() => {
+    const logs = [
+      { _id: "a", status: "stopped", task: "task-a", startedAt: "2026-10-08T10:00:00Z", stoppedAt: "2026-10-08T10:01:00Z" },
+      { _id: "b", status: "stopped", task: "task-b", startedAt: "2026-10-08T10:02:00Z", stoppedAt: "2026-10-08T10:03:00Z" },
+      { _id: "c", status: "stopped", task: "task-a", startedAt: "2026-10-08T10:04:00Z", stoppedAt: "2026-10-08T10:05:00Z" }
+    ];
+    const idle = getTimesheetView(logs, { type: "idle" });
+    const missing = getTimesheetView(logs, { taskId: "removed" });
+    return { gaps: idle.timeline.map(row => row.entry.seconds), idleSessions: idle.sessions,
+      missing: { rows: missing.timeline.length, work: missing.workSeconds, breaks: missing.breakSeconds, completed: missing.completedSessions } };
+  })()`);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    gaps: [60, 60], idleSessions: 0, missing: { rows: 0, work: 0, breaks: 0, completed: 0 },
+  });
+});
+
 test("desktop timesheet globally sorts segments from every session by start time", () => {
   const h = harness({ timer: null });
   const rows = h.run(`buildChronologicalTimeline([

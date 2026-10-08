@@ -128,5 +128,8 @@ taskTimeLogSchema.index(
 
 taskTimeLogSchema.index({ employee: 1, status: 1, startedAt: 1, stoppedAt: 1 });
 taskTimeLogSchema.index({ isActiveTimer: 1, desktopHeartbeatAt: 1 });
+taskTimeLogSchema.index({ employee: 1, updatedAt: 1 });
+taskTimeLogSchema.index({ updatedAt: 1 });
+taskTimeLogSchema.index({ status: 1 });
 
 module.exports = mongoose.model("TaskTimeLog", taskTimeLogSchema);

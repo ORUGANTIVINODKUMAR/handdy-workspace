@@ -2,6 +2,20 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const { getDateKey, getPagination } = require("../utils/requestUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
+const { beginReportSync, deltaRows } = require("../services/reportSync");
+
+async function prepareAttendanceSync(req, res, filter, includeEmployee = false) {
+    const sync = await beginReportSync(req, filter, [Employee]);
+    if (!sync?.delta) return { sync, handled: false };
+    const { status: _status, ...scope } = filter;
+    let query = Attendance.find({ ...scope, updatedAt: { $gte: new Date(sync.previous.getTime() - 1_000) } });
+    if (includeEmployee) query = query.populate("employee", "employeeId fullName email department designation");
+    const rows = await query.sort("-date").limit(101).lean();
+    if (rows.length > 100) return { sync, handled: false };
+    const { records, removedIds } = deltaRows(rows, (row) => filter.status && row.status !== filter.status ? null : row);
+    res.status(200).json({ success: true, delta: true, attendance: records, removedIds, sync: sync.marker });
+    return { sync, handled: true };
+}
 
 // Check in
 const checkIn = async (req, res) => {
@@ -141,6 +155,8 @@ const getAttendanceHistory = async (req, res) => {
             };
         }
 
+        const { sync, handled } = await prepareAttendanceSync(req, res, filter);
+        if (handled) return;
         const totalRecords = await Attendance.countDocuments(filter);
 
         const attendance = await Attendance.find(filter)
@@ -155,6 +171,7 @@ const getAttendanceHistory = async (req, res) => {
             totalPages: Math.ceil(totalRecords / limit),
             count: attendance.length,
             totalRecords,
+            ...(sync ? { sync: sync.marker } : {}),
             attendance,
         });
     } catch (error) {
@@ -258,6 +275,8 @@ const getMyTeamAttendanceHistory = async (req, res) => {
             filter.status = status;
         }
 
+        const { sync, handled } = await prepareAttendanceSync(req, res, filter, true);
+        if (handled) return;
         const totalRecords = await Attendance.countDocuments(filter);
 
         const attendance = await Attendance.find(filter)
@@ -276,6 +295,7 @@ const getMyTeamAttendanceHistory = async (req, res) => {
             totalPages: Math.ceil(totalRecords / limit),
             count: attendance.length,
             totalRecords,
+            ...(sync ? { sync: sync.marker } : {}),
             attendance,
         });
     } catch (error) {
@@ -319,6 +339,8 @@ const getAllAttendanceHistory = async (req, res) => {
             filter.status = status;
         }
 
+        const { sync, handled } = await prepareAttendanceSync(req, res, filter, true);
+        if (handled) return;
         const totalRecords = await Attendance.countDocuments(filter);
 
         const attendance = await Attendance.find(filter)
@@ -337,6 +359,7 @@ const getAllAttendanceHistory = async (req, res) => {
             totalPages: Math.ceil(totalRecords / limit),
             count: attendance.length,
             totalRecords,
+            ...(sync ? { sync: sync.marker } : {}),
             attendance,
         });
     } catch (error) {
