@@ -23,6 +23,10 @@ import { getWorkedSeconds, localDate as today } from "../../utils/timeLogReportH
 import { readReportState, writeReportState } from "../../utils/reportPersistence";
 import { buildClientTimesheet } from "../../utils/clientTimesheet";
 import ClientTimesheet from "../../components/reports/ClientTimesheet";
+import AddEntryModal from "../../components/reports/AddEntryModal";
+import ManualEntriesModal from "../../components/reports/ManualEntriesModal";
+import { canManageManualEntries } from "../../utils/manualEntry";
+import { getMyPermissions } from "../../api/permissionApi";
 
 import "../../styles/adminReportPage.css";
 import "../../styles/roleReportPage.css";
@@ -37,8 +41,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   const restoredReportRef = useRef(false);
   const latestReportRequestRef = useRef(0);
   const pendingReportRequestsRef = useRef(0);
-  const [fromDate, setFromDate] = useState(() => savedReportState.fromDate || today());
-  const [toDate, setToDate] = useState(() => savedReportState.toDate || today());
+  const [fromDate, setFromDate] = useState(() => today());
+  const [toDate, setToDate] = useState(() => today());
   const [project, setProject] = useState(() => savedReportState.project || "");
   const [task, setTask] = useState(() => savedReportState.task || "");
   const [appliedProject, setAppliedProject] = useState(() => savedReportState.project || "");
@@ -47,8 +51,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   // The silent background poll must replay this snapshot, not whatever is
   // currently sitting in the (possibly half-edited) filter inputs.
   const appliedFiltersRef = useRef({
-    fromDate: savedReportState.fromDate || today(),
-    toDate: savedReportState.toDate || today(),
+    fromDate: today(),
+    toDate: today(),
     project: savedReportState.project || "",
     task: savedReportState.task || "",
   });
@@ -62,6 +66,22 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
   const [teamView, setTeamView] = useState(() => savedReportState.teamView === "client" ? "client" : "employee");
   const isTeamLead = user?.role === "team_lead";
   const isTeamReport = isTeamLead && scope !== "personal";
+  // A team lead only sees Add Entry when an administrator granted
+  // "add_manual_entries" to the role; the API enforces it regardless.
+  const [canAddEntry, setCanAddEntry] = useState(false);
+  const [entryEmployee, setEntryEmployee] = useState(null);
+  const [manualEntryEmployee, setManualEntryEmployee] = useState(null);
+  const [entryNotice, setEntryNotice] = useState("");
+  const manualEntriesAvailable = showClientView && isTeamReport && mode === "time";
+
+  useEffect(() => {
+    if (!manualEntriesAvailable) return undefined;
+    let active = true;
+    getMyPermissions()
+      .then((permissions) => { if (active) setCanAddEntry(permissions.includes("add_manual_entries")); })
+      .catch(() => { if (active) setCanAddEntry(false); });
+    return () => { active = false; };
+  }, [manualEntriesAvailable]);
 
   useEffect(() => {
     if (mode !== "time") return;
@@ -124,9 +144,19 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
     () => showClientView && isTeamReport ? buildClientTimesheet(records, timelineRows) : [],
     [records, timelineRows, showClientView, isTeamReport],
   );
+  const entryEmployees = useMemo(() => {
+    const employees = new Map();
+    for (const record of records) {
+      const employee = record.employee;
+      if (canManageManualEntries(user, employee, { teamReport: isTeamReport })) employees.set(String(employee._id), employee);
+    }
+    return [...employees.values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }, [records, user, isTeamReport]);
+  const manualEntryCount = (id) => records.filter((record) => record.entrySource === "manual" && !record.manualEntry?.deletedAt
+    && String(record.employee?._id || record.employee || "") === String(id)).length;
 
-  const loadReport = useCallback(async ({ silent = false } = {}) => {
-    if (silent && pendingReportRequestsRef.current > 0) return;
+  const loadReport = useCallback(async ({ silent = false, force = false } = {}) => {
+    if (silent && !force && pendingReportRequestsRef.current > 0) return;
     const requestId = ++latestReportRequestRef.current;
     const isCurrent = () => latestReportRequestRef.current === requestId;
 
@@ -160,8 +190,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
         task: activeFilters.task || undefined,
       };
       const data = mode === "attendance"
-        ? isTeamReport ? await getTeamAttendance(params, { force: !silent }) : await getMyAttendance(params, { force: !silent })
-        : isTeamReport ? await getTeamTimeLogs(params, { force: !silent }) : await getMyTimeLogs(params, { force: !silent });
+        ? isTeamReport ? await getTeamAttendance(params, { force: force || !silent }) : await getMyAttendance(params, { force: force || !silent })
+        : isTeamReport ? await getTeamTimeLogs(params, { force: force || !silent }) : await getMyTimeLogs(params, { force: force || !silent });
 
       if (!isCurrent()) return;
       setRecords(mode === "attendance" ? data.attendance || [] : data.timeLogs || []);
@@ -178,14 +208,23 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
       }
     } finally {
       pendingReportRequestsRef.current -= 1;
-      if (isCurrent() && !silent) setLoading(false);
+      if (isCurrent() && (!silent || force)) setLoading(false);
     }
   }, [fromDate, isTeamReport, mode, project, task, toDate]);
 
   const runReport = () => loadReport();
+  const handleEntrySaved = (timeLog) => {
+    setEntryNotice(`Entry added for ${timeLog?.employee?.fullName || "the employee"}.`);
+    if (hasRun) void loadReport({ silent: true, force: true });
+  };
+  const handleEntryDeleted = () => {
+    setEntryNotice("Manual entry deleted.");
+    if (hasRun) void loadReport({ silent: true, force: true });
+  };
   useEffect(() => {
-    writeReportState(reportStorageKey, { fromDate, toDate, project, task, hasRun, teamView });
-  }, [fromDate, hasRun, project, reportStorageKey, task, teamView, toDate]);
+    // Dates are not persisted, so reopening the page starts on today's date.
+    writeReportState(reportStorageKey, { project, task, hasRun, teamView });
+  }, [hasRun, project, reportStorageKey, task, teamView]);
 
   useEffect(() => {
     if (restoredReportRef.current) return;
@@ -223,9 +262,16 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
           <button type="button" aria-pressed={teamView === "client"} onClick={() => setTeamView("client")}>Client</button>
         </div>}
         {error && <p className="admin-report-message error-message" role="alert">{error}</p>}
+        {entryNotice && <p className="report-entry-notice" role="status">{entryNotice}</p>}
         {!error && !hasRun && <div className="admin-report-empty"><FileSearch size={26} /><strong>Your work, in one view</strong><span>Select a period and generate your timesheet to view recorded work.</span></div>}
         {!error && hasRun && records.length === 0 && <div className="admin-report-empty"><FileSearch size={26} /><strong>No records found</strong><span>No matching activity exists for the selected dates.</span></div>}
         {!error && mode === "time" && records.length > 0 && showClientView && isTeamReport && teamView === "client" && <ClientTimesheet employees={clientDetails} />}
+        {!error && manualEntriesAvailable && canAddEntry && teamView === "employee" && entryEmployees.map((employee) => <div className="report-entry-employee-actions" key={employee._id}>
+          <strong>{employee.fullName}</strong><div className="report-manual-actions">
+            <button type="button" className="report-add-entry-button" onClick={() => setEntryEmployee({ id: employee._id, name: employee.fullName })}>Add Entry</button>
+            {manualEntryCount(employee._id) > 0 && <button type="button" className="secondary-button" onClick={() => setManualEntryEmployee({ id: employee._id, name: employee.fullName })}>Manual entries ({manualEntryCount(employee._id)})</button>}
+          </div>
+        </div>)}
         {!error && mode === "time" && records.length > 0 && !(showClientView && isTeamReport && teamView === "client") && (
           <div className="admin-report-table-wrap">
             <table>
@@ -249,6 +295,8 @@ function RoleReportPage({ title, description, mode = "time", scope = "team", sho
         )}
         {!error && mode === "attendance" && records.length > 0 && <div className="admin-report-table-wrap"><table><thead><tr>{isTeamReport && <th>Employee</th>}<th>Date</th><th>Check in</th><th>Check out</th><th>Hours</th><th>Status</th></tr></thead><tbody>{records.map((record) => <tr key={record._id}>{isTeamReport && <td>{record.employee?.fullName || "—"}</td>}<td>{record.date}</td><td>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : "—"}</td><td>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : "—"}</td><td>{record.totalHours || 0}</td><td>{record.status}</td></tr>)}</tbody></table></div>}
       </section>
+      {entryEmployee && <AddEntryModal employee={entryEmployee} onClose={() => setEntryEmployee(null)} onSaved={handleEntrySaved} />}
+      {manualEntryEmployee && <ManualEntriesModal employee={manualEntryEmployee} records={records} onClose={() => setManualEntryEmployee(null)} onDeleted={handleEntryDeleted} />}
     </div>
   );
 

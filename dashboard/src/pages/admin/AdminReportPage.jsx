@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, Clock3, FileDown, FileSearch, Search, Sheet } from "lucide-react";
+import { Activity, Clock3, FileDown, FileSearch, Plus, Search, Sheet } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
@@ -22,6 +22,10 @@ import { getIdleSeconds, getWorkedSeconds, localDate, projectServesTeam } from "
 import { buildProjectWorkDetails } from "../../utils/projectWorkDetails";
 import { buildClientTimesheet, flattenClientTimesheet } from "../../utils/clientTimesheet";
 import ClientTimesheet from "../../components/reports/ClientTimesheet";
+import AddEntryModal from "../../components/reports/AddEntryModal";
+import ManualEntriesModal from "../../components/reports/ManualEntriesModal";
+import { canManageManualEntries } from "../../utils/manualEntry";
+import { getMyPermissions } from "../../api/permissionApi";
 import { readReportState, writeReportState } from "../../utils/reportPersistence";
 import useAuth from "../../context/useAuth";
 
@@ -44,6 +48,7 @@ const buildGroupedRows = (records, groupBy, gapRows = []) => {
       groups.set(key, {
         key,
         label,
+        employee: groupBy === "employee" ? entity : undefined,
         sessions: 0,
         employees: new Set(),
         projects: new Set(),
@@ -100,8 +105,8 @@ function AdminReportContent({
   const restoredReportRef = useRef(false);
   const latestReportRequestRef = useRef(0);
   const pendingReportRequestsRef = useRef(0);
-  const [fromDate, setFromDate] = useState(() => savedReportState.fromDate || localDate());
-  const [toDate, setToDate] = useState(() => savedReportState.toDate || localDate());
+  const [fromDate, setFromDate] = useState(() => localDate());
+  const [toDate, setToDate] = useState(() => localDate());
   const [employee, setEmployee] = useState(() => savedReportState.employee || "");
   const [team, setTeam] = useState(() => savedReportState.team || "");
   const [project, setProject] = useState(() => savedReportState.project || "");
@@ -111,15 +116,15 @@ function AdminReportContent({
   const [appliedHeading, setAppliedHeading] = useState(() => ({
     team: savedReportState.team || "",
     employee: savedReportState.employee || "",
-    fromDate: savedReportState.fromDate || localDate(),
-    toDate: savedReportState.toDate || localDate(),
+    fromDate: localDate(),
+    toDate: localDate(),
   }));
   // Snapshot of the filters that were active when "Generate" last succeeded.
   // The silent background poll must replay this snapshot, not whatever is
   // currently sitting in the (possibly half-edited) filter inputs.
   const appliedFiltersRef = useRef({
-    fromDate: savedReportState.fromDate || localDate(),
-    toDate: savedReportState.toDate || localDate(),
+    fromDate: localDate(),
+    toDate: localDate(),
     employee: savedReportState.employee || "",
     team: savedReportState.team || "",
     project: savedReportState.project || "",
@@ -139,6 +144,26 @@ function AdminReportContent({
   const [exporting, setExporting] = useState("");
   const [exportError, setExportError] = useState("");
   const [teamView, setTeamView] = useState(() => savedReportState.teamView === "client" ? "client" : "employee");
+  // Manual entries: the button is only offered to users holding the
+  // permission. The API enforces it independently of this flag.
+  const [canAddEntry, setCanAddEntry] = useState(false);
+  const [entryEmployee, setEntryEmployee] = useState(null);
+  const [manualEntryEmployee, setManualEntryEmployee] = useState(null);
+  const [entryNotice, setEntryNotice] = useState("");
+  const manualEntriesAvailable = mode === "time" && (variant === "team" && scope === "company"
+    || scope === "personal" && user?.role === "manager");
+  const canAddFor = (target) => canAddEntry && canManageManualEntries(user, target);
+  const manualEntryCount = (id) => records.filter((record) => record.entrySource === "manual" && !record.manualEntry?.deletedAt
+    && String(record.employee?._id || record.employee || user?._id || "") === String(id)).length;
+
+  useEffect(() => {
+    if (!manualEntriesAvailable) return undefined;
+    let active = true;
+    getMyPermissions()
+      .then((permissions) => { if (active) setCanAddEntry(permissions.includes("add_manual_entries")); })
+      .catch(() => { if (active) setCanAddEntry(false); });
+    return () => { active = false; };
+  }, [manualEntriesAvailable]);
 
   useEffect(() => {
     if (mode === "tracking") return;
@@ -255,8 +280,8 @@ function AdminReportContent({
       ? "employees"
       : variant === "detailed" && mode === "time" ? "timeline entries" : "records";
 
-  const loadReport = useCallback(async ({ silent = false } = {}) => {
-    if (silent && pendingReportRequestsRef.current > 0) return;
+  const loadReport = useCallback(async ({ silent = false, force = false } = {}) => {
+    if (silent && !force && pendingReportRequestsRef.current > 0) return;
     const requestId = ++latestReportRequestRef.current;
     const isCurrent = () => latestReportRequestRef.current === requestId;
 
@@ -301,11 +326,11 @@ function AdminReportContent({
       };
       const data = mode === "attendance"
         ? scope === "personal"
-          ? await getMyAttendance(params, { force: !silent })
-          : await getAdminAttendance(params, { force: !silent })
+          ? await getMyAttendance(params, { force: force || !silent })
+          : await getAdminAttendance(params, { force: force || !silent })
         : scope === "personal"
-          ? await getMyTimeLogs(params, { force: !silent })
-          : await getAdminTimeLogs(params, { force: !silent });
+          ? await getMyTimeLogs(params, { force: force || !silent })
+          : await getAdminTimeLogs(params, { force: force || !silent });
 
       if (!isCurrent()) return;
       const fetched = mode === "attendance" ? data.attendance || [] : data.timeLogs || [];
@@ -339,15 +364,24 @@ function AdminReportContent({
       }
     } finally {
       pendingReportRequestsRef.current -= 1;
-      if (isCurrent() && !silent) setLoading(false);
+      if (isCurrent() && (!silent || force)) setLoading(false);
     }
   }, [employee, fromDate, mode, project, scope, task, team, toDate]);
 
   const runReport = () => loadReport();
+  // Replay the applied filters even while a draft selection is being edited.
+  const handleEntrySaved = (timeLog) => {
+    setEntryNotice(`Entry added for ${timeLog?.employee?.fullName || "the employee"}.`);
+    if (hasRun) void loadReport({ silent: true, force: true });
+  };
+  const handleEntryDeleted = () => {
+    setEntryNotice("Manual entry deleted.");
+    if (hasRun) void loadReport({ silent: true, force: true });
+  };
   useEffect(() => {
+    // Dates are deliberately not persisted: reopening the page always starts
+    // on today's date instead of whatever day was last selected.
     writeReportState(reportStorageKey, {
-      fromDate,
-      toDate,
       employee,
       team,
       project,
@@ -355,7 +389,7 @@ function AdminReportContent({
       hasRun,
       teamView,
     });
-  }, [employee, fromDate, hasRun, project, reportStorageKey, task, team, teamView, toDate]);
+  }, [employee, hasRun, project, reportStorageKey, task, team, teamView]);
 
   useEffect(() => {
     if (restoredReportRef.current) return;
@@ -594,6 +628,10 @@ function AdminReportContent({
                 </div>
               )}
               <div className="admin-report-export-actions" aria-label="Export report">
+                {manualEntriesAvailable && user?.role === "manager" && canAddFor(user) && <>
+                  <button type="button" className="report-add-entry-button" onClick={() => setEntryEmployee({ id: user._id, name: user.fullName })}><Plus size={14} />Add my entry</button>
+                  {scope === "personal" && manualEntryCount(user._id) > 0 && <button type="button" className="secondary-button" onClick={() => setManualEntryEmployee({ id: user._id, name: user.fullName })}>Manual entries ({manualEntryCount(user._id)})</button>}
+                </>}
                 <button
                   type="button"
                   className="report-export-button excel"
@@ -617,6 +655,7 @@ function AdminReportContent({
           </header>
 
           {exportError && <p className="admin-report-message error-message" role="alert">{exportError}</p>}
+          {entryNotice && <p className="report-entry-notice" role="status">{entryNotice}</p>}
           {variant === "team" && mode === "time" && <div className="client-timesheet-view-buttons" role="group" aria-label="Team timesheet view">
             <button type="button" aria-pressed={teamView === "employee"} onClick={() => setTeamView("employee")}>Employee</button>
             <button type="button" aria-pressed={teamView === "client"} onClick={() => setTeamView("client")}>Client</button>
@@ -651,9 +690,14 @@ function AdminReportContent({
           {!error && mode === "time" && records.length > 0 && variant === "team" && teamView === "employee" && (
             <div className="admin-report-table-wrap">
               <table>
-                <thead><tr><th>Employee</th><th>Sessions</th><th>Projects</th><th>Tasks</th><th>Worked</th><th>Idle</th></tr></thead>
+                <thead><tr><th>Employee</th><th>Sessions</th><th>Projects</th><th>Tasks</th><th>Worked</th><th>Idle</th>{canAddEntry && <th>Actions</th>}</tr></thead>
                 <tbody>{teamRows.map((row) => (
-                  <tr key={row.key}><td>{row.label}</td><td>{row.sessions}</td><td>{row.projects.size}</td><td>{row.tasks.size}</td><td>{formatDuration(row.workedSeconds)}</td><td>{formatDuration(row.idleSeconds)}</td></tr>
+                  <tr key={row.key}><td>{row.label}</td><td>{row.sessions}</td><td>{row.projects.size}</td><td>{row.tasks.size}</td><td>{formatDuration(row.workedSeconds)}</td><td>{formatDuration(row.idleSeconds)}</td>
+                    {canAddEntry && <td>{canAddFor(row.employee) && <div className="report-manual-actions">
+                      <button type="button" className="report-add-entry-button" onClick={() => setEntryEmployee({ id: row.key, name: row.label })}><Plus size={14} />Add Entry</button>
+                      {manualEntryCount(row.key) > 0 && <button type="button" className="secondary-button" onClick={() => setManualEntryEmployee({ id: row.key, name: row.label })}>Manual entries ({manualEntryCount(row.key)})</button>}
+                    </div>}</td>}
+                  </tr>
                 ))}</tbody>
               </table>
             </div>
@@ -730,6 +774,10 @@ function AdminReportContent({
           )}
         </section>
       </div>
+      {entryEmployee && <AddEntryModal employee={entryEmployee} onClose={() => setEntryEmployee(null)} onSaved={handleEntrySaved} />}
+      {manualEntryEmployee && <ManualEntriesModal employee={manualEntryEmployee}
+        records={scope === "personal" ? records.map((record) => ({ ...record, employee: record.employee || user })) : records}
+        onClose={() => setManualEntryEmployee(null)} onDeleted={handleEntryDeleted} />}
     </DashboardLayout>
   );
 }

@@ -15,7 +15,8 @@ const {
 } = require("../controllers/taskTimeLogController");
 
 const { protect } = require("../middleware/authMiddleware");
-const { authorizeRoles } = require("../middleware/authorizeRoles");
+const { authorizeRoles, requirePermission } = require("../middleware/authorizeRoles");
+const { createManualEntry, deleteManualEntry, getManualEntryOptions } = require("../controllers/manualTimeEntryController");
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.get(
 router.get(
   "/admin",
   protect,
-  authorizeRoles("admin", "manager", "hr"),
+  requirePermission("view_all_reports"),
   getAllTimeLogs
 );
 
@@ -38,8 +39,14 @@ router.get(
   "/team",
   protect,
   authorizeRoles("team_lead"),
+  requirePermission("view_team_timesheets"),
   getMyTeamTimeLogs
 );
+
+// Manual (back-filled) entries: permission-gated, scope-checked in the controller.
+router.get("/manual/options", protect, requirePermission("add_manual_entries"), getManualEntryOptions);
+router.post("/manual", protect, requirePermission("add_manual_entries"), createManualEntry);
+router.delete("/manual/:id", protect, requirePermission("add_manual_entries"), deleteManualEntry);
 
 // Admin, Team Lead, and Employee can control their own timer
 router.post("/start", protect, startTimer);

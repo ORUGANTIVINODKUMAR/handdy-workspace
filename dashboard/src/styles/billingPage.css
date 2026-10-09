@@ -49,16 +49,21 @@
 .billing-table-wrap td small { display: block; margin-top: 2px; color: var(--text-secondary, #62716b); }
 .billing-table-wrap .billing-missing-rate { color: #a05b00; font-size: 12px; font-weight: 700; }
 .billing-daily details + details { border-top: 1px solid var(--border-color, #e1e8e5); }
-.billing-daily summary { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(3, auto); gap: 22px; align-items: center; cursor: pointer; padding: 16px 22px; }
+.billing-daily summary { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(2, minmax(120px, auto)); gap: 22px; align-items: center; cursor: pointer; padding: 16px 22px; }
 .billing-daily summary:hover { background: color-mix(in srgb, var(--primary, #26785f) 5%, transparent); }
-.billing-daily summary span:not(:first-child) { color: var(--text-secondary, #62716b); font-size: 13px; }
+.billing-day-date { font-weight: 700; }
+.billing-day-cell { display: grid; gap: 2px; justify-items: end; text-align: right; }
+.billing-day-cell small { color: var(--text-secondary, #62716b); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.billing-day-cell strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+.billing-day-amount strong { color: var(--primary, #26785f); }
+.billing-day-amount .billing-missing-rate, .billing-day-amount em { color: #a05b00; font-style: normal; font-size: 13px; font-weight: 700; }
 .billing-type { display: inline-flex; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 800; }
 .billing-type.work { background: color-mix(in srgb, var(--primary, #26785f) 12%, transparent); color: var(--primary, #26785f); }
 .billing-type.break { background: color-mix(in srgb, #c8932c 14%, transparent); color: #8d6415; }
 .billing-no-data { color: var(--text-secondary, #62716b); padding: 30px 22px; text-align: center; }
 .billing-history-note { margin: -8px 0 0; font-size: 12px; }
 @media (max-width: 1200px) { .billing-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .billing-generate { grid-column: span 2; } .billing-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 760px) { .billing-hero { align-items: stretch; flex-direction: column; } .billing-export { align-self: flex-start; } .billing-filters { grid-template-columns: 1fr; padding: 16px; } .billing-generate { grid-column: auto; } .billing-summary-grid { grid-template-columns: 1fr 1fr; } .billing-report > header, .billing-daily > header { align-items: flex-start; flex-direction: column; } .billing-daily summary { grid-template-columns: 1fr auto; gap: 7px 12px; } .billing-daily summary span:nth-child(2), .billing-daily summary span:nth-child(3) { display: none; } }
+@media (max-width: 760px) { .billing-hero { align-items: stretch; flex-direction: column; } .billing-export { align-self: flex-start; } .billing-filters { grid-template-columns: 1fr; padding: 16px; } .billing-generate { grid-column: auto; } .billing-summary-grid { grid-template-columns: 1fr 1fr; } .billing-report > header, .billing-daily > header { align-items: flex-start; flex-direction: column; } .billing-daily summary { grid-template-columns: 1fr 1fr; gap: 7px 12px; padding: 14px 16px; } .billing-daily summary .billing-day-date { grid-column: 1 / -1; } .billing-day-cell { justify-items: start; text-align: left; } }
 @media (max-width: 480px) { .billing-summary-grid { grid-template-columns: 1fr; } .billing-summary-grid article { min-height: 115px; } }
 
 }

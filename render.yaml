@@ -25,6 +25,9 @@ services:
         value: 120000
       - key: APP_TIMEZONE
         value: Asia/Kolkata
+      # Build-time copy of APP_TIMEZONE so dashboard date defaults match the API.
+      - key: VITE_APP_TIMEZONE
+        value: Asia/Kolkata
       - key: CORS_ORIGINS
         sync: false
       # Optional on Render because RENDER_EXTERNAL_URL is supplied automatically.

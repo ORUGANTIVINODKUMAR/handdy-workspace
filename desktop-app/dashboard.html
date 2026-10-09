@@ -36,20 +36,6 @@
               <div><span>Sessions</span><strong id="todaySessions">0</strong></div>
               <div><span>Tasks</span><strong id="todayTasks">0</strong></div>
             </div>
-            <div class="timesheet-filters" aria-label="Filter today's timesheet">
-              <label for="timesheetTypeFilter">Entry type<select id="timesheetTypeFilter"><option value="all">All entries</option><option value="work">Work</option><option value="break">Breaks</option><option value="idle">Idle</option></select></label>
-              <label for="timesheetTaskFilter">Task<select id="timesheetTaskFilter"><option value="">All tasks</option></select></label>
-              <label for="timesheetStatusFilter">Session status<select id="timesheetStatusFilter"><option value="all">All sessions</option><option value="completed">Completed sessions</option><option value="active">In progress</option></select></label>
-              <button type="button" id="clearTimesheetFilters" class="secondary-action">Clear filters</button>
-            </div>
-            <div class="timesheet-filter-summary" aria-label="Totals for selected filters" aria-live="polite">
-              <div><span>Work time</span><strong id="filteredWorkTime">00:00:00</strong></div>
-              <div><span>Break time</span><strong id="filteredBreakTime">00:00:00</strong></div>
-              <div><span>Breaks taken</span><strong id="filteredBreakCount">0</strong></div>
-              <div><span>Completed sessions</span><strong id="filteredCompletedSessions">0</strong></div>
-            </div>
-            <p id="timesheetFilterDetails" class="timesheet-filter-details" role="status"></p>
-            <p class="timesheet-filter-help">These results follow your filters. Break time includes any break in progress. Completed sessions are timers you have stopped.</p>
             <div class="timesheet-table-wrap">
               <table class="timesheet-table">
                 <thead><tr><th>Project</th><th>Task / segment</th><th>Started</th><th>Finished</th><th>Status</th><th>Idle</th><th>Duration</th></tr></thead>

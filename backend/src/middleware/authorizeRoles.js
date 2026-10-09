@@ -1,4 +1,5 @@
 const { isAdminRole } = require("../utils/roles");
+const { userHasPermission } = require("../services/permissionService");
 
 const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
@@ -47,9 +48,25 @@ const authorizeAccess = (...permissionKeys) => {
   };
 };
 
+// Role-configurable permission gate (see utils/permissions.js). Admin-level
+// roles always pass; other roles need one of the named permissions in their
+// saved role configuration (or the built-in default that matches the roles the
+// route used to hard-code).
+const requirePermission = (...permissionKeys) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "Authentication is required." });
+  }
+  if (userHasPermission(req.user, ...permissionKeys)) return next();
+  return res.status(403).json({
+    success: false,
+    message: "You do not have permission to access this resource.",
+  });
+};
+
 module.exports = {
   authorizeRoles,
   authorizeAccess,
+  requirePermission,
   authorizeRolesOrPermissions: ({ roles = [], permissions = [] }) => (req, res, next) => {
     if (!req.user) return res.status(401).json({ success: false, message: "Authentication is required." });
     if (isAdminRole(req.user.role) || roles.includes(req.user.role)

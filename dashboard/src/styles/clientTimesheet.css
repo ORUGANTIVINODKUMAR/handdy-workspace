@@ -21,6 +21,8 @@
 .crm-content .client-timesheet-view-buttons button { border:1px solid var(--border-light); border-radius:6px; min-height:32px; padding:6px 13px; color:var(--text-secondary); background:var(--surface); font-weight:600; }
 .crm-content .client-timesheet-view-buttons button[aria-pressed="true"] { color:var(--button-text); background:var(--primary); border-color:var(--primary); }
 .client-timesheet summary:focus-visible, .client-timesheet-view-buttons button:focus-visible { outline:3px solid #a9c5fa; outline-offset:-3px; }
+.client-timesheet summary .client-timesheet-expand-all { flex-shrink:0; min-height:28px; padding:4px 9px; border:1px solid var(--border-light); border-radius:5px; background:var(--surface); color:var(--text-heading); font-size:11px; font-weight:600; cursor:pointer; }
+.client-timesheet-expand-all:focus-visible { outline:3px solid #a9c5fa; outline-offset:2px; }
 @media (max-width:650px) {
   .client-timesheet summary { flex-wrap:wrap; padding:8px 10px; }
   .client-timesheet-totals { flex-basis:100%; justify-content:flex-start; padding-left:14px; }

@@ -110,10 +110,21 @@ test("billing ignores service text and uses the project's database ID", () => {
   assert.equal(report.taskSummary[0].billableAmount, 25);
 });
 
-test("billing amount uses the displayed two-decimal billable hours", () => {
+test("billing amount keeps full hour precision and rounds only the final currency value", () => {
   const report = reportFor([log("1", workTask, "2026-08-01T09:00:00Z", 11_040)]);
   assert.equal(report.taskSummary[0].totalSeconds, 11_040);
-  assert.equal(report.taskSummary[0].billableAmount, 76.75);
+  // 11,040s = 3.06666...h x $25 = $76.666... -> $76.67 (not 3.07h x $25 = $76.75).
+  assert.equal(report.taskSummary[0].billableAmount, 76.67);
+});
+
+test("daily billing row reports billable seconds, an exact amount and missing-rate state", () => {
+  // 7h 56m at $25 = 28,560s -> $198.33; precision is not lost to hour rounding.
+  const priced = reportFor([log("1", workTask, "2026-08-01T09:00:00Z", 28_560)]);
+  const [day] = priced.dailyDetails;
+  assert.equal(day.billableSeconds, 28_560);
+  assert.equal(day.totalBillableAmount, 198.33);
+  assert.equal(day.hasMissingRates, false);
+  assert.equal(day.allRatesMissing, false);
 });
 
 test("billing returns a warning and no amount when a project rate is missing", () => {
@@ -209,4 +220,48 @@ test("billing employee access is restricted to administrators, managers and hr",
   assert.deepEqual(hrAccess.filter, { _id: "employee-2" });
   const managerAccess = getBillingEmployeeAccess({ _id: "manager-1", role: "manager" }, "employee-2");
   assert.deepEqual(managerAccess.filter, { _id: "employee-2" });
+});
+
+const thirtyDollarProject = { _id: "64b000000000000000000000023", projectName: "FTC filing", serviceType: "FTC" };
+const unratedProject = { _id: "64b000000000000000000000024", projectName: "Books project", serviceType: "Bookkeeping" };
+
+test("7h 56m at $30/hour bills exactly $238.00 and excludes breaks from billable hours", () => {
+  const report = reportFor([
+    log("1", workTask, "2026-08-01T09:00:00Z", 28_560, thirtyDollarProject),
+    log("2", breakTask, "2026-08-01T17:00:00Z", 1_800, thirtyDollarProject),
+  ]);
+  const [day] = report.dailyDetails;
+  assert.equal(day.billableSeconds, 28_560);
+  assert.equal(day.breakSeconds, 1_800);
+  assert.equal(day.totalBillableAmount, 238);
+});
+
+test("a day with several service rates sums each task separately and rounds once", () => {
+  const report = reportFor([
+    log("1", workTask, "2026-08-01T09:00:00Z", 3_600, project),
+    log("2", secondTask, "2026-08-01T11:00:00Z", 5_400, thirtyDollarProject),
+  ]);
+  const [day] = report.dailyDetails;
+  assert.equal(day.billableSeconds, 9_000);
+  assert.equal(day.totalBillableAmount, 70); // 1h x $25 + 1.5h x $30
+});
+
+test("a day without any configured rate flags Missing Rate and never invents an amount", () => {
+  const report = reportFor([log("1", workTask, "2026-08-01T09:00:00Z", 3_600, unratedProject)]);
+  const [day] = report.dailyDetails;
+  assert.equal(day.hasMissingRates, true);
+  assert.equal(day.allRatesMissing, true);
+  assert.equal(day.totalBillableAmount, 0);
+  assert.equal(day.entries[0].billableAmount, null);
+});
+
+test("a partly rated day keeps the known subtotal but is flagged as incomplete", () => {
+  const report = reportFor([
+    log("1", workTask, "2026-08-01T09:00:00Z", 3_600, project),
+    log("2", secondTask, "2026-08-01T11:00:00Z", 3_600, unratedProject),
+  ]);
+  const [day] = report.dailyDetails;
+  assert.equal(day.hasMissingRates, true);
+  assert.equal(day.allRatesMissing, false);
+  assert.equal(day.totalBillableAmount, 25);
 });

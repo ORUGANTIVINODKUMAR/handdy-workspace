@@ -70,6 +70,7 @@ test("copied rate repairs all work tasks on the new project and repeated preview
   assert.equal(before.summary.missingRateCount, 3);
   assert.equal(after.summary.missingRateCount, 0);
   assert.equal(after.summary.taskSeconds, before.summary.taskSeconds);
-  assert.equal(after.summary.totalBillableAmount, 92.69);
+  // 25,680s = 7.1333h x $13 = $92.73 at full precision (older per-task hour rounding gave $92.69).
+  assert.equal(after.summary.totalBillableAmount, 92.73);
   assert.ok(after.taskSummary.every((row) => row.chargeRate === 13 && row.billingWarning === null));
 });

@@ -1,14 +1,11 @@
+import { todayDateKey } from "./appDate.js";
 import { isIntentionalBreak } from "./timeLogTimeline.js";
 
 // Shared by AdminReportPage and RoleReportPage so their summary totals and
 // per-row timelines can never drift apart again.
 
-export const localDate = () => {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 10);
-};
+// Today's date in the configured business timezone (see appDate.js).
+export const localDate = () => todayDateKey();
 
 // A project with no team restriction (legacy records) is available to every team.
 export const projectServesTeam = (project, teamId) => !teamId

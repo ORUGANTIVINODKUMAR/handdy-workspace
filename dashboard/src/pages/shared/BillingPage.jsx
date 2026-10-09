@@ -4,44 +4,32 @@ import { CalendarRange, Clock3, Download, FileSearch, FolderKanban, ReceiptText,
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getBillingEmployees, getBillingReport } from "../../api/billingApi";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import { addDaysToDateKey, dayOfWeekOfDateKey, todayDateKey } from "../../utils/appDate";
 
 import "../../styles/billingPage.css";
 
-const toDateKey = (date) => {
-  const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return adjusted.toISOString().slice(0, 10);
-};
-
-const addDays = (date, days) => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
+// Periods are computed from today's date in the business timezone, the same
+// calendar the backend uses for billing day boundaries.
 const getPeriodDates = (period) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = todayDateKey();
   if (period === "yesterday") {
-    const date = addDays(today, -1);
-    return [toDateKey(date), toDateKey(date)];
+    const date = addDaysToDateKey(today, -1);
+    return [date, date];
   }
   if (period === "this-week" || period === "last-week") {
-    const mondayOffset = (today.getDay() + 6) % 7;
-    const thisMonday = addDays(today, -mondayOffset);
-    const start = period === "last-week" ? addDays(thisMonday, -7) : thisMonday;
-    const end = period === "last-week" ? addDays(thisMonday, -1) : today;
-    return [toDateKey(start), toDateKey(end)];
+    const mondayOffset = (dayOfWeekOfDateKey(today) + 6) % 7;
+    const thisMonday = addDaysToDateKey(today, -mondayOffset);
+    const start = period === "last-week" ? addDaysToDateKey(thisMonday, -7) : thisMonday;
+    const end = period === "last-week" ? addDaysToDateKey(thisMonday, -1) : today;
+    return [start, end];
   }
   if (period === "this-month" || period === "last-month") {
-    const start = period === "last-month"
-      ? new Date(today.getFullYear(), today.getMonth() - 1, 1)
-      : new Date(today.getFullYear(), today.getMonth(), 1);
-    const end = period === "last-month"
-      ? new Date(today.getFullYear(), today.getMonth(), 0)
-      : today;
-    return [toDateKey(start), toDateKey(end)];
+    const monthStart = `${today.slice(0, 8)}01`;
+    if (period === "this-month") return [monthStart, today];
+    const lastMonthEnd = addDaysToDateKey(monthStart, -1);
+    return [`${lastMonthEnd.slice(0, 8)}01`, lastMonthEnd];
   }
-  return [toDateKey(today), toDateKey(today)];
+  return [today, today];
 };
 
 const formatDuration = (seconds = 0) => {
@@ -319,7 +307,16 @@ function BillingContent() {
             <header><div><span>Audit detail</span><h3>Daily details</h3></div><p>Expand a date to review individual timer sessions.</p></header>
             {report.dailyDetails.length === 0 ? <div className="billing-no-data">No completed timer records were found.</div> : report.dailyDetails.map((day) => (
               <details key={day.date}>
-                <summary><span>{formatDate(day.date)}</span><span>Tasks {formatDuration(day.taskSeconds)}</span><span>Breaks {formatDuration(day.breakSeconds)}</span><strong>{formatDuration(day.totalSeconds)}</strong></summary>
+                <summary>
+                  <span className="billing-day-date">{formatDate(day.date)}</span>
+                  <span className="billing-day-cell"><small>Billable hours</small><strong>{formatDuration(day.taskSeconds)}</strong></span>
+                  <span className="billing-day-cell billing-day-amount">
+                    <small>Billing amount</small>
+                    {day.allRatesMissing
+                      ? <strong className="billing-missing-rate">Missing Rate</strong>
+                      : <strong>{formatMoney(day.totalBillableAmount)}{day.hasMissingRates && <em className="billing-missing-rate"> + Missing Rate</em>}</strong>}
+                  </span>
+                </summary>
                 <div className="billing-table-wrap"><table><thead><tr><th>Type</th><th>Project</th><th>Service</th><th>Task</th><th>Start</th><th>End</th><th>Time</th><th>Rate</th><th>Amount</th></tr></thead><tbody>{day.entries.map((entry, index) => <tr key={`${entry.logId}-${index}`}><td><span className={`billing-type ${entry.type}`}>{entry.type === "break" ? "Break" : "Task"}</span></td><td>{entry.projectName}</td><td>{entry.serviceType || (entry.type === "break" ? "-" : "Service Type not configured")}</td><td>{entry.taskName}</td><td>{new Date(entry.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: report.period.timezone })}</td><td>{new Date(entry.stoppedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: report.period.timezone })}</td><td>{formatDuration(entry.durationSeconds)}</td><td className={entry.billingWarning ? "billing-missing-rate" : ""}>{entry.type === "break" ? "-" : formatRate(entry.chargeRate, entry.billingWarning)}</td><td className={entry.billingWarning ? "billing-missing-rate" : ""}>{entry.type === "break" ? "-" : formatMoney(entry.billableAmount, entry.billingWarning)}</td></tr>)}</tbody></table></div>
               </details>
             ))}

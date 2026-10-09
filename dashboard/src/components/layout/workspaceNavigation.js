@@ -16,6 +16,7 @@ export const workspaceNavigation = [
   { path: "/admin/billing", title: "Billing", role: "admin", group: "Finance" },
   { path: "/admin/help", title: "Help", role: "admin", group: "System" },
   { path: "/admin/settings", title: "Idle & logout", role: "admin", group: "System" },
+  { path: "/admin/permissions", title: "Permissions", role: "admin", group: "System" },
 
   { path: "/team-lead/dashboard", title: "Overview", role: "team_lead", group: "Workspace" },
   { path: "/team-lead/employee-insights", title: "Employee insights", role: "team_lead", group: "Workspace" },

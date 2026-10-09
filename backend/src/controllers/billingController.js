@@ -62,6 +62,7 @@ const getBillingReport = async (req, res) => {
     const logs = await TaskTimeLog.find({
       employee: authorization.employee._id,
       status: "stopped",
+      "manualEntry.deletedAt": null,
       startedAt: { $lt: range.endExclusive },
       stoppedAt: { $gt: range.start },
     }).select("project task client startedAt stoppedAt pauses totalWorkedSeconds").sort("startedAt").lean();

@@ -42,6 +42,8 @@ import AdminSchedule
 
 import AdminSettings
   from "../pages/admin/AdminSettings";
+import AdminPermissions
+  from "../pages/admin/AdminPermissions";
 
 // ==========================================
 // TEAM LEAD IMPORTS
@@ -561,6 +563,15 @@ function AppRoutes() {
         element={
           <AdminOnly>
             <AdminSettings />
+          </AdminOnly>
+        }
+      />
+
+      <Route
+        path="/admin/permissions"
+        element={
+          <AdminOnly>
+            <AdminPermissions />
           </AdminOnly>
         }
       />

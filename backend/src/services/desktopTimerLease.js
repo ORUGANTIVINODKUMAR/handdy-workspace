@@ -43,6 +43,20 @@ async function sweepStaleDesktopTimers(now, employeeId) {
       { $set: stoppedValues(log, log.desktopHeartbeatAt) },
     );
     closed += result.modifiedCount || 0;
+    if (result.modifiedCount) {
+      // The server only knows the heartbeats stopped, not why (app crash,
+      // shutdown/sleep, lost internet, server outage or an expired session all
+      // look identical), so log the facts without claiming a cause. IDs only:
+      // no tokens, names or note text.
+      console.warn("[timer-lease] closed timer after missed desktop heartbeats", JSON.stringify({
+        timeLog: String(log._id),
+        employee: String(log.employee),
+        state: log.status,
+        lastHeartbeatAt: log.desktopHeartbeatAt,
+        silentSeconds: Math.round((now.getTime() - new Date(log.desktopHeartbeatAt).getTime()) / 1000),
+        timeoutSeconds: HEARTBEAT_TIMEOUT_MS / 1000,
+      }));
+    }
   }
   return closed;
 }

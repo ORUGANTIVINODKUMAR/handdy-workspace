@@ -296,7 +296,7 @@ test("time-log delta retains employee/project/task scope and includes unchanged 
   assert.equal(filter.$or[0].updatedAt.$gte.getTime(), previous.getTime() - 1000);
 });
 
-test("personal report deltas update stopped timers, remove rows outside range and fall back for large batches", async (t) => {
+test("personal report deltas remove deleted manual entries and outside rows, and fall back for large batches", async (t) => {
   revisions(t);
   let delta = false;
   let large = false;
@@ -306,9 +306,14 @@ test("personal report deltas update stopped timers, remove rows outside range an
     assert.equal(filter.employee, "person");
     if (filter.desktopHeartbeatAt) return query([]);
     delta = Boolean(filter.$or?.[0]?.updatedAt);
-    if (!delta) return query([base]);
+    if (!delta) {
+      assert.equal(filter["manualEntry.deletedAt"], null);
+      return query([base]);
+    }
+    assert.equal(Object.hasOwn(filter, "manualEntry.deletedAt"), false, "delta reads include deletion audit records");
     if (large) return query(Array.from({ length: 101 }, (_, i) => ({ ...base, _id: String(i) })));
     return query([{ ...base, stoppedAt: new Date("2026-09-22T06:30Z") },
+      { ...base, _id: "deleted-manual", entrySource: "manual", manualEntry: { deletedAt: new Date() } },
       { ...base, _id: "outside", startedAt: new Date("2026-09-21T04:30Z"), stoppedAt: new Date("2026-09-21T05:30Z") }]);
   });
   const user = { _id: "person", role: "employee" };
@@ -320,7 +325,7 @@ test("personal report deltas update stopped timers, remove rows outside range an
   await getMyTimeLogs({ user, query: withMarker(params, first.body.sync) }, second);
   assert.equal(second.body.delta, true);
   assert.equal(second.body.timeLogs[0].totalWorkedSeconds, 7200);
-  assert.deepEqual(second.body.removedIds, ["outside"]);
+  assert.deepEqual(second.body.removedIds, ["deleted-manual", "outside"]);
   assert.equal(counts.mock.callCount(), 1);
   large = true;
   const fallback = response();

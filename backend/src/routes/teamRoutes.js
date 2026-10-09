@@ -5,16 +5,33 @@ const {
 } = require("../middleware/authMiddleware");
 
 const {
-  authorizeRoles,
   authorizeRolesOrPermissions,
+  requirePermission,
 } = require("../middleware/authorizeRoles");
 
+const { userHasPermission } = require("../services/permissionService");
 const Team = require("../models/Team");
 const Employee = require("../models/Employee");
 const { syncEmployeeTeam } = require("../services/teamAssignmentService");
 const { escapeRegExp } = require("../utils/requestUtils");
 
 const router = express.Router();
+
+// Changing a team's lead needs "assign_team_leads" on top of "edit_teams";
+// re-submitting the unchanged lead (the edit form always sends it) is allowed.
+const guardTeamLeadChange = async (req, res, next) => {
+  try {
+    if (req.body?.teamLead === undefined || userHasPermission(req.user, "assign_team_leads")) return next();
+    const team = await Team.findById(req.params.id).select("teamLead").lean();
+    if (!team) return next();
+    const requested = req.body.teamLead ? String(req.body.teamLead) : "";
+    const current = team.teamLead ? String(team.teamLead) : "";
+    if (requested === current) return next();
+    return res.status(403).json({ success: false, message: "You do not have permission to assign team leads." });
+  } catch (error) {
+    return next(error);
+  }
+};
 
 // ======================================
 // GET ALL TEAMS
@@ -66,7 +83,7 @@ router.get(
 router.post(
   "/",
   protect,
-  authorizeRoles("admin", "manager", "hr"),
+  requirePermission("create_teams"),
   async (req, res) => {
     try {
       const {
@@ -179,7 +196,8 @@ router.post(
 router.put(
   "/:id",
   protect,
-  authorizeRoles("admin", "manager", "hr"),
+  requirePermission("edit_teams"),
+  guardTeamLeadChange,
   async (req, res) => {
     try {
       const team = await Team.findById(req.params.id);
@@ -247,7 +265,7 @@ router.put(
 router.delete(
   "/:id",
   protect,
-  authorizeRoles("admin", "manager", "hr"),
+  requirePermission("edit_teams"),
   async (req, res) => {
     try {
       const team = await Team.findById(req.params.id);

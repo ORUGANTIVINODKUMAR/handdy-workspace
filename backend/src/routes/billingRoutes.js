@@ -1,10 +1,10 @@
 const express = require("express");
 const { getBillingEmployees, getBillingReport } = require("../controllers/billingController");
 const { protect } = require("../middleware/authMiddleware");
-const { authorizeRoles } = require("../middleware/authorizeRoles");
+const { requirePermission } = require("../middleware/authorizeRoles");
 
 const router = express.Router();
-router.use(protect, authorizeRoles("admin", "manager", "hr"));
+router.use(protect, requirePermission("view_billing_amounts"));
 router.get("/employees", getBillingEmployees);
 router.get("/report", getBillingReport);
 

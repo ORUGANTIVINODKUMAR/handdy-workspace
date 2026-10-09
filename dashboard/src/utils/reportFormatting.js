@@ -22,6 +22,11 @@ export const reportEntryStatus = (record, entry) => {
   if (entry.source === "between_sessions") return "Idle between tasks";
   if (entry.type === "untracked") return "Untracked";
   if (entry.isOpen) return entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running";
-  if (record.stopReason === "desktop_disconnected" && entry.end === record.stoppedAt) return "Desktop disconnected";
+  // The server only knows the desktop stopped confirming it was alive (crash,
+  // shutdown/sleep, lost internet and server outages look identical), so the
+  // wording stays neutral instead of naming a cause. Worked time is real:
+  // the session ends at the last confirmed heartbeat, nothing is added.
+  if (record.stopReason === "desktop_disconnected" && entry.end === record.stoppedAt) return "Desktop connection lost";
+  if (record.entrySource === "manual") return "Manual entry";
   return "Completed";
 };

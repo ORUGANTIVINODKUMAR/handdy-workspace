@@ -13,6 +13,7 @@ const { validateProductionConfig } = require("./src/config/productionConfig");
 const { verifyEmailTransport } = require("./src/utils/mailer");
 const { ensureAuthSessionIndexes } = require("./src/services/authSessionService");
 const { closeStaleDesktopTimers } = require("./src/services/desktopTimerLease");
+const { refreshPermissionOverrides } = require("./src/services/permissionService");
 
 // ==============================
 // ROUTES
@@ -29,6 +30,7 @@ const teamRoutes = require("./src/routes/teamRoutes");
 const clientRoutes = require("./src/routes/clientRoutes");
 const billingRoutes = require("./src/routes/billingRoutes");
 const settingsRoutes = require("./src/routes/settingsRoutes");
+const permissionRoutes = require("./src/routes/permissionRoutes");
 
 // ==============================
 // MONGODB DNS
@@ -157,6 +159,7 @@ app.use("/api/teams", teamRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/permissions", permissionRoutes);
 
 // Keep missing API paths as JSON responses instead of returning the React app.
 app.use("/api", (req, res) => {
@@ -220,6 +223,7 @@ const startServer = async () => {
     await verifyEmailTransport();
     await connectDatabase();
     await ensureAuthSessionIndexes();
+    await refreshPermissionOverrides();
     const timerSweep = setInterval(() => {
       closeStaleDesktopTimers().catch((error) => console.error("Unable to close stale desktop timers:", error));
     }, 30_000);

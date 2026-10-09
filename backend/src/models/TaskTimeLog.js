@@ -101,6 +101,23 @@ const taskTimeLogSchema = new mongoose.Schema(
     desktopHeartbeatAt: { type: Date, default: null },
     stopReason: { type: String, enum: ["desktop_disconnected"], default: null },
 
+    // Records created by an authorized manager/admin instead of a live timer.
+    // Absent on every pre-existing log, which is treated as "timer".
+    entrySource: { type: String, enum: ["timer", "manual"], default: "timer" },
+    manualEntry: {
+      type: new mongoose.Schema(
+        {
+          createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", required: true },
+          createdAt: { type: Date, required: true },
+          reason: { type: String, required: true, trim: true, maxlength: 500 },
+          deletedAt: { type: Date, default: null },
+          deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+
     autoLogoutAt: {
       type: Date,
       default: null,

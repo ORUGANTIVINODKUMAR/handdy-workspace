@@ -1,7 +1,7 @@
 const express = require("express");
 const Client = require("../models/Client");
 const { protect } = require("../middleware/authMiddleware");
-const { authorizeRoles } = require("../middleware/authorizeRoles");
+const { requirePermission } = require("../middleware/authorizeRoles");
 const { escapeRegExp } = require("../utils/requestUtils");
 const sendErrorResponse = require("../utils/sendErrorResponse");
 
@@ -27,7 +27,7 @@ router.get("/", protect, catalogCache([Client], { shared: true }), async (req, r
   }
 });
 
-router.use(protect, authorizeRoles("admin", "manager", "hr"));
+router.use(protect, requirePermission("manage_clients"));
 
 router.post("/", async (req, res) => {
   try {

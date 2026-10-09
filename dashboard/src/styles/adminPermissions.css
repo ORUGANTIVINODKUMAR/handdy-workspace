@@ -1,0 +1,32 @@
+.permissions-page { display: grid; gap: 16px; }
+.permissions-page .card { padding: 18px 22px; border: 1px solid var(--border-color, #dbe5e1); border-radius: 10px; background: var(--card-bg, #fff); }
+.permissions-hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.permissions-hero h2 { margin: 4px 0; font-size: 22px; }
+.permissions-hero p { margin: 0; max-width: 720px; color: var(--text-secondary, #62716b); }
+.permissions-hero svg { flex: none; color: var(--primary); }
+.permissions-kicker { color: var(--primary); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.permissions-roles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.permissions-roles button { position: relative; padding: 8px 16px; border: 1px solid var(--border-color, #dbe5e1); border-radius: 8px; background: transparent; color: inherit; font-weight: 700; cursor: pointer; }
+.permissions-roles button.is-active { border-color: var(--primary); background: var(--primary); color: #fff; }
+.permissions-unsaved { position: absolute; top: 5px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #e0a100; }
+.permissions-fixed { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--text-secondary, #62716b); font-size: 13px; }
+.permissions-category { margin: 0; }
+.permissions-category legend { padding: 0 8px; font-size: 15px; font-weight: 800; }
+.permissions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px 18px; }
+.permissions-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; }
+.permissions-item:hover { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+.permissions-item input { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--primary); }
+.permissions-item strong { display: block; font-size: 14px; }
+.permissions-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.permissions-tag { padding: 1px 7px; border-radius: 999px; background: #eef1f0; color: #4b5a54; font-size: 11px; font-style: normal; font-weight: 700; }
+.permissions-tag.is-backend { background: #e1f3ea; color: #1b6b48; }
+.permissions-tag.is-none { background: #f3efe3; color: #7a5d12; }
+.permissions-tag.is-sensitive { background: #fbe6e3; color: #a1281c; }
+.permissions-actions { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.permissions-actions > div { display: flex; flex-wrap: wrap; gap: 10px; }
+.permissions-actions button { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.permissions-save { border: 0; background: var(--primary); color: #fff; }
+.permissions-reset { border: 1px solid var(--border-color, #dbe5e1); background: transparent; color: inherit; }
+.permissions-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.permissions-message.is-error { color: #a1281c; }
+@media (max-width: 640px) { .permissions-hero svg { display: none; } .permissions-fixed { margin-left: 0; } .permissions-actions > div, .permissions-actions button { width: 100%; justify-content: center; } }

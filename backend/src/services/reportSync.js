@@ -15,7 +15,9 @@ async function beginReportSync(req, filter, dependencies) {
 }
 
 function changedTimeLogFilter(filter, previous) {
-  const { startedAt: _startedAt, $or: _overlap, status: _status, ...scope } = filter;
+  // Include recently deleted manual entries in deltas so clients receive
+  // their removedIds, while complete reports exclude the retained audit row.
+  const { startedAt: _startedAt, $or: _overlap, status: _status, "manualEntry.deletedAt": _deletedAt, ...scope } = filter;
   return { ...scope, $or: [
     { updatedAt: { $gte: new Date(previous.getTime() - 1_000) } },
     { status: { $in: ["running", "paused"] } },

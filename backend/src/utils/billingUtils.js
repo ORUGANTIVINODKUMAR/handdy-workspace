@@ -137,10 +137,12 @@ const getEmployeeChargeRate = (employee, projectId) => {
   return Number.isFinite(rate) && rate > 0 ? rate : null;
 };
 
+// Full precision until the final step: hours are NOT rounded before the rate
+// is applied (7h 56m x $30 = $238.00, not 7.93h x $30 = $237.90). Only the
+// finished currency amount is rounded to cents.
 const calculateBillableAmount = (seconds, chargeRate) => {
   if (!Number.isFinite(chargeRate) || chargeRate <= 0) return null;
-  const billableHours = Math.round((Math.max(0, seconds) / 3600) * 100) / 100;
-  return roundCurrency(billableHours * chargeRate);
+  return roundCurrency((Math.max(0, seconds) / 3600) * chargeRate);
 };
 
 const resolveBillingClient = (log, project) => {
@@ -264,11 +266,19 @@ const aggregateBillingLogs = ({ logs, employee, startDate, endDate, timezone, ra
   const dailyDetails = [...dailyGroups.values()].sort((a, b) => a.date.localeCompare(b.date));
   for (const day of dailyDetails) {
     day.totalSeconds = day.taskSeconds + day.breakSeconds;
+    // Each entry is priced at its own project/task rate; the day is the sum
+    // of the unrounded entry amounts, rounded once, so the cents never drift.
+    day.billableSeconds = day.taskSeconds;
     day.totalBillableAmount = roundCurrency(day.entries.reduce(
-      (total, entry) => total + (entry.billableAmount ?? 0),
+      (total, entry) => total + (entry.type === "break" || entry.billingWarning || !entry.chargeRate
+        ? 0
+        : (entry.durationSeconds / 3600) * entry.chargeRate),
       0,
     ));
     day.hasMissingRates = day.entries.some((entry) => entry.billingWarning);
+    // Every billable entry lacks a rate: show "Missing Rate", not $0.00.
+    day.allRatesMissing = day.hasMissingRates
+      && day.entries.filter((entry) => entry.type !== "break").every((entry) => entry.billingWarning);
     day.entries.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   }
 

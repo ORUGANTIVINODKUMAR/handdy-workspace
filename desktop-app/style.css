@@ -41,17 +41,6 @@ label,.work-summary span { color:#385048; font-size:13px; font-weight:700; } inp
 .timesheet-status-completed { color:#4e5f58; background:#edf1ef; }
 .timesheet-status-disconnected { color:#895a00; background:#fff0d7; }
 .timesheet-note { margin-top:4px; overflow-wrap:anywhere; white-space:normal; color:var(--muted); font-size:11px; font-style:italic; font-weight:400; }
-.timesheet-filters { display:grid; grid-template-columns:minmax(130px,1fr) minmax(200px,2fr) minmax(160px,1fr) auto; align-items:end; gap:14px; margin:0 0 18px; }
-.timesheet-filters label { margin:0; color:#53617a; font-size:12px; }
-.timesheet-filters select { margin-top:7px; min-height:42px; border-color:#d5deec; border-radius:8px; font-size:13px; }
-.timesheet-filters button { min-height:42px; padding:0 16px; border-radius:8px; background:#eef2f8; color:#315aaf; font-size:12px; font-weight:800; }
-.timesheet-filter-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; padding:18px; border:1px solid #dbe5f6; border-radius:10px; background:#f0f5ff; }
-.timesheet-filter-summary span { display:block; margin-bottom:6px; color:#53617a; font-size:11px; font-weight:700; }
-.timesheet-filter-summary strong { color:#244786; font-size:20px; }
-.timesheet-filter-details { margin:12px 0 5px; color:#315aaf; font-size:12px; font-weight:700; }
-.timesheet-filter-help { margin:0 0 18px; color:#61707b; font-size:11px; line-height:1.5; }
-@media (max-width:850px) { .timesheet-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }.timesheet-filter-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:520px) { .timesheet-filters { grid-template-columns:1fr; } }
 @media (max-width:850px) { body { min-width:0; }.timer-header { grid-template-columns:1fr auto; }.timer-navigation { order:3; grid-column:1/-1; justify-content:center; }.timer-nav-item { padding:10px 3px; }.timer-stage { width:calc(100% - 28px); margin:28px auto; }.timer-workspace { grid-template-columns:1fr; }.work-card { padding:28px; }.clock-card { min-height:300px; }.timesheet-summary { grid-template-columns:1fr; } }
 @media (max-width:650px) { .timesheet-heading { flex-direction:column; }.timesheet-actions { width:100%; flex-wrap:wrap; }.timesheet-actions button,.dashboard-link { flex:1; } }
 @media (max-width:520px) { .timer-header { padding:0 15px; }.timer-brand { font-size:22px; }.timer-navigation { gap:18px; }.account-button { padding:8px 4px; }.work-card,.panel { padding:22px; }.timer-note-row { gap:24px; } }

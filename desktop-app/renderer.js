@@ -27,15 +27,6 @@ const todayTasks = document.getElementById("todayTasks");
 const todayTimesheetBody = document.getElementById("todayTimesheetBody");
 const todayTimesheetEmpty = document.getElementById("todayTimesheetEmpty");
 const timesheetMessage = document.getElementById("timesheetMessage");
-const timesheetTypeFilter = document.getElementById("timesheetTypeFilter");
-const timesheetTaskFilter = document.getElementById("timesheetTaskFilter");
-const timesheetStatusFilter = document.getElementById("timesheetStatusFilter");
-const clearTimesheetFilters = document.getElementById("clearTimesheetFilters");
-const filteredWorkTime = document.getElementById("filteredWorkTime");
-const filteredBreakTime = document.getElementById("filteredBreakTime");
-const filteredBreakCount = document.getElementById("filteredBreakCount");
-const filteredCompletedSessions = document.getElementById("filteredCompletedSessions");
-const timesheetFilterDetails = document.getElementById("timesheetFilterDetails");
 const refreshTimesheetButton = document.getElementById(
   "refreshTimesheetButton"
 );
@@ -131,7 +122,6 @@ const reportSnapshots = new Map();
 const reportRequests = new Map();
 let deviceApprovalAbortController = null;
 let todayTimesheetReportDate = null;
-let timesheetTaskOptionsSignature = null;
 const IDLE_CHECK_INTERVAL_MS = 5000;
 const DATA_REFRESH_INTERVAL_MS = 10 * 1000;
 const API_REQUEST_TIMEOUT_MS = 10 * 1000;
@@ -625,7 +615,7 @@ async function sendTimerHeartbeat() {
     if (response.status === 404) {
       currentTimeLog = null;
       stopLiveDuration();
-      timerMessage.textContent = "The timer stopped because the desktop disconnected. Start a new timer to continue work.";
+      timerMessage.textContent = "The timer stopped because the server stopped receiving confirmation from this app. Time is recorded up to the last confirmed moment. Start a new timer to continue work.";
       await loadActiveTimer();
       await loadTodayTimesheet();
     }
@@ -1423,41 +1413,9 @@ function getTimesheetView(timeLogs, { type = "all", taskId = "", status = "all" 
   return { timeline, ...totals, sessions: sessions.size };
 }
 
-function updateTimesheetTaskOptions(timeLogs) {
-  if (!timesheetTaskFilter) return;
-  const selected = timesheetTaskFilter.value || "";
-  const previousLabel = timesheetTaskFilter.selectedOptions?.[0]?.textContent;
-  const tasks = new Map();
-  timeLogs.forEach((timeLog) => {
-    const id = timesheetTaskId(timeLog);
-    if (!id || tasks.has(id)) return;
-    const taskName = timeLog.task?.taskName || "Task";
-    const projectName = timeLog.project?.projectName;
-    const label = timeLog.task?.taskType === "break" ? `${taskName} (Break)`
-      : projectName ? `${taskName} — ${projectName}` : taskName;
-    tasks.set(id, label);
-  });
-  const options = [...tasks].sort((first, second) => first[1].localeCompare(second[1]));
-  // Keep a filter that no longer has matching records until explicitly cleared.
-  if (selected && !tasks.has(selected)) options.push([selected, previousLabel || "Selected task"]);
-  const signature = JSON.stringify(options);
-  if (signature !== timesheetTaskOptionsSignature) {
-    const makeOption = (value, label) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = label;
-      return option;
-    };
-    timesheetTaskFilter.replaceChildren(makeOption("", "All tasks"), ...options.map(([value, label]) => makeOption(value, label)));
-    timesheetTaskOptionsSignature = signature;
-  }
-  timesheetTaskFilter.value = selected;
-}
-
 function renderTodayTimesheet(timeLogs, reportDate) {
   todayTimesheetLogs = timeLogs;
   todayTimesheetReportDate = reportDate;
-  updateTimesheetTaskOptions(timeLogs);
   const reportNow = Date.now();
   const timeline = buildChronologicalTimeline(timeLogs, reportNow);
   const {
@@ -1486,20 +1444,9 @@ function renderTodayTimesheet(timeLogs, reportDate) {
   todaySessions.textContent = String(timeLogs.length);
   todayTasks.textContent = String(taskIds.size);
   todayTimesheetBody.textContent = "";
-  const view = getTimesheetView(timeLogs, {
-    type: timesheetTypeFilter?.value || "all",
-    taskId: timesheetTaskFilter?.value || "",
-    status: timesheetStatusFilter?.value || "all",
-  }, reportNow);
-  if (filteredWorkTime) filteredWorkTime.textContent = formatDuration(view.workSeconds);
-  if (filteredBreakTime) filteredBreakTime.textContent = formatDuration(view.breakSeconds);
-  if (filteredBreakCount) filteredBreakCount.textContent = String(view.breakCount);
-  if (filteredCompletedSessions) filteredCompletedSessions.textContent = String(view.completedSessions);
-  if (timesheetFilterDetails) timesheetFilterDetails.textContent = `${view.timeline.length} ${view.timeline.length === 1 ? "entry" : "entries"} across ${view.sessions} ${view.sessions === 1 ? "session" : "sessions"}`;
+  const view = getTimesheetView(timeLogs, {}, reportNow);
   todayTimesheetEmpty.hidden = view.timeline.length > 0;
-  todayTimesheetEmpty.textContent = timeLogs.length > 0
-    ? "No entries match the selected filters. Try another task or clear the filters."
-    : "No task time has been recorded today.";
+  todayTimesheetEmpty.textContent = "No task time has been recorded today.";
 
   view.timeline.forEach(({ timeLog, entry }) => {
       const row = document.createElement("tr");
@@ -1528,8 +1475,8 @@ function renderTodayTimesheet(timeLogs, reportDate) {
       statusBadge.textContent = entry.source === "between_sessions" ? "Idle" : entry.open
         ? entry.type === "break" ? "On break" : entry.type === "idle" ? "Idle" : "Running"
         : disconnected
-          ? "Desktop disconnected"
-          : "Completed";
+          ? "Desktop connection lost"
+          : timeLog.entrySource === "manual" ? "Manual entry" : "Completed";
       statusCell.appendChild(statusBadge);
       row.appendChild(statusCell);
 
@@ -2383,15 +2330,6 @@ refreshTimesheetButton?.addEventListener(
   "click",
   () => loadTodayTimesheet({ force: true })
 );
-[timesheetTypeFilter, timesheetTaskFilter, timesheetStatusFilter].forEach((filter) => {
-  filter?.addEventListener("change", () => renderTodayTimesheet(todayTimesheetLogs, todayTimesheetReportDate));
-});
-clearTimesheetFilters?.addEventListener("click", () => {
-  if (timesheetTypeFilter) timesheetTypeFilter.value = "all";
-  if (timesheetTaskFilter) timesheetTaskFilter.value = "";
-  if (timesheetStatusFilter) timesheetStatusFilter.value = "all";
-  renderTodayTimesheet(todayTimesheetLogs, todayTimesheetReportDate);
-});
 
 quickLoginButton?.addEventListener("click", () => {
   emailInput.value = "";

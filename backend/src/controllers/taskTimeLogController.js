@@ -55,6 +55,7 @@ const applyReportRangeFilter = (filter, range) => {
 };
 
 const clipTimeLogToRange = (log, range, now = new Date()) => {
+  if (log.manualEntry?.deletedAt) return null;
   if (!range) return log;
 
   const originalStart = new Date(log.startedAt);
@@ -115,7 +116,7 @@ async function prepareTimeLogSync(req, res, filter, range, includeEmployee = fal
         .populate(reportProjectPopulation)
         .populate("client", "clientName")
         .populate("task", "taskCode taskName taskType");
-    if (includeEmployee) query = query.populate("employee", "employeeId fullName email department designation");
+    if (includeEmployee) query = query.populate("employee", "employeeId fullName email department designation role team teamLead");
     const rows = await query.sort("-startedAt").limit(101).lean();
     // Large reconnect batches fall back to the original complete pagination.
     if (rows.length > 100) return { sync, handled: false };
@@ -534,6 +535,7 @@ const getMyTimeLogs = async (req, res) => {
 
         const filter = {
             employee: employeeId,
+            "manualEntry.deletedAt": null,
         };
 
         // Date range filter
@@ -657,7 +659,7 @@ const getMyTeamTimeLogs = async (req, res) => {
         const teamMemberIds = teamMembers.map((employee) => employee._id);
 
         const { startDate, endDate, employee, project, task, status } = req.query;
-        const filter = { employee: { $in: teamMemberIds } };
+        const filter = { employee: { $in: teamMemberIds }, "manualEntry.deletedAt": null };
 
         if (employee) {
             if (!teamMemberIds.some((id) => id.toString() === employee)) {
@@ -677,7 +679,7 @@ const getMyTeamTimeLogs = async (req, res) => {
         const rawTimeLogs = await TaskTimeLog.find(filter)
             .populate(
                 "employee",
-                "employeeId fullName email department designation"
+                "employeeId fullName email department designation role team teamLead"
             )
             .populate(reportProjectPopulation)
             .populate("client", "clientName")
@@ -711,7 +713,7 @@ const getAllTimeLogs = async (req, res) => {
         await closeStaleDesktopTimers();
         const { page, limit, skip } = getPagination(req.query);
         const { startDate, endDate, employee, team, project, task, status } = req.query;
-        const filter = {};
+        const filter = { "manualEntry.deletedAt": null };
 
         const reportRange = getReportRange(startDate, endDate);
         applyReportRangeFilter(filter, reportRange);
@@ -734,7 +736,7 @@ const getAllTimeLogs = async (req, res) => {
         if (handled) return;
         const totalRecords = await TaskTimeLog.countDocuments(filter);
         const rawTimeLogs = await TaskTimeLog.find(filter)
-            .populate("employee", "employeeId fullName email department designation")
+            .populate("employee", "employeeId fullName email department designation role team teamLead")
             .populate(reportProjectPopulation)
             .populate("client", "clientName")
             .populate("task", "taskCode taskName taskType")

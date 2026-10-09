@@ -16,8 +16,12 @@ const {
 } = require("../middleware/authMiddleware");
 
 const {
-  authorizeRoles,
+  requirePermission,
 } = require("../middleware/authorizeRoles");
+const {
+  guardTaskAssignmentOnCreate,
+  guardTaskReassignment,
+} = require("../middleware/taskPermissions");
 
 const router = express.Router();
 const catalogCache = require("../middleware/catalogCache");
@@ -33,14 +37,16 @@ const Employee = require("../models/Employee");
 router.post(
   "/",
   protect,
-  authorizeRoles("admin", "team_lead", "manager", "hr"),
+  requirePermission("create_tasks"),
+  guardTaskAssignmentOnCreate,
   createTask
 );
 
 router.post(
   "/bulk",
   protect,
-  authorizeRoles("admin", "team_lead", "manager", "hr"),
+  requirePermission("create_tasks"),
+  guardTaskAssignmentOnCreate,
   createTasksBulk
 );
 
@@ -63,7 +69,7 @@ router.get(
 router.get(
   "/resolve-project",
   protect,
-  authorizeRoles("admin", "team_lead", "manager", "hr"),
+  requirePermission("create_tasks", "edit_tasks"),
   resolveProjectForTeams
 );
 
@@ -75,7 +81,7 @@ router.get(
 router.patch(
   "/:id/toggle-status",
   protect,
-  authorizeRoles("admin", "team_lead", "manager", "hr"),
+  requirePermission("archive_tasks"),
   toggleTaskStatus
 );
 
@@ -94,7 +100,8 @@ router.get(
 router.put(
   "/:id",
   protect,
-  authorizeRoles("admin", "team_lead", "manager", "hr"),
+  requirePermission("edit_tasks"),
+  guardTaskReassignment,
   updateTask
 );
 
@@ -104,7 +111,7 @@ router.put(
 router.delete(
   "/:id",
   protect,
-  authorizeRoles("admin", "team_lead", "manager", "hr"),
+  requirePermission("archive_tasks"),
   deleteTask
 );
 

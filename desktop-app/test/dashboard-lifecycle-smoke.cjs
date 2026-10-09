@@ -6,6 +6,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "../../dashboard/dist");
+const uiReviewRoot = process.env.CRM_UI_REVIEW_DIR
+  ? path.resolve(process.env.CRM_UI_REVIEW_DIR)
+  : path.resolve(__dirname, "../../dashboard/ui-review");
 const user = { _id: "test-admin", role: "admin", fullName: "Test Admin", permissions: [] };
 const calls = new Map();
 const lastQueries = new Map();
@@ -205,7 +208,7 @@ app.whenReady().then(async () => {
     assert.equal(await evaluate("document.querySelector('.admin-report-break-total')"), null);
     const exports = [];
     win.webContents.session.on('will-download', (_event, item) => {
-      const output = path.resolve(__dirname, '../../dashboard/ui-review', `client-timesheet-export${path.extname(item.getFilename())}`);
+      const output = path.join(uiReviewRoot, `client-timesheet-export${path.extname(item.getFilename())}`);
       item.setSavePath(output);
       item.once('done', (_downloadEvent, state) => exports.push({ output, state }));
     });
@@ -245,7 +248,7 @@ app.whenReady().then(async () => {
     assert.ok((await evaluate("document.querySelector('.admin-report-results').textContent")).includes('John'));
     await evaluate(`document.querySelector('[aria-label="Team timesheet view"] button:last-child').click()`);
     await until("document.querySelector('[aria-label=\"Team timesheet view\"] button:last-child').getAttribute('aria-pressed') === 'true' && !!document.querySelector('.client-timesheet')");
-    const screenshotPath = path.resolve(__dirname, "../../dashboard/ui-review/client-timesheet.png");
+    const screenshotPath = path.join(uiReviewRoot, "client-timesheet.png");
     await evaluate("document.querySelectorAll('.client-timesheet details').forEach(node => node.open = true)");
     win.setSize(1200, 1100);
     await delay(250);
@@ -259,7 +262,7 @@ app.whenReady().then(async () => {
     win.webContents.invalidate();
     await delay(1000);
     assert.equal(await evaluate("document.documentElement.scrollWidth <= window.innerWidth"), true);
-    fs.writeFileSync(path.resolve(__dirname, "../../dashboard/ui-review/client-timesheet-mobile.png"), (await win.webContents.capturePage()).toPNG());
+    fs.writeFileSync(path.join(uiReviewRoot, "client-timesheet-mobile.png"), (await win.webContents.capturePage()).toPNG());
     win.setSize(1200, 900);
     await evaluate(`document.querySelector('a[href="/admin/team"]').click()`);
     await until("document.body.textContent.includes('Stable team')");
