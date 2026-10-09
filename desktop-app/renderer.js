@@ -128,6 +128,7 @@ let pendingDeviceLoginRequest = null;
 let noteDirty = false;
 let todayTimesheetLogs = [];
 const reportSnapshots = new Map();
+const reportRequests = new Map();
 let deviceApprovalAbortController = null;
 let todayTimesheetReportDate = null;
 let timesheetTaskOptionsSignature = null;
@@ -197,6 +198,25 @@ function getToken() {
 }
 
 async function fetchAllPages(endpoint, collectionKey, token, { isCurrent, reportSync = false, force = false } = {}) {
+  if (!reportSync) return loadAllPages(endpoint, collectionKey, token, { isCurrent });
+  const key = JSON.stringify([token, endpoint, collectionKey]);
+  const pending = reportRequests.get(key);
+  if (pending) {
+    // A manual refresh must follow the background result, rather than let
+    // either response overwrite a more recent complete snapshot.
+    if (!force) return pending;
+    try { await pending; } catch { /* Retry a failed background load. */ }
+    if (getToken() !== token || (isCurrent && !isCurrent())) return { items: [], cancelled: true };
+    return fetchAllPages(endpoint, collectionKey, token, { isCurrent, reportSync, force });
+  }
+  const operation = loadAllPages(endpoint, collectionKey, token, { isCurrent, reportSync, force });
+  reportRequests.set(key, operation);
+  try { return await operation; } finally {
+    if (reportRequests.get(key) === operation) reportRequests.delete(key);
+  }
+}
+
+async function loadAllPages(endpoint, collectionKey, token, { isCurrent, reportSync = false, force = false } = {}) {
   const items = [];
   let page = 1;
   let data = {};
@@ -1558,6 +1578,7 @@ async function loadTodayTimesheet({ force = false } = {}) {
     renderTodayTimesheet(todaysTimeLogs, data.date);
     timesheetMessage.textContent = "";
   } catch (error) {
+    if (getToken() !== token) return;
     timesheetMessage.textContent =
       "Unable to reach the backend server.";
   } finally {

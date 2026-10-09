@@ -194,6 +194,156 @@ cd ../dashboard && npm run lint && npm run build
 
 ## CRM branding and desktop release publishing
 
+Version **1.2.27** includes the 9 October audit follow-up:
+
+- Concurrent desktop timesheet refreshes share one request. A manual refresh
+  waits for background loading and then fetches a complete snapshot, preventing
+  older responses from overwriting newer rows. Queued refreshes stop on logout.
+- Catalog revision checks declare and request an `updatedAt` index. The
+  checksum still traverses timestamp entries; it is not a constant-time check.
+  If the index is unavailable, existing error handling uses the original
+  uncached catalog/report responses. Confirm `updatedAt_1` exists on employees,
+  projects, tasks, clients and teams after backend deployment. The live query
+  plan and transfer savings have not been measured by this local audit.
+
+These source changes require backend deployment and the **1.2.27** desktop
+installer. The older **1.2.26** files in `desktop-app/dist` do not include them.
+Follow-up validation is recorded in the deployment readiness notes below.
+The local pilot installer is unsigned; publishing/signing requirements below
+still apply. Push, deployment, index creation and release publishing require
+the owner's approval.
+See [MongoDB aggregation/index guidance](https://www.mongodb.com/docs/manual/core/aggregation-pipeline-optimization/)
+for verifying the deployed query plan with `explain`.
+
+### Deployment readiness for 1.2.27
+
+The 9 October audit targets the existing Render web service
+**handdy-workspace**, which serves both `/api` and the built dashboard at
+`https://handdy-workspace.onrender.com`. Use the existing build/start commands
+in `render.yaml`; do not create a replacement service or rotate production
+secrets. Required production configuration is `MONGODB_URI`, `JWT_SECRET` and
+an HTTPS `FRONTEND_URL` or Render's `RENDER_EXTERNAL_URL`. Preserve existing
+timezone, CORS, session lifetime and SMTP settings. Local configuration was
+checked by key presence only; Render's private environment was not accessed.
+
+The native-client read-only index audit against the database selected by
+`backend/.env` found:
+
+| Collection | Required synchronization indexes | Status |
+| --- | --- | --- |
+| employees, projects, tasks, clients, teams | `{ updatedAt: 1 }` on each collection | Missing on all five |
+| attendances | `{ employee: 1, updatedAt: 1 }`, `{ updatedAt: 1 }` | Both present |
+| task_time_logs | `{ employee: 1, updatedAt: 1 }`, `{ updatedAt: 1 }` | Both present |
+
+No duplicate timestamp definitions were found in the schemas or the connected
+database. Confirm privately that Render uses this same database before treating
+the result as the production index inventory. No database records or indexes
+were changed. On an approved deployment, Mongoose's default automatic index
+creation will request the new non-unique schema indexes; confirm database
+permissions and completion rather than assuming success. Existing compound
+employee/date indexes serve other queries and should be preserved. A compound
+employee/timestamp index does not satisfy the explicit `{ updatedAt: 1 }` hint.
+The checksum still scans timestamp entries and is not constant-time.
+
+Run this read-only check from `backend`:
+
+```bash
+node scripts/verifyBandwidthIndexes.js
+```
+
+Exit 0 means all required timestamp patterns are present; exit 2 means some
+are missing; exit 1 means the check could not complete. The script uses the
+native MongoDB client and only lists index definitions, so it cannot trigger
+Mongoose index creation. In Atlas, open Data Explorer, select the database and
+each collection, then inspect its Indexes tab. After approval, create only the
+five missing ascending `updatedAt` indexes with unique, sparse, TTL and partial
+options disabled. Index builds consume database resources; schedule and monitor
+them for the cluster size. See [Atlas index management](https://www.mongodb.com/docs/atlas/atlas-ui/indexes/).
+
+The additional heartbeat audit found that Atlas returned the entire timer
+document even though the API acknowledged only its ID. Heartbeats now request
+only `_id`; their twenty-second interval, lease expiry and public JSON response
+are unchanged. No production data update was performed to test this change.
+
+Incremental reports remain opt-in. Older callers receive complete paginated
+responses. Manual refreshes, expired/changed markers, changed reference data,
+large batches and five-minute reconciliation request full data. Missing revision
+indexes also fall back to the original full responses. Same-process writes
+invalidate reference caches immediately; other instances recheck metadata
+within five seconds. Settings cache reads have the same five-second bound.
+Private task responses remain scoped to each employee and current permissions.
+Approval waiters stop on disconnect and use a five-second database fallback.
+
+Actual archived 1.2.21 and 1.2.22 report loaders were exercised with the current
+backend handlers and local fixtures: each read all 205 records on two successive
+paginated refreshes without sync opt-in. Local handler tests cover legacy login,
+attendance check-in/checkout, timer start/pause/resume/stop and authorization.
+These results do not certify an installed employee PC or a live deployment.
+Keep existing installations; use an approved in-place NSIS installation in the
+same folder/scope on one or two pilot PCs after the backend deployment.
+
+The public service health check returned 200; unauthenticated `/api/auth/me`
+returned 401. These checks do not identify the deployed commit. The configured
+GitHub update repository and latest-release endpoint returned anonymous 404.
+The local 1.2.27 installer, blockmap, `latest.yml` and embedded feed are present,
+but public hosting, trusted signing and an end-to-end version transition remain
+required. This audit did not push, deploy, publish, create indexes or install
+CRM on any employee computer.
+
+Final local verification: **122 backend tests, 31 dashboard tests and 85 desktop
+Node tests passed (238 total)**. Dashboard lint and production build, both real
+Electron smoke tests and the isolated NSIS shortcut test passed. The Windows
+1.2.27 installer rebuilt without publishing; packaged version/renderer and
+installer size/SHA-512 metadata were checked. The installer remains unsigned.
+Backend and desktop have no separate lint scripts; modified JavaScript also
+passed syntax checks. The dashboard build reports a large export-library chunk
+warning; this is a build warning rather than a test failure.
+
+The verified source change set consists of:
+
+- `README_MERGED.md`.
+- `backend/src/services/readRevisions.js` and
+  `backend/src/controllers/taskTimeLogController.js`.
+- `backend/scripts/verifyBandwidthIndexes.js`.
+- `backend/test/bandwidthOptimizations.test.js`,
+  `backend/test/bandwidthIndexes.test.js` and
+  `backend/test/legacyCompatibility.test.js`.
+- `desktop-app/renderer.js`, `desktop-app/package.json`,
+  `desktop-app/package-lock.json` and `desktop-app/test/report-sync.test.js`.
+
+Keep generated archives, installers, logs, fixture exports and local `.env`
+files out of the source commit. After approval, push the verified commit and
+deploy the existing service; a push to its linked branch may trigger Render
+auto-deploy. Re-run the index verifier, confirm full/delta refreshes and approval
+flows, then pilot the in-place installer before distributing it more broadly.
+Fix public update hosting and trusted signing separately before publishing a
+stable release and testing a complete installed-version transition.
+
+### Measuring transfer after approved deployment
+
+For the existing Render service, open Metrics and Network Metrics, then compare
+Outbound Bandwidth and HTTP request volume over matching business-hour windows.
+Separate HTTP Responses from Service-Initiated traffic. Bandwidth points cover
+the previous hour and appear approximately an hour after that window ends;
+workspace monthly totals are on Billing. See [Render metrics](https://render.com/docs/service-metrics)
+and [outbound bandwidth accounting](https://render.com/docs/outbound-bandwidth).
+
+In Atlas cluster metrics, compare Network Bytes In/Out, operations and Query
+Targeting for the same intervals; use the query profiler or Performance Advisor
+where available. Host counters were not accessible through the configured
+database account, and historical dashboard metrics were not available to this
+audit. See [Atlas available metrics](https://www.mongodb.com/docs/atlas/review-available-metrics/).
+
+Record active employee hours, old/new client versions, report date ranges,
+exports and normal workload alongside each measurement. Browser Network tools
+can identify endpoint request counts and transferred bytes, without sharing
+tokens or unsanitized HAR files. Likely candidates from the code are full
+time-log/attendance downloads, idle project/task/client refreshes, heartbeat
+reads and billing/export requests. Their production ranking is unmeasured.
+Server catalog/settings caches primarily reduce Atlas reads; they still send
+normal JSON responses to clients and do not alone eliminate Render response
+bandwidth. No live before/after comparison or savings percentage is claimed.
+
 Version **1.2.26** reduces repeated database reads and report downloads:
 
 - Device approval monitors use local change notifications with a five-second

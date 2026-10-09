@@ -258,7 +258,9 @@ const heartbeatTimer = async (req, res) => {
         const timeLog = await TaskTimeLog.findOneAndUpdate(
             { employee: employeeId, isActiveTimer: true, status: { $in: ["running", "paused"] }, desktopHeartbeatAt: { $type: "date" } },
             { $set: { desktopHeartbeatAt: new Date() } },
-            { returnDocument: "after" },
+            // The API acknowledges only the ID. Avoid downloading notes and
+            // the complete pause history from Atlas every twenty seconds.
+            { returnDocument: "after", projection: { _id: 1 } },
         );
         if (!timeLog) return res.status(404).json({ success: false, message: "No active desktop timer found." });
         return res.status(200).json({ success: true, timeLogId: timeLog._id });

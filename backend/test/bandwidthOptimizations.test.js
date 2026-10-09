@@ -34,10 +34,11 @@ function query(rows) {
   return { populate() { return this; }, sort() { return this; }, skip() { return this; }, limit() { return this; },
     lean: async () => rows, then: (resolve, reject) => Promise.resolve(rows).then(resolve, reject) };
 }
+const revisionQuery = (rows) => ({ hint: () => Promise.resolve(rows) });
 function revisions(t, models = [Project, Task, Client, Employee, Team]) {
   for (const Model of models) {
     invalidate(Model.modelName);
-    t.mock.method(Model, "aggregate", async () => [{ count: 1, latest: new Date("2026-10-01"), total: 1 }]);
+    t.mock.method(Model, "aggregate", () => revisionQuery([{ count: 1, latest: new Date("2026-10-01"), total: 1 }]));
   }
 }
 const withMarker = (base, sync) => ({ ...base, sync: "true", syncSince: sync.since, syncScope: sync.scope, syncReferences: sync.references });
@@ -204,7 +205,7 @@ test("revision hooks invalidate caches for actual Mongoose document, query and m
   const schema = new mongoose.Schema({ name: String });
   schema.plugin(readRevisionPlugin);
   const Model = mongoose.model("BandwidthRevisionFixture", schema);
-  const reads = t.mock.method(Model, "aggregate", async () => [{ count: 1, total: 1 }]);
+  const reads = t.mock.method(Model, "aggregate", () => revisionQuery([{ count: 1, total: 1 }]));
   let revision = await dependencyRevision([Model]);
   await dependencyRevision([Model]);
   assert.equal(reads.mock.callCount(), 1);
@@ -217,6 +218,27 @@ test("revision hooks invalidate caches for actual Mongoose document, query and m
     revision = next;
   }
   assert.equal(reads.mock.callCount(), 8);
+});
+
+test("revision checks use the timestamp index and share an outstanding metadata read", async (t) => {
+  const schema = new mongoose.Schema({ name: String }, { timestamps: true });
+  schema.plugin(readRevisionPlugin);
+  assert.ok(schema.indexes().some(([keys]) => keys.updatedAt === 1 && Object.keys(keys).length === 1));
+  const Model = mongoose.model("IndexedRevisionFixture", schema);
+  let resolve;
+  const reads = t.mock.method(Model, "aggregate", () => ({
+    hint(index) {
+      assert.deepEqual(index, { updatedAt: 1 });
+      return new Promise((done) => { resolve = done; });
+    },
+  }));
+  const one = dependencyRevision([Model]);
+  const two = dependencyRevision([Model]);
+  assert.equal(reads.mock.callCount(), 1);
+  resolve([{ count: 2, latest: new Date("2026-10-09"), total: 2 }]);
+  assert.equal(await one, await two);
+  await dependencyRevision([Model]);
+  assert.equal(reads.mock.callCount(), 1);
 });
 
 test("catalog cache isolates employees and immediately reloads when assignments change", async (t) => {
@@ -240,7 +262,7 @@ test("catalog cache isolates employees and immediately reloads when assignments 
   await load(req);
   assert.equal(loads, 3);
   invalidate("Task");
-  t.mock.method(Task, "aggregate", async () => { throw new Error("revision unavailable"); });
+  t.mock.method(Task, "aggregate", () => ({ hint() { throw new Error("revision unavailable"); } }));
   assert.equal((await load(req)).success, true);
   assert.equal(loads, 4);
 });
@@ -257,7 +279,7 @@ test("report sync rejects changed scopes, renamed/deleted dependencies and old w
   assert.equal((await beginReportSync({ ...next, query: { ...next.query, syncSince: new Date(Date.now() - 6 * 60000).toISOString() } }, filter, [Task])).delta, false);
   invalidate("Task");
   assert.equal((await beginReportSync(next, filter, [Task])).delta, false);
-  t.mock.method(Task, "aggregate", async () => { throw new Error("metadata error"); });
+  t.mock.method(Task, "aggregate", () => ({ hint() { throw new Error("metadata error"); } }));
   invalidate("Task");
   assert.equal(await beginReportSync(next, filter, [Task]), null);
   assert.equal(await beginReportSync({ ...req, query: {} }, filter, [Task]), null);

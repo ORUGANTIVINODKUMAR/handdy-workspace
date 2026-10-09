@@ -20,7 +20,7 @@ function harness() {
       return { ok: true, json: async () => reply };
     },
   });
-  vm.runInContext(`const reportSnapshots = new Map(); ${renderer.slice(start, end)}`, context);
+  vm.runInContext(`const reportSnapshots = new Map(); const reportRequests = new Map(); ${renderer.slice(start, end)}`, context);
   state.load = (options = {}) => context.fetchAllPages("https://example.test/time-logs/my?today=true", "timeLogs", state.token, { reportSync: true, ...options });
   return state;
 }
@@ -73,6 +73,60 @@ test("desktop failed page leaves the previous complete snapshot available", asyn
   const recovered = await state.load();
   assert.equal(recovered.items.length, 1);
   assert.equal(recovered.items[0]._id, "complete");
+});
+
+test("overlapping desktop report refreshes share one request instead of replacing newer rows", async () => {
+  const state = harness();
+  let resolve;
+  state.replies.push(() => new Promise((done) => { resolve = done; }));
+  const first = state.load();
+  const second = state.load();
+  assert.equal(state.urls.length, 1);
+  resolve({ ok: true, json: async () => ({ timeLogs: [{ _id: "work", status: "stopped" }], sync }) });
+  const results = await Promise.all([first, second]);
+  assert.ok(results.every((result) => result.items[0].status === "stopped"));
+});
+
+test("manual desktop refresh waits for background loading and then fetches a complete snapshot", async () => {
+  const state = harness();
+  state.replies.push({ timeLogs: [{ _id: "work", status: "running" }], sync });
+  await state.load();
+  let resolve;
+  state.replies.push(() => new Promise((done) => { resolve = done; }));
+  const background = state.load();
+  state.replies.push({ timeLogs: [{ _id: "work", status: "stopped" }], sync });
+  const manual = state.load({ force: true });
+  assert.equal(state.urls.length, 2);
+  resolve({ ok: true, json: async () => ({ delta: true, timeLogs: [], sync }) });
+  await background;
+  const refreshed = await manual;
+  assert.equal(state.urls.length, 3);
+  assert.equal(state.urls.at(-1).searchParams.get("syncSince"), null);
+  assert.equal(refreshed.items[0].status, "stopped");
+});
+
+test("manual desktop refresh retries a failed background request and cancels after logout", async () => {
+  const state = harness();
+  let reject;
+  state.replies.push(() => new Promise((_resolve, fail) => { reject = fail; }));
+  const failed = state.load();
+  const failure = assert.rejects(failed, /offline/);
+  state.replies.push({ timeLogs: [{ _id: "recovered" }], sync });
+  const retry = state.load({ force: true });
+  reject(new Error("offline"));
+  await failure;
+  assert.equal((await retry).items[0]._id, "recovered");
+
+  let resolve;
+  state.replies.push(() => new Promise((done) => { resolve = done; }));
+  const background = state.load();
+  const queued = state.load({ force: true });
+  state.token = "employee-b";
+  const requestCount = state.urls.length;
+  resolve({ ok: true, json: async () => ({ timeLogs: [{ _id: "private" }], sync }) });
+  assert.equal((await background).cancelled, true);
+  assert.equal((await queued).cancelled, true);
+  assert.equal(state.urls.length, requestCount);
 });
 
 test("session cleanup aborts the outstanding approval request and clears report snapshots", async () => {
