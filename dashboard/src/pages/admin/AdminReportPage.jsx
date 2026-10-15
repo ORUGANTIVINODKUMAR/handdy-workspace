@@ -400,7 +400,7 @@ function AdminReportContent({
   useDataRefresh(() => {
     if (hasRun) return loadReport({ silent: true });
     return undefined;
-  }, 5_000);
+  }, 30_000);
 
   const getExportData = () => {
     if (mode === "attendance") {

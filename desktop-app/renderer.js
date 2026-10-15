@@ -123,7 +123,7 @@ const reportRequests = new Map();
 let deviceApprovalAbortController = null;
 let todayTimesheetReportDate = null;
 const IDLE_CHECK_INTERVAL_MS = 5000;
-const DATA_REFRESH_INTERVAL_MS = 10 * 1000;
+const DATA_REFRESH_INTERVAL_MS = 30 * 1000;
 const API_REQUEST_TIMEOUT_MS = 10 * 1000;
 
 const showTimerView = (viewName) => {
@@ -1159,6 +1159,9 @@ function refreshDesktopData() {
 async function runDesktopRefresh() {
   if (isLoginPage || !getToken() || logoutPending) return;
   if (!(await refreshCurrentUser())) return;
+  // Session validity is still checked while hidden; the heavier lists wait
+  // until the window is visible again (the visibilitychange handler refreshes).
+  if (document.visibilityState === "hidden") return;
   await loadTodayTimesheet();
   // An active timer owns the project/task display; it is restored from the
   // backend by loadActiveTimer, not by the background refresh.

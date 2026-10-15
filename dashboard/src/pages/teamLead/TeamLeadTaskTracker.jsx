@@ -18,7 +18,7 @@ function TeamLeadTaskTracker() {
     }
   }, []);
   useEffect(() => { void loadRows(); }, [loadRows]);
-  useDataRefresh(loadRows, 20_000);
+  useDataRefresh(loadRows, 30_000);
 
   return <DashboardLayout title="Task Tracker"><section className="tl-task-tracker-card">
     <div className="tl-task-tracker-controls"><h2>Live team timers</h2><button type="button" className="tl-task-tracker-go" onClick={loadRows}>Refresh</button></div>

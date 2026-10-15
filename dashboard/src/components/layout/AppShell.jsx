@@ -38,7 +38,8 @@ export default function AppShell({ children }) {
             setPendingLoginRequest(response.loginRequest);
             return;
           }
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          // Hidden tabs only need revocation detection, not a fast re-poll.
+          await new Promise((resolve) => setTimeout(resolve, document.visibilityState === "hidden" ? 15000 : 1000));
         } catch (error) {
           if (!active || controller.signal.aborted) return;
           if ([401, 403].includes(error?.response?.status)) return;

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 // Management data should follow changes from the other client quickly without
 // turning every page into a continuous stream of API requests.
-const DEFAULT_REFRESH_MS = 10_000;
+const DEFAULT_REFRESH_MS = 30_000;
 
 export default function useDataRefresh(refresh, intervalMs = DEFAULT_REFRESH_MS) {
   const refreshRef = useRef(refresh);
