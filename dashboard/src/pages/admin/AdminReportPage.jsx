@@ -20,6 +20,7 @@ import { buildChronologicalReportTimeline, sumTimelineSeconds } from "../../util
 import { formatReportDateTime, formatReportDuration, reportEntryStatus } from "../../utils/reportFormatting";
 import { getIdleSeconds, getWorkedSeconds, localDate, projectServesTeam } from "../../utils/timeLogReportHelpers";
 import { buildProjectWorkDetails } from "../../utils/projectWorkDetails";
+import { countWorkedDays } from "../../utils/personalReports";
 import { buildClientTimesheet, flattenClientTimesheet } from "../../utils/clientTimesheet";
 import ClientTimesheet from "../../components/reports/ClientTimesheet";
 import AddEntryModal from "../../components/reports/AddEntryModal";
@@ -266,6 +267,14 @@ function AdminReportContent({
     () => variant === "team" ? buildClientTimesheet(records, timelineRows) : [],
     [records, timelineRows, variant],
   );
+  // "My timesheet": only the totals for the period (worked, break, idle).
+  const summaryRows = useMemo(() => variant === "summary" ? [
+    { label: "Work time", value: formatDuration(totalSeconds) },
+    { label: "Break time", value: formatDuration(totalBreakSeconds) },
+    { label: "Idle time", value: formatDuration(totalIdleSeconds) },
+    { label: "Days worked", value: String(countWorkedDays(records)) },
+    { label: "Timer sessions", value: String(records.length) },
+  ] : [], [variant, records, totalSeconds, totalBreakSeconds, totalIdleSeconds]);
   // The client view reports worked and idle time per task only.
   const showBreakTotals = !(variant === "team" && teamView === "client");
 
@@ -274,7 +283,9 @@ function AdminReportContent({
     : variant === "project"
       ? projectDetails.length
       : variant === "detailed" && mode === "time" ? timelineRows.length : records.length;
-  const resultLabel = variant === "team"
+  const resultLabel = variant === "summary"
+    ? "timer sessions"
+    : variant === "team"
     ? "employees"
     : variant === "project"
       ? "employees"
@@ -419,6 +430,10 @@ function AdminReportContent({
       return { columns, rows };
     }
 
+    if (variant === "summary") {
+      return { columns: ["Total", "Time"], rows: summaryRows.map((row) => [row.label, row.value]) };
+    }
+
     if (variant === "team") {
       if (teamView === "client") return {
         columns: ["Employee", "Client", "Project", "Task", "Sessions", "Worked", "Idle"],
@@ -507,7 +522,7 @@ function AdminReportContent({
   return (
     <DashboardLayout title={title}>
       <div className="admin-report-page">
-        <ReportSummary items={mode === "time" ? [
+        {variant !== "summary" && <ReportSummary items={mode === "time" ? [
           { label: variant === "detailed" ? "Timeline entries" : "Records", value: hasRun ? resultCount : "—", help: variant === "detailed" ? `${records.length} timer sessions` : undefined },
           { label: "Worked time", value: hasRun ? formatDuration(totalSeconds) : "—" },
           { label: "Break time", value: hasRun ? formatDuration(totalBreakSeconds) : "—", help: "Intentional timer breaks" },
@@ -515,7 +530,7 @@ function AdminReportContent({
         ] : [
           { label: "Records", value: hasRun ? records.length : "—" },
           { label: "Report scope", value: scope === "personal" ? "Personal" : "Company", help: "Access follows your role" },
-        ]} />
+        ]} />}
         <section className="admin-report-filter card">
           <div>
             <span className="admin-report-kicker">Report filters</span>
@@ -737,6 +752,20 @@ function AdminReportContent({
                   </div>
                 </section>
               ))}
+            </div>
+          )}
+
+          {!error && mode === "time" && records.length > 0 && variant === "summary" && (
+            <div className="admin-report-table-wrap">
+              <table>
+                <thead><tr><th>Total for {appliedHeading.fromDate} to {appliedHeading.toDate}</th><th>Time</th></tr></thead>
+                <tbody>
+                  {summaryRows.map((row) => (
+                    <tr key={row.label}><td><strong>{row.label}</strong></td><td>{row.value}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="admin-report-message">For your work from time to time, open My detailed timesheet.</p>
             </div>
           )}
 

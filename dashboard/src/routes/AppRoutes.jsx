@@ -258,7 +258,7 @@ function AppRoutes() {
         path="/admin/my-timesheet"
         element={
           <AdminStaffOnly>
-            <AdminReportPage title="My timesheet" description="Your recorded project and task timer activity." scope="personal" />
+            <AdminReportPage title="My timesheet" description="Your total work time, break time and idle time for the selected period." scope="personal" variant="summary" />
           </AdminStaffOnly>
         }
       />
@@ -267,18 +267,14 @@ function AppRoutes() {
         path="/admin/my-timesheet/details"
         element={
           <AdminStaffOnly>
-            <AdminReportPage title="My detailed timesheet" description="Detailed personal project and task timer activity." scope="personal" />
+            <AdminReportPage title="My detailed timesheet" description="Your work from time to time: every work, break and idle segment with its start and finish." scope="personal" />
           </AdminStaffOnly>
         }
       />
 
       <Route
         path="/admin/my-timesheet/count"
-        element={
-          <AdminStaffOnly>
-            <AdminReportPage title="My count report" description="Your timer activity and total worked duration." scope="personal" />
-          </AdminStaffOnly>
-        }
+        element={<Navigate to="/admin/my-timesheet" replace />}
       />
 
       {/* OLD ADMIN TIMESHEET URLS */}
@@ -622,11 +618,7 @@ function AppRoutes() {
 
       <Route
         path="/team-lead/timesheet/count"
-        element={
-          <TeamLeadOnly>
-            <RoleReportPage title="My count report" description="Your timer records and total worked duration." scope="personal" />
-          </TeamLeadOnly>
-        }
+        element={<Navigate to="/team-lead/timesheet" replace />}
       />
 
       <Route
@@ -762,11 +754,7 @@ function AppRoutes() {
 
       <Route
         path="/employee/timesheet/count"
-        element={
-          <EmployeeOnly>
-            <RoleReportPage title="My count report" description="Your timer records and total worked duration." />
-          </EmployeeOnly>
-        }
+        element={<Navigate to="/employee/timesheet" replace />}
       />
 
       <Route

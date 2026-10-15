@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Lock, RotateCcw, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock, RotateCcw, Save, Search, ShieldCheck } from "lucide-react";
 
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import useAuth from "../../context/useAuth";
@@ -9,10 +9,17 @@ import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import "../../styles/adminPermissions.css";
 
 const ENFORCEMENT_LABELS = {
-  backend: "Enforced by server",
+  backend: "Enforced by the server",
   frontend: "Screen only",
   none: "Not enforced yet",
 };
+
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "enabled", label: "Enabled" },
+  { key: "disabled", label: "Disabled" },
+  { key: "sensitive", label: "Sensitive" },
+];
 
 const sameSet = (a, b) => a.length === b.length && a.every((key) => b.includes(key));
 
@@ -28,6 +35,9 @@ function AdminPermissions() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [collapsed, setCollapsed] = useState(() => new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,10 +62,47 @@ function AdminPermissions() {
 
   const sensitiveKeys = useMemo(() => new Set((config?.categories || [])
     .flatMap((category) => category.permissions.filter((permission) => permission.sensitive).map((permission) => permission.key))), [config]);
-  const current = draft[activeRole] || [];
+  const current = useMemo(() => draft[activeRole] || [], [draft, activeRole]);
   const dirty = Boolean(activeRole) && !sameSet(current, saved[activeRole] || []);
   const isDirty = (role) => !sameSet(draft[role] || [], saved[role] || []);
   const activeLabel = config?.roles.find((role) => role.role === activeRole)?.label || "this role";
+
+  const totalPermissions = useMemo(() => (config?.categories || [])
+    .reduce((sum, category) => sum + category.permissions.length, 0), [config]);
+  const changedCount = useMemo(() => {
+    const before = saved[activeRole] || [];
+    return current.filter((key) => !before.includes(key)).length + before.filter((key) => !current.includes(key)).length;
+  }, [current, saved, activeRole]);
+
+  // Categories reduced to the permissions that match the search and filter.
+  const visibleCategories = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return (config?.categories || []).map((category) => ({
+      ...category,
+      shown: category.permissions.filter((permission) => {
+        if (needle && !permission.label.toLowerCase().includes(needle)) return false;
+        if (filter === "enabled") return current.includes(permission.key);
+        if (filter === "disabled") return !current.includes(permission.key);
+        if (filter === "sensitive") return Boolean(permission.sensitive);
+        return true;
+      }),
+    })).filter((category) => category.shown.length);
+  }, [config, query, filter, current]);
+
+  const setMany = (keys, on) => {
+    setMessage("");
+    setDraft((previous) => {
+      const granted = new Set(previous[activeRole] || []);
+      for (const key of keys) { if (on) granted.add(key); else granted.delete(key); }
+      return { ...previous, [activeRole]: [...granted] };
+    });
+  };
+
+  const toggleCategory = (key) => setCollapsed((previous) => {
+    const next = new Set(previous);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
 
   const toggle = (key) => {
     setMessage("");
@@ -116,47 +163,104 @@ function AdminPermissions() {
 
         {config && (
           <>
-            <div className="permissions-roles card" role="tablist" aria-label="Role">
-              {config.roles.map((role) => (
-                <button
-                  key={role.role}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeRole === role.role}
-                  className={activeRole === role.role ? "is-active" : ""}
-                  onClick={() => { setActiveRole(role.role); setMessage(""); }}
-                >
-                  {role.label}
-                  {isDirty(role.role) && <span className="permissions-unsaved" title="Unsaved changes" />}
-                </button>
-              ))}
-              <span className="permissions-fixed"><Lock size={14} /> Admin, Alpha and Manager: full access (not editable)</span>
+            <div className="permissions-roles card">
+              <div className="permissions-tabs" role="tablist" aria-label="Role">
+                {config.roles.map((role) => (
+                  <button
+                    key={role.role}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeRole === role.role}
+                    className={activeRole === role.role ? "is-active" : ""}
+                    onClick={() => { setActiveRole(role.role); setMessage(""); }}
+                  >
+                    <span className="permissions-tab-name">{role.label}{isDirty(role.role) && <span className="permissions-unsaved" title="Unsaved changes" />}</span>
+                    <small>{(draft[role.role] || []).length} of {totalPermissions} enabled</small>
+                  </button>
+                ))}
+              </div>
+              <span className="permissions-fixed"><Lock size={14} /> Admin and Manager keep full access (not editable)</span>
             </div>
 
-            {config.categories.map((category) => (
-              <fieldset key={category.key} className="permissions-category card">
-                <legend>{category.label}</legend>
-                <div className="permissions-grid">
-                  {category.permissions.map((permission) => (
-                    <label key={permission.key} className="permissions-item">
-                      <input type="checkbox" checked={current.includes(permission.key)} onChange={() => toggle(permission.key)} />
-                      <span>
-                        <strong>{permission.label}</strong>
-                        <span className="permissions-tags">
-                          <em className={`permissions-tag is-${permission.enforcement}`}>{ENFORCEMENT_LABELS[permission.enforcement]}</em>
-                          {permission.sensitive && <em className="permissions-tag is-sensitive">Sensitive</em>}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            ))}
+            <div className="permissions-toolbar card">
+              <label className="permissions-search">
+                <Search size={16} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={`Search ${activeLabel} permissions…`}
+                  aria-label="Search permissions"
+                />
+              </label>
+              <div className="permissions-filters" role="group" aria-label="Filter permissions">
+                {FILTERS.map((item) => (
+                  <button key={item.key} type="button" aria-pressed={filter === item.key}
+                    className={filter === item.key ? "is-active" : ""} onClick={() => setFilter(item.key)}>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <span className="permissions-summary">
+                <strong>{current.length}</strong> of {totalPermissions} enabled for {activeLabel}
+              </span>
+            </div>
+
+            {!visibleCategories.length && (
+              <p className="permissions-empty card" role="status">No permissions match your search or filter.</p>
+            )}
+
+            {visibleCategories.map((category) => {
+              const keys = category.shown.map((permission) => permission.key);
+              const enabledHere = category.permissions.filter((permission) => current.includes(permission.key)).length;
+              const isCollapsed = collapsed.has(category.key);
+              return (
+                <section key={category.key} className="permissions-category card">
+                  <header className="permissions-category-head">
+                    <button type="button" className="permissions-collapse" aria-expanded={!isCollapsed}
+                      onClick={() => toggleCategory(category.key)}>
+                      <ChevronDown size={18} className={isCollapsed ? "is-collapsed" : ""} aria-hidden="true" />
+                      <h3>{category.label}</h3>
+                      <span className="permissions-count">{enabledHere}/{category.permissions.length} enabled</span>
+                    </button>
+                    <div className="permissions-bulk">
+                      <button type="button" onClick={() => setMany(keys, true)}>Select all</button>
+                      <button type="button" onClick={() => setMany(keys, false)}>Clear</button>
+                    </div>
+                  </header>
+                  {!isCollapsed && (
+                    <ul className="permissions-grid">
+                      {category.shown.map((permission) => {
+                        const on = current.includes(permission.key);
+                        const weak = permission.enforcement !== "backend";
+                        return (
+                          <li key={permission.key}>
+                            <label className={`permissions-item${on ? " is-on" : ""}`}>
+                              <input type="checkbox" role="switch" className="permissions-switch" checked={on}
+                                onChange={() => toggle(permission.key)} />
+                              <span className="permissions-item-text">
+                                <strong>{permission.label}</strong>
+                                <span className="permissions-tags">
+                                  {permission.sensitive && <em className="permissions-tag is-sensitive"><AlertTriangle size={11} aria-hidden="true" />Sensitive</em>}
+                                  {weak
+                                    ? <em className={`permissions-tag is-${permission.enforcement}`}>{ENFORCEMENT_LABELS[permission.enforcement]}</em>
+                                    : <em className="permissions-ok" title={ENFORCEMENT_LABELS.backend}><CheckCircle2 size={13} aria-hidden="true" />Server enforced</em>}
+                                </span>
+                              </span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
 
             <div className="permissions-actions card">
-              <span role="status">{message || (dirty ? "You have unsaved changes." : "No unsaved changes.")}</span>
+              <span role="status" className={dirty ? "permissions-dirty" : ""}>{message || (dirty ? `${changedCount} unsaved change${changedCount === 1 ? "" : "s"} for ${activeLabel}.` : "No unsaved changes.")}</span>
               <div>
-                <button type="button" className="permissions-reset" onClick={reset} disabled={!dirty || saving}><RotateCcw size={16} />Reset to previous settings</button>
+                <button type="button" className="permissions-reset" onClick={reset} disabled={!dirty || saving}><RotateCcw size={16} />Discard changes</button>
                 <button type="button" className="permissions-save" onClick={save} disabled={!dirty || saving}><Save size={16} />{saving ? "Saving…" : "Save changes"}</button>
               </div>
             </div>
