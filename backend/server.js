@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const mongoSanitize = require("express-mongo-sanitize");
 const errorHandler = require("./src/middleware/errorHandler");
 
@@ -54,6 +55,9 @@ const dashboardBuildPath = path.resolve(__dirname, "../dashboard/dist");
 // ==============================
 // MIDDLEWARE
 // ==============================
+// JSON and static assets compress by roughly 80-90%, which is most of the
+// outbound bandwidth. Small bodies (< 1 KB) are left alone by the default.
+app.use(compression());
 app.use(express.json({ limit: "1mb" }));
 
 // Strip any Mongo operator ($-prefixed) or dot-prefixed keys from user input

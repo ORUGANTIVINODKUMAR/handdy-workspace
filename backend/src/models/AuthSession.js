@@ -31,4 +31,5 @@ authSessionSchema.index(
 authSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 authSessionSchema.plugin(loginNotificationPlugin);
+authSessionSchema.plugin(require("../services/authCache").authCachePlugin);
 module.exports = mongoose.model("AuthSession", authSessionSchema);

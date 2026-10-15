@@ -12,6 +12,7 @@ const TaskTimeLog = require("../src/models/TaskTimeLog");
 const attendance = require("../src/controllers/attendanceController");
 const timers = require("../src/controllers/taskTimeLogController");
 const { protect } = require("../src/middleware/authMiddleware");
+const { clearAuthCache } = require("../src/services/authCache");
 const { authorizeRoles } = require("../src/middleware/authorizeRoles");
 
 const query = (value) => ({ select() { return this; }, sort() { return this; },
@@ -104,6 +105,7 @@ test("existing session authentication rejects revoked sessions and unauthorized 
   authorizeRoles("admin", "manager", "hr")(req, forbidden, () => assert.fail("employee must not receive admin reports"));
   assert.equal(forbidden.statusCode, 403);
   active = false;
+  clearAuthCache(); // a real revocation is a write, which clears the cache
   const revoked = response();
   await protect(req, revoked, () => assert.fail("revoked session must not authenticate"));
   assert.equal(revoked.statusCode, 401);

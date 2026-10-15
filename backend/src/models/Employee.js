@@ -324,6 +324,7 @@ employeeSchema.methods.comparePassword = async function (
 };
 
 employeeSchema.plugin(require("../services/readRevisions").readRevisionPlugin);
+employeeSchema.plugin(require("../services/authCache").authCachePlugin);
 const Employee = mongoose.model(
   "Employee",
   employeeSchema

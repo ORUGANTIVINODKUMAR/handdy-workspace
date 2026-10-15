@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const Employee = require("../models/Employee");
 const AuthSession = require("../models/AuthSession");
+const { getAuthEntry, setAuthEntry } = require("../services/authCache");
 
 const protect = async (req, res, next) => {
   try {
@@ -20,7 +21,13 @@ const protect = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const employee = await Employee.findById(decoded.employeeId).select(
+    // Served from a short-lived cache (cleared on any Employee/AuthSession
+    // write) so routine polling does not hit Atlas twice per request.
+    const cached = decoded.sessionId && decoded.deviceId
+      ? getAuthEntry(decoded.employeeId, decoded.sessionId, decoded.deviceId)
+      : null;
+
+    const employee = cached?.employee ?? await Employee.findById(decoded.employeeId).select(
       "+tokenVersion +idleTrackingExempt +idlePolicyOverride.idleThresholdMinutes +idlePolicyOverride.autoLogoutMinutes"
     );
 
@@ -55,7 +62,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    const authSession = await AuthSession.findOne({
+    const authSession = cached?.authSession ?? await AuthSession.findOne({
       employee: employee._id,
       sessionId: decoded.sessionId,
       deviceId: decoded.deviceId,
@@ -63,7 +70,7 @@ const protect = async (req, res, next) => {
       expiresAt: { $gt: new Date() },
     });
 
-    if (!authSession) {
+    if (!authSession || (cached && authSession.expiresAt <= new Date())) {
       return res.status(401).json({
         success: false,
         code: "SESSION_REVOKED",
@@ -71,11 +78,21 @@ const protect = async (req, res, next) => {
       });
     }
 
+    const entry = cached ?? setAuthEntry(decoded.employeeId, decoded.sessionId, decoded.deviceId, {
+      employee,
+      authSession,
+      touchedAt: authSession.lastActivity ? authSession.lastActivity.getTime() : 0,
+    });
+
     req.user = employee;
     req.authSession = authSession;
 
-    if (!authSession.lastActivity || Date.now() - authSession.lastActivity.getTime() > 60_000) {
-      AuthSession.updateOne({ _id: authSession._id, status: "active" }, { $set: { lastActivity: new Date() } })
+    if (Date.now() - entry.touchedAt > 60_000) {
+      entry.touchedAt = Date.now();
+      // Native update: a Mongoose update would clear the auth cache every minute.
+      const activity = { _id: authSession._id, status: "active" };
+      const touch = { $set: { lastActivity: new Date() } };
+      Promise.resolve(AuthSession.collection.updateOne(activity, touch))
         .catch((updateError) => console.error("Unable to update session activity:", updateError));
     }
 

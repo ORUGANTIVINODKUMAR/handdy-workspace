@@ -2,6 +2,9 @@ const { dependencyRevision, digest } = require("../services/readRevisions");
 const entries = new Map();
 const MAX_ENTRIES = 64;
 const MAX_BYTES = 8 * 1024 * 1024;
+// A client may keep reusing an unchanged list for at most this long before it
+// must download a fresh copy, even if no revision change was detected.
+const ETAG_WINDOW_MS = 5 * 60_000;
 let bytes = 0;
 
 function remove(key) {
@@ -17,12 +20,25 @@ function catalogCache(models, { shared = false } = {}) {
       const key = digest([req.baseUrl, req.path, req.query,
         shared ? null : String(req.user._id), req.user.role, String(req.user.team || ""),
         String(req.user.teamLead || ""), req.user.permissions || [], references]);
+      // The key already encodes the caller's scope and every dependency's
+      // revision, so an identical key means an identical list. Answering
+      // "304 Not Modified" skips the body entirely.
+      const etag = `"${key}-${Math.floor(Date.now() / ETAG_WINDOW_MS)}"`;
+      const cacheHeaders = { ETag: etag, "Cache-Control": "private, no-cache", Vary: "Authorization" };
+      if (req.headers?.["if-none-match"] === etag) {
+        res.set(cacheHeaders);
+        return res.status(304).end();
+      }
       const hit = entries.get(key);
-      if (hit && hit.expiresAt > Date.now()) return res.status(200).json(JSON.parse(hit.body));
+      if (hit && hit.expiresAt > Date.now()) {
+        res.set(cacheHeaders);
+        return res.status(200).json(JSON.parse(hit.body));
+      }
       if (hit) remove(key);
       const json = res.json;
       res.json = function (body) {
         if (res.statusCode === 200 && body?.success === true) {
+          res.set(cacheHeaders);
           const serialized = JSON.stringify(body);
           const size = Buffer.byteLength(serialized);
           if (size <= MAX_BYTES) {

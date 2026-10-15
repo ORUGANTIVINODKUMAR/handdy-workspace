@@ -28,6 +28,9 @@ function response() {
     statusCode: 200,
     status(code) { this.statusCode = code; return this; },
     json(body) { this.body = body; return this; },
+    headers: {},
+    set(name, value) { Object.assign(this.headers, typeof name === "string" ? { [name]: value } : name); return this; },
+    end() { this.ended = true; return this; },
   });
 }
 function query(rows) {
@@ -354,4 +357,36 @@ test("attendance delta returns checkout changes without repeating count or histo
   assert.equal(second.body.delta, true);
   assert.ok(second.body.attendance[0].checkOut);
   assert.equal(counts.mock.callCount(), 1);
+});
+
+test("catalog lists answer 304 for an unchanged list and a full 200 after any change", async (t) => {
+  revisions(t, [Task]);
+  const middleware = catalogCache([Task]);
+  const base = { baseUrl: "/etag-test", path: "/", query: {}, headers: {}, user: { _id: "person-a", role: "employee", team: "team" } };
+  let loads = 0;
+  async function call(request) {
+    const res = response();
+    await middleware(request, res, () => { loads += 1; res.json({ success: true, tasks: [{ _id: "task" }] }); });
+    return res;
+  }
+  const first = await call(base);
+  assert.equal(first.statusCode, 200);
+  const etag = first.headers.ETag;
+  assert.match(etag, /^"[0-9a-f]{64}-\d+"$/);
+  assert.equal(first.headers["Cache-Control"], "private, no-cache");
+
+  const unchanged = await call({ ...base, headers: { "if-none-match": etag } });
+  assert.equal(unchanged.statusCode, 304);
+  assert.equal(unchanged.ended, true);
+  assert.equal(unchanged.body, undefined);
+  assert.equal(loads, 1, "a 304 must not run the route handler");
+
+  const otherUser = await call({ ...base, headers: { "if-none-match": etag }, user: { ...base.user, _id: "person-b" } });
+  assert.equal(otherUser.statusCode, 200, "another employee's ETag never matches");
+
+  invalidate("Task");
+  t.mock.method(Task, "aggregate", () => revisionQuery([{ count: 2, latest: new Date("2026-10-10"), total: 2 }]));
+  const changed = await call({ ...base, headers: { "if-none-match": etag } });
+  assert.equal(changed.statusCode, 200, "a changed revision forces a full response");
+  assert.notEqual(changed.headers.ETag, etag);
 });
